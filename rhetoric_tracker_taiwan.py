@@ -940,13 +940,14 @@ def _parse_pub_date(pub_str):
 
 
 def _fetch_rss(url, source_name, weight=0.85, max_items=20):
-    articles = []
-    try:
-        resp = requests.get(url, timeout=12, headers={'User-Agent': 'Mozilla/5.0'})
-        if resp.status_code != 200:
-            print(f"[Taiwan RSS] {source_name}: HTTP {resp.status_code}")
-            return []
-        root = ET.fromstring(resp.content)
+        articles = []
+        try:
+            resp = requests.get(url, timeout=12, headers={'User-Agent': 'Mozilla/5.0'})
+            if resp.status_code != 200:
+                print(f"[Taiwan RSS] {source_name}: HTTP {resp.status_code}")
+                return []
+            content = resp.content.lstrip(b'\xef\xbb\xbf').strip()
+            root = ET.fromstring(content)
         for item in root.findall('.//item')[:max_items]:
             title_el = item.find('title')
             link_el  = item.find('link')
