@@ -744,37 +744,37 @@ JAPAN_REGIONAL_TRIGGERS = {
 # ============================================
 RSS_SOURCES = {
     'prc_mnd': {
-        'url': 'http://eng.mod.gov.cn/rss/rss.xml',
+        'url': 'https://www.globaltimes.cn/rss/outbrain.xml',
         'name': 'PRC MND (Official)',
         'weight': 1.0,
-        'note': 'MND spokesperson pressers -- formulaic baseline, spikes are real signals',
+        'note': 'PRC MND RSS dead -- using Global Times as primary CCP signal',
     },
     'global_times': {
-        'url': 'https://www.globaltimes.cn/rss/outbrain.xml',
+        'url': 'https://www.globaltimes.cn/rss/opinion.xml',
         'name': 'Global Times',
         'weight': 0.85,
         'note': 'CCP signaling instrument',
     },
     'xinhua_en': {
-        'url': 'https://feeds.feedburner.com/xinhua/WzHp',
+        'url': 'https://english.news.cn/rss/world.xml',
         'name': 'Xinhua English',
         'weight': 0.75,
     },
     'china_military': {
-        'url': 'http://eng.chinamil.com.cn/rss/rss.xml',
-        'name': 'China Military (PLA Official EN)',
-        'weight': 1.0,
-        'note': 'Only official English PLA news site',
+        'url': 'https://www.scmp.com/rss/4/feed',
+        'name': 'China Military (via SCMP)',
+        'weight': 0.9,
+        'note': 'PLA official RSS dead -- SCMP China military coverage as replacement',
     },
     'taiwan_mnd': {
-        'url': 'https://www.mnd.gov.tw/english/rss.aspx',
-        'name': 'Taiwan MND (ROC Official)',
-        'weight': 1.0,
-        'note': 'Daily ADIZ violation reports -- ground truth',
+        'url': 'https://focustaiwan.tw/rss/politics.xml',
+        'name': 'Taiwan MND (via Focus Taiwan Politics)',
+        'weight': 0.95,
+        'note': 'Taiwan MND RSS inaccessible -- Focus Taiwan politics covers MND releases',
     },
     'focus_taiwan': {
-        'url': 'https://focustaiwan.tw/rss/aall.xml',
-        'name': 'Focus Taiwan (CNA)',
+        'url': 'https://focustaiwan.tw/rss/cross-strait.xml',
+        'name': 'Focus Taiwan Cross-Strait',
         'weight': 0.95,
     },
     'taipei_times': {
