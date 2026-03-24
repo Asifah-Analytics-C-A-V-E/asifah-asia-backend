@@ -945,14 +945,15 @@ def _parse_pub_date(pub_str):
 
 
 def _fetch_rss(url, source_name, weight=0.85, max_items=20):
-    """Fetch and parse an RSS feed."""
-    articles = []
-    try:
-        resp = requests.get(url, timeout=12, headers={'User-Agent': 'Mozilla/5.0'})
-        if resp.status_code != 200:
-            print(f"[China RSS] {source_name}: HTTP {resp.status_code}")
-            return []
-        root = ET.fromstring(resp.content)
+        articles = []
+        try:
+            resp = requests.get(url, timeout=12, headers={'User-Agent': 'Mozilla/5.0'})
+            if resp.status_code != 200:
+                print(f"[China RSS] {source_name}: HTTP {resp.status_code}")
+                return []
+            # Strip BOM and leading whitespace before parsing -- some feeds have encoding preambles
+            content = resp.content.lstrip(b'\xef\xbb\xbf').strip()
+            root = ET.fromstring(content)
         items = root.findall('.//item')
         for item in items[:max_items]:
             title_el = item.find('title')
