@@ -685,10 +685,16 @@ ECONOMIC_PRESSURE_TRIGGERS = {
 RSS_SOURCES = {
     # Taiwan primary -- outbound signals
     'focus_taiwan': {
-        'url': 'https://focustaiwan.tw/rss/aall.xml',
-        'name': 'Focus Taiwan (CNA)',
+        'url': 'https://focustaiwan.tw/rss/cross-strait.xml',
+        'name': 'Focus Taiwan Cross-Strait',
         'weight': 0.95,
-        'note': 'Best English Taiwan news, official ROC statements',
+        'note': 'Best English Taiwan cross-strait coverage',
+    },
+    'focus_taiwan_politics': {
+        'url': 'https://focustaiwan.tw/rss/politics.xml',
+        'name': 'Focus Taiwan Politics',
+        'weight': 0.95,
+        'note': 'ROC government and defense announcements',
     },
     'taipei_times': {
         'url': 'https://www.taipeitimes.com/xml/index.rss',
@@ -702,27 +708,27 @@ RSS_SOURCES = {
         'note': 'Fast on breaking cross-strait incidents',
     },
     'taiwan_mnd': {
-        'url': 'https://www.mnd.gov.tw/english/rss.aspx',
-        'name': 'Taiwan MND (ROC Official)',
-        'weight': 1.0,
-        'note': 'Daily ADIZ reports and defense announcements',
+        'url': 'https://focustaiwan.tw/rss/politics.xml',
+        'name': 'Taiwan MND (via Focus Taiwan)',
+        'weight': 0.95,
+        'note': 'Taiwan MND RSS inaccessible -- Focus Taiwan politics covers MND releases',
     },
-    # China reaction -- PLA response signals
     'prc_mnd': {
-        'url': 'http://eng.mod.gov.cn/rss/rss.xml',
-        'name': 'PRC MND (Official)',
-        'weight': 1.0,
-        'note': 'PRC reaction to Taiwan signals',
-    },
-    'global_times': {
         'url': 'https://www.globaltimes.cn/rss/outbrain.xml',
-        'name': 'Global Times',
+        'name': 'PRC MND (via Global Times)',
+        'weight': 0.9,
+        'note': 'PRC MND RSS dead -- Global Times as primary CCP signal',
+    },
+    'global_times_opinion': {
+        'url': 'https://www.globaltimes.cn/rss/opinion.xml',
+        'name': 'Global Times Opinion',
         'weight': 0.85,
     },
     'china_military': {
-        'url': 'http://eng.chinamil.com.cn/rss/rss.xml',
-        'name': 'China Military (PLA Official EN)',
-        'weight': 1.0,
+        'url': 'https://www.scmp.com/rss/4/feed',
+        'name': 'China Military (via SCMP)',
+        'weight': 0.9,
+        'note': 'PLA official RSS dead -- SCMP China section as replacement',
     },
     # US commitment signals
     'usni_news': {
