@@ -45,6 +45,14 @@ except ImportError:
     print("[Asia Backend] ⚠️ Telegram signals not available")
 
 try:
+    from rhetoric_tracker_china import register_china_rhetoric_endpoints
+    CHINA_RHETORIC_AVAILABLE = True
+    print("[Asia Backend] ✅ China rhetoric tracker loaded")
+except ImportError:
+    CHINA_RHETORIC_AVAILABLE = False
+    print("[Asia Backend] ⚠️ China rhetoric tracker not available")
+
+try:
     from military_tracker import scan_military_posture, get_military_posture
     MILITARY_TRACKER_AVAILABLE = True
     print("[Asia Backend] ✅ Military tracker available")
@@ -2359,6 +2367,9 @@ def health():
 # ========================================
 # START BACKGROUND REFRESH ON BOOT
 # ========================================
+if CHINA_RHETORIC_AVAILABLE:
+    register_china_rhetoric_endpoints(app)
+
 # On Render with gunicorn, this runs once per worker.
 start_background_refresh()
 
