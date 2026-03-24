@@ -53,6 +53,18 @@ except ImportError:
     print("[Asia Backend] ⚠️ China rhetoric tracker not available")
 
 try:
+    from rhetoric_tracker_taiwan import register_taiwan_rhetoric_endpoints
+    TAIWAN_RHETORIC_AVAILABLE = True
+    print("[Asia Backend] ✅ Taiwan rhetoric tracker loaded")
+except ImportError:
+    TAIWAN_RHETORIC_AVAILABLE = False
+    print("[Asia Backend] ⚠️ Taiwan rhetoric tracker not available")
+    print("[Asia Backend] ✅ China rhetoric tracker loaded")
+except ImportError:
+    CHINA_RHETORIC_AVAILABLE = False
+    print("[Asia Backend] ⚠️ China rhetoric tracker not available")
+
+try:
     from military_tracker import scan_military_posture, get_military_posture
     MILITARY_TRACKER_AVAILABLE = True
     print("[Asia Backend] ✅ Military tracker available")
@@ -2369,6 +2381,9 @@ def health():
 # ========================================
 if CHINA_RHETORIC_AVAILABLE:
     register_china_rhetoric_endpoints(app)
+
+if TAIWAN_RHETORIC_AVAILABLE:
+    register_taiwan_rhetoric_endpoints(app)
 
 # On Render with gunicorn, this runs once per worker.
 start_background_refresh()
