@@ -744,7 +744,7 @@ JAPAN_REGIONAL_TRIGGERS = {
 # ============================================
 RSS_SOURCES = {
     'prc_mnd': {
-        'url': 'https://www.globaltimes.cn/rss/outbrain.xml',
+        'url': 'https://www.globaltimes.cn/rss/opinion.xml',
         'name': 'PRC MND (Official)',
         'weight': 1.0,
         'note': 'PRC MND RSS dead -- using Global Times as primary CCP signal',
@@ -783,7 +783,7 @@ RSS_SOURCES = {
         'weight': 0.85,
     },
     'taiwan_news': {
-        'url': 'https://www.taiwannews.com.tw/rss/index.rss',
+        'url': 'https://www.taiwannews.com.tw/rss/news.rss',
         'name': 'Taiwan News',
         'weight': 0.75,
     },
