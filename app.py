@@ -1042,6 +1042,9 @@ def fetch_gdelt_articles(query, days=7, language='eng'):
         for attempt in range(2):
             try:
                 resp = requests.get(GDELT_BASE_URL, params=params, timeout=15)
+                if resp.status_code == 429:
+                    print(f"[Asia GDELT] {language}: Rate limited (429) — skipping")
+                    return []
                 if resp.status_code == 200:
                     break
             except requests.Timeout:
@@ -1384,15 +1387,18 @@ def scan_asian_flight_disruptions(articles):
 def scan_asia_notams():
     """Scan FAA NOTAM API for Asia-Pacific regions."""
     notams = []
-    FAA_NOTAM_URL = "https://external-api.faa.gov/notamapi/v1/notams"
+    FAA_NOTAM_URL = "https://notams.aim.faa.gov/notamSearch/search"
 
     for region_key, region in NOTAM_REGIONS.items():
         icao_codes = region.get('icao_codes', [])[:3]
         for icao in icao_codes:
             try:
                 params = {
-                    'icaoLocation': icao,
+                    'searchType': 0,
+                    'designatorsForLocation': icao,
+                    'radiusWithDesignator': 100,
                     'pageSize': 10,
+                    'pageOffset': 0,
                 }
                 response = requests.get(
                     FAA_NOTAM_URL, params=params,
@@ -1401,19 +1407,18 @@ def scan_asia_notams():
                 )
                 if response.status_code == 200:
                     data = response.json()
-                    items = data.get('items', [])
+                    items = data.get('notamList', [])
                     for item in items:
-                        props = item.get('properties', {})
-                        core = props.get('coreNOTAMData', {})
-                        notam = core.get('notam', {})
-                        text = notam.get('text', '') or notam.get('traditionalMessage', '')
+                        text = (item.get('traditionalMessage', '')
+                                or item.get('icaoMessage', '')
+                                or item.get('plainLanguage', ''))
                         notams.append({
                             'icao': icao,
                             'region': region['name'],
-                            'id': notam.get('id', ''),
+                            'id': item.get('notamNumber', ''),
                             'text': text[:500],
-                            'effectiveStart': notam.get('effectiveStart', ''),
-                            'effectiveEnd': notam.get('effectiveEnd', ''),
+                            'effectiveStart': item.get('startDate', ''),
+                            'effectiveEnd': item.get('endDate', ''),
                         })
             except Exception as e:
                 print(f"[Asia NOTAM] {icao} error: {str(e)[:80]}")
@@ -1534,13 +1539,18 @@ def _run_threat_scan(target, days=7):
     articles_gdelt_ja = []
 
     if target in ('china', 'taiwan'):
+        time.sleep(0.5)
         articles_gdelt_zh = fetch_gdelt_articles(query, days, 'zho')
     if target in ('south_korea', 'north_korea'):
+        time.sleep(0.5)
         articles_gdelt_ko = fetch_gdelt_articles(query, days, 'kor')
     if target in ('pakistan', 'afghanistan'):
+        time.sleep(0.5)
         articles_gdelt_ur = fetch_gdelt_articles(query, days, 'urd')
+        time.sleep(0.5)
         articles_gdelt_fa = fetch_gdelt_articles(query, days, 'prs')
     if target == 'japan':
+        time.sleep(0.5)
         articles_gdelt_ja = fetch_gdelt_articles(query, days, 'jpn')
 
     # Reddit
