@@ -1752,7 +1752,15 @@ def _run_threat_scan(target, days=7):
             )
             if cache_age_secs > _telegram_cache['ttl_seconds'] or not _telegram_cache['messages']:
                 print(f"[Telegram Cache] Fetching fresh (last fetch: {int(cache_age_secs)}s ago)")
-                _telegram_cache['messages'] = fetch_asia_telegram_signals(
+                try:
+                    from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
+                    with ThreadPoolExecutor(max_workers=1) as executor:
+                        future = executor.submit(fetch_asia_telegram_signals,
+                            _telegram_cache.get('hours_back', 72), True)
+                        _telegram_cache['messages'] = future.result(timeout=60)
+                except Exception:
+                    print("[Telegram Cache] Fetch timed out or failed — using empty cache")
+                    _telegram_cache['messages'] = []
                     hours_back=max(days * 24, 168), include_extended=True
                 )
                 _telegram_cache['fetched_at'] = now
