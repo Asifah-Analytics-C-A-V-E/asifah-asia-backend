@@ -318,7 +318,7 @@ def _refresh_all_caches():
                         data = future.result(timeout=120)
                     except FuturesTimeout:
                         print(f"[Background Refresh] ✗ {target} timed out after 120s — skipping")
-                        continue7)
+                        continue
                 cache_set(f'threat_{target}_7d', data)
                 save_threat_cache_redis(target, data, days=7)
                 print(f"[Background Refresh] ✓ {target} cached (probability: {data.get('probability', '?')}%)")
