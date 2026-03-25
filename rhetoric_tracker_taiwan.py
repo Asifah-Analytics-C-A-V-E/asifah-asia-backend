@@ -948,7 +948,7 @@ def _fetch_rss(url, source_name, weight=0.85, max_items=20):
                 return []
             content = resp.content.lstrip(b'\xef\xbb\xbf').strip()
             root = ET.fromstring(content)
-        for item in root.findall('.//item')[:max_items]:
+            for item in root.findall('.//item')[:max_items]:
             title_el = item.find('title')
             link_el  = item.find('link')
             pub_el   = item.find('pubDate')
