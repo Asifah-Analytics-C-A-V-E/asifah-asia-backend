@@ -311,7 +311,14 @@ def _refresh_all_caches():
         for target in targets:
             try:
                 print(f"[Background Refresh] Refreshing {target}...")
-                data = _run_threat_scan(target, days=7)
+                from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
+                with ThreadPoolExecutor(max_workers=1) as executor:
+                    future = executor.submit(_run_threat_scan, target, 7)
+                    try:
+                        data = future.result(timeout=120)
+                    except FuturesTimeout:
+                        print(f"[Background Refresh] ✗ {target} timed out after 120s — skipping")
+                        continue7)
                 cache_set(f'threat_{target}_7d', data)
                 save_threat_cache_redis(target, data, days=7)
                 print(f"[Background Refresh] ✓ {target} cached (probability: {data.get('probability', '?')}%)")
@@ -1011,7 +1018,7 @@ def fetch_newsapi_articles(query, days=7):
                 'pageSize': 30,
                 'apiKey': NEWSAPI_KEY,
             },
-            timeout=15
+            timeout=(5, 15)
         )
         if response.status_code == 200:
             articles = response.json().get('articles', [])
@@ -1041,7 +1048,7 @@ def fetch_gdelt_articles(query, days=7, language='eng'):
         resp = None
         for attempt in range(2):
             try:
-                resp = requests.get(GDELT_BASE_URL, params=params, timeout=15)
+                resp = requests.get(GDELT_BASE_URL, params=params, timeout=(5, 15))
                 if resp.status_code == 429:
                     print(f"[Asia GDELT] {language}: Rate limited (429) — skipping")
                     return []
@@ -1093,7 +1100,7 @@ def fetch_google_news_rss(query, source_name, lang='en', gl='US'):
         encoded_query = requests.utils.quote(query)
         ceid = f"{lang.upper()}-{gl}"
         url = f"https://news.google.com/rss/search?q={encoded_query}&hl={lang}&gl={gl}&ceid={ceid}"
-        response = requests.get(url, timeout=15, headers={'User-Agent': 'Mozilla/5.0'})
+        response = requests.get(url, timeout=(5, 15), headers={'User-Agent': 'Mozilla/5.0'})
         if response.status_code == 200:
             root = ET.fromstring(response.content)
             items = root.findall('.//item')
@@ -1120,7 +1127,7 @@ def fetch_direct_rss(url, source_name, weight=0.85, max_items=15):
     """Fetch articles directly from an RSS feed URL (not Google News)."""
     articles = []
     try:
-        response = requests.get(url, timeout=15, headers={'User-Agent': 'Mozilla/5.0'})
+        response = requests.get(url, timeout=(5, 15), headers={'User-Agent': 'Mozilla/5.0'})
         if response.status_code == 200:
             root = ET.fromstring(response.content)
             items = root.findall('.//item')
