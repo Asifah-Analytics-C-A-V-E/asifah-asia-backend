@@ -702,7 +702,7 @@ RSS_SOURCES = {
         'weight': 0.85,
     },
     'taiwan_news': {
-        'url': 'https://www.taiwannews.com.tw/rss/index.rss',
+        'url': 'https://www.taiwannews.com.tw/rss/news.rss',
         'name': 'Taiwan News',
         'weight': 0.75,
         'note': 'Fast on breaking cross-strait incidents',
@@ -714,7 +714,7 @@ RSS_SOURCES = {
         'note': 'Taiwan MND RSS inaccessible -- Focus Taiwan politics covers MND releases',
     },
     'prc_mnd': {
-        'url': 'https://www.globaltimes.cn/rss/outbrain.xml',
+        'url': 'https://www.globaltimes.cn/rss/opinion.xml',
         'name': 'PRC MND (via Global Times)',
         'weight': 0.9,
         'note': 'PRC MND RSS dead -- Global Times as primary CCP signal',
