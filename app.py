@@ -1756,13 +1756,11 @@ def _run_threat_scan(target, days=7):
                     from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
                     with ThreadPoolExecutor(max_workers=1) as executor:
                         future = executor.submit(fetch_asia_telegram_signals,
-                            _telegram_cache.get('hours_back', 72), True)
+                            max(days * 24, 168), True)
                         _telegram_cache['messages'] = future.result(timeout=60)
                 except Exception:
                     print("[Telegram Cache] Fetch timed out or failed — using empty cache")
                     _telegram_cache['messages'] = []
-                    hours_back=max(days * 24, 168), include_extended=True
-                )
                 _telegram_cache['fetched_at'] = now
             else:
                 print(f"[Telegram Cache] Using cached messages ({int(cache_age_secs)}s old, {len(_telegram_cache['messages'])} msgs)")
