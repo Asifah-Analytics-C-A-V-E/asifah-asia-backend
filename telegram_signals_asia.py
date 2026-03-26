@@ -29,6 +29,7 @@ from datetime import datetime, timezone, timedelta
 # Telethon import with graceful fallback
 try:
     from telethon import TelegramClient
+    from telethon.errors import FloodWaitError, UsernameInvalidError, UsernameNotOccupiedError
     from telethon.tl.functions.messages import GetHistoryRequest
     TELETHON_AVAILABLE = True
 except ImportError:
@@ -164,7 +165,8 @@ async def _async_fetch_messages(channels, hours_back=24):
                 for msg in history.messages:
                     if msg.date and msg.date.replace(tzinfo=timezone.utc) > since and msg.message:
                         messages.append({
-                            'title': msg.message[:200],
+                            'title': msg.message[:500],
+                            'body': msg.message[:500],
                             'url': f'https://t.me/{channel}/{msg.id}',
                             'published': msg.date.replace(tzinfo=timezone.utc).isoformat(),
                             'query': f'telegram_{channel}',
@@ -176,6 +178,12 @@ async def _async_fetch_messages(channels, hours_back=24):
 
                 print(f"[Telegram Asia] @{channel}: {channel_count} messages (last {hours_back}h)")
 
+            except FloodWaitError as e:
+                print(f"[Telegram Asia] @{channel} flood wait {e.seconds}s — skipping")
+                continue
+            except (UsernameInvalidError, UsernameNotOccupiedError):
+                print(f"[Telegram Asia] @{channel} username invalid — skipping")
+                continue
             except Exception as e:
                 print(f"[Telegram Asia] @{channel} error: {str(e)[:100]}")
                 continue
