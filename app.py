@@ -85,8 +85,8 @@ CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=False)
 NEWSAPI_KEY = os.environ.get('NEWSAPI_KEY')
 GDELT_BASE_URL = "http://api.gdeltproject.org/api/v2/doc/doc"
 
-# Cache TTL in seconds (4 hours)
-CACHE_TTL = 4 * 60 * 60
+# Cache TTL in seconds (12 hours)
+CACHE_TTL = 12 * 60 * 60
 
 # NOTAM cache TTL (2 hours)
 NOTAM_CACHE_TTL = 2 * 60 * 60
@@ -98,7 +98,7 @@ NOTAM_REDIS_KEY = 'asia_notam_cache'
 FLIGHT_REDIS_KEY = 'asia_flight_cache'
 FLIGHT_CACHE_TTL = 12 * 60 * 60  # 12 hours
 THREAT_REDIS_PREFIX = 'asia_threat_'  # e.g. asia_threat_taiwan_7d
-THREAT_CACHE_TTL = 4 * 60 * 60  # 4 hours
+THREAT_CACHE_TTL = 12 * 60 * 60  # 12 hours
 
 # Rate limiting
 RATE_LIMIT = 100
