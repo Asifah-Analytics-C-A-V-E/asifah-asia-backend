@@ -165,6 +165,32 @@ def _redis_request(method, path, **kwargs):
         print(f"[Redis] Error: {str(e)[:100]}")
     return None
 
+def _get_rhetoric_level(target):
+    """Read rhetoric tracker level from Redis crosstheater fingerprint."""
+    try:
+        key = 'rhetoric:crosstheater:fingerprints'
+        result = _redis_request('GET', f'/get/{key}')
+        if result and result.get('result'):
+            fingerprints = json.loads(result['result'])
+            if target == 'china':
+                return fingerprints.get('china', {}).get('level', 0)
+            elif target == 'taiwan':
+                return fingerprints.get('taiwan', {}).get('level', 0)
+    except Exception as e:
+        print(f"[Rhetoric Boost] Redis read error: {str(e)[:80]}")
+    return 0
+
+
+def _get_military_level(target):
+    """Read military posture level for a target from cache."""
+    try:
+        if MILITARY_TRACKER_AVAILABLE:
+            data = get_military_posture(target)
+            return data.get('level', 0) if data else 0
+    except Exception:
+        pass
+    return 0
+  
 def load_threat_cache_redis(target, days=7):
     """Load threat cache from Redis."""
     key = f"{THREAT_REDIS_PREFIX}{target}_{days}d"
@@ -1846,6 +1872,32 @@ def _run_threat_scan(target, days=7):
     probability = min(99, scoring_result['probability'] + baseline_adjustment)
     momentum = scoring_result['momentum']
     breakdown = scoring_result['breakdown']
+
+    # ── Rhetoric boost ──
+    rhetoric_level = _get_rhetoric_level(target)
+    rhetoric_boost = 0
+    if rhetoric_level >= 4:
+        rhetoric_boost = 18
+    elif rhetoric_level >= 3:
+        rhetoric_boost = 10
+    elif rhetoric_level >= 2:
+        rhetoric_boost = 5
+    if rhetoric_boost > 0:
+        print(f"[{target}] Rhetoric boost: +{rhetoric_boost} (L{rhetoric_level})")
+        probability = min(99, probability + rhetoric_boost)
+
+    # ── Military boost ──
+    military_level = _get_military_level(target)
+    military_boost = 0
+    if military_level >= 4:
+        military_boost = 12
+    elif military_level >= 3:
+        military_boost = 6
+    elif military_level >= 2:
+        military_boost = 3
+    if military_boost > 0:
+        print(f"[{target}] Military boost: +{military_boost} (L{military_level})")
+        probability = min(99, probability + military_boost)
 
     # Timeline
     if probability < 30:
