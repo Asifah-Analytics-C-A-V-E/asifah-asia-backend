@@ -65,6 +65,14 @@ except ImportError:
     print("[Asia Backend] ⚠️ China rhetoric tracker not available")
 
 try:
+    from china_stability import register_china_stability_endpoints
+    CHINA_STABILITY_AVAILABLE = True
+    print("[Asia Backend] ✅ China stability module loaded")
+except ImportError:
+    CHINA_STABILITY_AVAILABLE = False
+    print("[Asia Backend] ⚠️ China stability module not available")
+  
+try:
     from military_tracker import scan_military_posture, get_military_posture
     MILITARY_TRACKER_AVAILABLE = True
     print("[Asia Backend] ✅ Military tracker available")
@@ -2491,6 +2499,9 @@ if CHINA_RHETORIC_AVAILABLE:
 
 if TAIWAN_RHETORIC_AVAILABLE:
     register_taiwan_rhetoric_endpoints(app)
+
+if CHINA_STABILITY_AVAILABLE:
+    register_china_stability_endpoints(app)
 
 # On Render with gunicorn, this runs once per worker.
 start_background_refresh()
