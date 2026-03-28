@@ -1005,7 +1005,43 @@ def _fetch_gdelt(query, language='eng', days=3, max_records=25):
     return articles
 
 
-def _fetch_google_news_rss(query, label, lang='en', gl='US', max_items=15):
+def _fetch_newsapi(query, days=3, max_results=30):
+    """NewsAPI fallback when GDELT is rate-limited or timing out."""
+    articles = []
+    if not NEWSAPI_KEY:
+        print("[Taiwan NewsAPI] No API key configured — skipping")
+        return []
+    try:
+        from_date = (datetime.now(timezone.utc) - timedelta(days=days)).strftime('%Y-%m-%d')
+        resp = requests.get(
+            'https://newsapi.org/v2/everything',
+            params={
+                'q':        query,
+                'from':     from_date,
+                'sortBy':   'publishedAt',
+                'language': 'en',
+                'pageSize': max_results,
+                'apiKey':   NEWSAPI_KEY,
+            },
+            timeout=(5, 15)
+        )
+        if resp.status_code == 200:
+            for a in resp.json().get('articles', []):
+                articles.append({
+                    'title':       a.get('title', ''),
+                    'description': a.get('description', '') or '',
+                    'url':         a.get('url', ''),
+                    'publishedAt': a.get('publishedAt', ''),
+                    'source':      {'name': a.get('source', {}).get('name', 'NewsAPI')},
+                    'content':     a.get('content', '') or a.get('description', '') or '',
+                    'language':    'en',
+                })
+            print(f"[Taiwan NewsAPI] '{query[:40]}': {len(articles)} articles")
+        else:
+            print(f"[Taiwan NewsAPI] HTTP {resp.status_code}")
+    except Exception as e:
+        print(f"[Taiwan NewsAPI] Error: {str(e)[:80]}")
+    return articles
     articles = []
     try:
         encoded = urllib.parse.quote(query)
