@@ -1043,7 +1043,8 @@ def _fetch_newsapi(query, days=3, max_results=30):
         print(f"[Taiwan NewsAPI] Error: {str(e)[:80]}")
     return articles
 
-    def _fetch_google_news_rss(query, label, lang='en', gl='US', max_items=15):
+
+def _fetch_google_news_rss(query, label, lang='en', gl='US', max_items=15):
     articles = []
     try:
         encoded = urllib.parse.quote(query)
