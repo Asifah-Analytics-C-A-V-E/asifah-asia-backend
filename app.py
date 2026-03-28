@@ -2162,13 +2162,35 @@ def api_asia_threat(target):
                 'rate_limited': True
             }), 200
 
-        response_data = _run_threat_scan(target, days)
-        response_data['cached'] = False
-        response_data['cache_age_seconds'] = 0
-        response_data['cache_age_human'] = 'fresh scan'
-        cache_set(cache_key, response_data)
-        save_threat_cache_redis(target, response_data, days)
-        return jsonify(response_data)
+        # Run scan in background thread — return immediately to avoid worker timeout
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(_run_threat_scan, target, days)
+            try:
+                response_data = future.result(timeout=25)  # 25s — under Render's 30s limit
+                response_data['cached'] = False
+                response_data['cache_age_seconds'] = 0
+                response_data['cache_age_human'] = 'fresh scan'
+                cache_set(cache_key, response_data)
+                save_threat_cache_redis(target, response_data, days)
+                return jsonify(response_data)
+            except concurrent.futures.TimeoutError:
+                # Scan taking too long — kick off in background and return cached/placeholder
+                print(f"[{target}] Scan timeout — returning cached while background continues")
+                executor.submit(_run_threat_scan, target, days)  # let it finish in background
+                cached = cache_get(cache_key)
+                if cached:
+                    cached['scan_in_progress'] = True
+                    cached['from_cache'] = True
+                    return jsonify(cached)
+                return jsonify({
+                    'success': True,
+                    'target': target,
+                    'probability': None,
+                    'scan_in_progress': True,
+                    'message': 'Scan in progress — refresh in 60 seconds',
+                    'warming': True,
+                }), 202
 
     except Exception as e:
         import traceback
