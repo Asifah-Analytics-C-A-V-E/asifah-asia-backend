@@ -984,7 +984,7 @@ def _fetch_gdelt(query, language='eng', days=3, max_records=25):
             'format':     'json',
             'sourcelang': language,
         }
-        resp = requests.get(GDELT_BASE_URL, params=params, timeout=15)
+        resp = requests.get(GDELT_BASE_URL, params=params, timeout=(5, 15))
         if resp.status_code == 200:
             lang_map = {'eng': 'en', 'zho': 'zh', 'jpn': 'ja'}
             for art in resp.json().get('articles', []):
@@ -1386,16 +1386,23 @@ def run_taiwan_rhetoric_scan():
         except Exception as e:
             print(f"[Taiwan GNews ZH] {label}: {str(e)[:60]}")
 
-    # GDELT
+    # GDELT + NewsAPI fallback
     for query_key, query in GDELT_QUERIES.items():
         lang = 'eng'
         if 'zho' in query_key:
             lang = 'zho'
         try:
-            all_articles.extend(_fetch_gdelt(query, language=lang, days=3))
+            gdelt_results = _fetch_gdelt(query, language=lang, days=3)
+            if gdelt_results:
+                all_articles.extend(gdelt_results)
+            elif lang == 'eng':
+                print(f"[Taiwan GDELT] {query_key}: empty — trying NewsAPI fallback")
+                all_articles.extend(_fetch_newsapi(query, days=3))
             time.sleep(0.5)
         except Exception as e:
             print(f"[Taiwan GDELT] {query_key}: {str(e)[:60]}")
+            if lang == 'eng':
+                all_articles.extend(_fetch_newsapi(query, days=3))
 
     # Reddit
     reddit_keywords = ['Taiwan defense', 'Lai Ching-te', 'Taiwan ADIZ', 'Taiwan independence']
