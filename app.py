@@ -200,20 +200,51 @@ def _get_rhetoric_level(target):
                 return fingerprints.get('china', {}).get('level', 0)
             elif target == 'taiwan':
                 return fingerprints.get('taiwan', {}).get('level', 0)
+            # Stubs for when trackers go live
+            elif target == 'north_korea':
+                return fingerprints.get('north_korea', {}).get('level', 0)
+            elif target in ('india', 'pakistan'):
+                return fingerprints.get(target, {}).get('level', 0)
     except Exception as e:
         print(f"[Rhetoric Boost] Redis read error: {str(e)[:80]}")
     return 0
 
 
+# Rhetoric level → probability boost (matches Europe pattern)
+RHETORIC_BOOST_TABLE = {
+    0: 0,
+    1: 2,
+    2: 5,
+    3: 10,
+    4: 18,
+    5: 25,
+}
+
+# Military posture alert_level → probability boost
+MILITARY_POSTURE_BOOST_TABLE = {
+    'normal':   0,
+    'elevated': 4,
+    'high':     9,
+    'surge':    15,
+}
+
+
 def _get_military_level(target):
-    """Read military posture level for a target from cache."""
+    """
+    Read military posture alert_level string for a target.
+    Returns (alert_level_str, boost_int) tuple.
+    Fixed v1.1: was reading 'level' key (always 0), now reads 'alert_level' string.
+    """
     try:
         if MILITARY_TRACKER_AVAILABLE:
             data = get_military_posture(target)
-            return data.get('level', 0) if data else 0
-    except Exception:
-        pass
-    return 0
+            if data:
+                alert_level = data.get('alert_level', 'normal')
+                boost = MILITARY_POSTURE_BOOST_TABLE.get(alert_level, 0)
+                return alert_level, boost
+    except Exception as e:
+        print(f"[Military Boost] {target} read error: {str(e)[:80]}")
+    return 'normal', 0
   
 def load_threat_cache_redis(target, days=7):
     """Load threat cache from Redis."""
@@ -1899,28 +1930,15 @@ def _run_threat_scan(target, days=7):
 
     # ── Rhetoric boost ──
     rhetoric_level = _get_rhetoric_level(target)
-    rhetoric_boost = 0
-    if rhetoric_level >= 4:
-        rhetoric_boost = 18
-    elif rhetoric_level >= 3:
-        rhetoric_boost = 10
-    elif rhetoric_level >= 2:
-        rhetoric_boost = 5
+    rhetoric_boost = RHETORIC_BOOST_TABLE.get(rhetoric_level, 0)
     if rhetoric_boost > 0:
         print(f"[{target}] Rhetoric boost: +{rhetoric_boost} (L{rhetoric_level})")
         probability = min(99, probability + rhetoric_boost)
 
-    # ── Military boost ──
-    military_level = _get_military_level(target)
-    military_boost = 0
-    if military_level >= 4:
-        military_boost = 12
-    elif military_level >= 3:
-        military_boost = 6
-    elif military_level >= 2:
-        military_boost = 3
+    # ── Military posture boost ──
+    mil_posture, military_boost = _get_military_level(target)
     if military_boost > 0:
-        print(f"[{target}] Military boost: +{military_boost} (L{military_level})")
+        print(f"[{target}] Military boost: +{military_boost} ({mil_posture})")
         probability = min(99, probability + military_boost)
 
     # Timeline
