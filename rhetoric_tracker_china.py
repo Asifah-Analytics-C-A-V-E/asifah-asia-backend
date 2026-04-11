@@ -610,6 +610,48 @@ TAO_TRIGGERS = {
     ],
 }
 
+# ── CROSS-THEATER: China-Iran Axis (v1.1.0 — April 2026) ──
+# Tracks Chinese military/dual-use support to Iran during US-Iran conflict.
+# This is the key cross-theater signal for the Global Pressure Index.
+IRAN_AXIS_TRIGGERS = {
+    5: [
+        'china sends missiles iran', 'china ships missiles iran',
+        'china manpads iran', 'chinese missiles used iran',
+        'china directly arms iran', 'pla weapons iran conflict',
+        'beijing arms tehran war', 'china military equipment iran war',
+        '中国向伊朗提供导弹', '中国武器伊朗',
+    ],
+    4: [
+        'china ships weapons iran', 'china sends weapons iran',
+        'china arms iran conflict', 'chinese weapons iran us',
+        'beijing supplies iran war', 'china military aid iran',
+        'china iran missile shipment', 'manpads iran china',
+        'chinese shoulder fired missiles iran',
+        '中国向伊朗运送武器', '中伊军事合作',
+    ],
+    3: [
+        'china iran military', 'china supports iran war',
+        'china dual use iran', 'china chemicals iran military',
+        'china fuel iran military', 'china components iran missiles',
+        'china helps iran', 'china backing iran',
+        'beijing tehran military', 'china iran axis',
+        'russia satellite iran targeting', 'russia targeting data iran',
+        'russia intelligence iran us ships', 'russia iran coordination war',
+        '中国支持伊朗', '俄罗斯卫星伊朗',
+    ],
+    2: [
+        'china iran oil sanctions', 'china buys iranian oil war',
+        'china iran trade war', 'china neutral iran conflict',
+        'beijing iran war stance', 'china iran us conflict',
+        'russia iran military cooperation', 'russia iran war support',
+        '中国伊朗石油', '中伊关系',
+    ],
+    1: [
+        'china iran', 'beijing tehran', 'russia iran',
+        'iran axis', '中伊', '伊朗中国',
+    ],
+}
+
 ECONOMIC_TRIGGERS = {
     5: [
         'china blockades taiwan ports', 'taiwan ports closed china',
