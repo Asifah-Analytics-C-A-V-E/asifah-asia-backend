@@ -87,14 +87,6 @@ try:
 except ImportError:
     CHINA_HUMANITARIAN_AVAILABLE = False
     print("[Asia Backend] ⚠️ China humanitarian module not available")
-  
-try:
-    from military_tracker import scan_military_posture, get_military_posture
-    MILITARY_TRACKER_AVAILABLE = True
-    print("[Asia Backend] ✅ Military tracker available")
-except ImportError:
-    MILITARY_TRACKER_AVAILABLE = False
-    print("[Asia Backend] ⚠️ Military tracker not available")
 
 # In-memory Telegram cache — fetched ONCE per refresh cycle, shared across all country scans
 _telegram_cache = {'messages': [], 'fetched_at': None, 'ttl_seconds': 3600}
@@ -231,20 +223,38 @@ MILITARY_POSTURE_BOOST_TABLE = {
 
 def _get_military_level(target):
     """
-    Read military posture alert_level string for a target.
+    Read military posture alert_level string for a target FROM REDIS.
+    military_tracker.py lives only on ME backend and writes to Redis.
+    Asia reads from that shared Redis cache — no duplicate scans.
     Returns (alert_level_str, boost_int) tuple.
-    Fixed v1.1: was reading 'level' key (always 0), now reads 'alert_level' string.
     """
     try:
-        if MILITARY_TRACKER_AVAILABLE:
-            data = get_military_posture(target)
-            if data:
-                alert_level = data.get('alert_level', 'normal')
-                boost = MILITARY_POSTURE_BOOST_TABLE.get(alert_level, 0)
-                return alert_level, boost
+        if not UPSTASH_REDIS_URL or not UPSTASH_REDIS_TOKEN:
+            return 'normal', 0
+        resp = requests.get(
+            f'{UPSTASH_REDIS_URL}/get/military_cache',
+            headers={'Authorization': f'Bearer {UPSTASH_REDIS_TOKEN}'},
+            timeout=4
+        )
+        result = resp.json().get('result')
+        if not result:
+            return 'normal', 0
+        data = json.loads(result)
+        actors = data.get('actors', {})
+        # Try exact match first, then partial (e.g. "china" → "china_pla")
+        actor_data = actors.get(target, {})
+        if not actor_data:
+            for k, v in actors.items():
+                if target in k or k in target:
+                    actor_data = v
+                    break
+        alert_level = actor_data.get('alert_level', 'normal')
+        boost = MILITARY_POSTURE_BOOST_TABLE.get(alert_level, 0)
+        print(f'[Asia v1.1] Military posture {target}: {alert_level} (+{boost})')
+        return alert_level, boost
     except Exception as e:
         print(f"[Military Boost] {target} read error: {str(e)[:80]}")
-    return 'normal', 0
+        return 'normal', 0
   
 def load_threat_cache_redis(target, days=7):
     """Load threat cache from Redis."""
@@ -2484,33 +2494,91 @@ def home():
     })
 
 
-@app.route('/api/military/posture', methods=['GET'])
+# ========================================
+# MILITARY POSTURE PROXY (v1.0.0 — April 2026)
+# ========================================
+# Asia backend doesn't scan military posture itself — that's ME's job.
+# These endpoints proxy requests to ME backend, which has military_tracker.py
+# installed and runs the periodic scans. Benefits:
+#   - Single source of truth for military_tracker.py (lives on ME only)
+#   - No duplicate scans across backends
+#   - No memory pressure on Asia from military scanning
+#   - Frontend code is identical regardless of region
+# URL path preserved as /api/military/posture/<target> for Asia frontend compat
+ME_BACKEND_URL = 'https://asifah-backend.onrender.com'
+MILITARY_PROXY_TIMEOUT = 10  # seconds
+MILITARY_PROXY_CACHE_TTL = 600  # cache ME responses locally for 10 min
+_military_proxy_cache = {}  # {target: (timestamp, data)}
+
+
+def _military_proxy_safe_default(error_msg=None):
+    """Safe-default response when ME is unreachable — keeps frontend from breaking."""
+    resp = {
+        'alert_level': 'normal',
+        'alert_label': 'Normal',
+        'alert_color': 'green',
+        'military_bonus': 0,
+        'show_banner': False,
+        'banner_text': '',
+        'top_signals': [],
+    }
+    if error_msg:
+        resp['_proxy_error'] = error_msg
+    return resp
+
+
+@app.route('/api/military/posture', methods=['GET', 'OPTIONS'])
 def military_posture():
-    """Full military posture scan across all tracked actors."""
-    if not MILITARY_TRACKER_AVAILABLE:
-        return jsonify({'error': 'Military tracker not available'}), 503
-
-    force = request.args.get('force', 'false').lower() == 'true'
-    days = int(request.args.get('days', 7))
-
+    """Proxy: forward full posture scan request to ME backend."""
+    if request.method == 'OPTIONS':
+        return '', 200
     try:
-        data = scan_military_posture(days=days, force_refresh=force)
-        return jsonify(data)
+        days = int(request.args.get('days', 7))
+        force = request.args.get('force', 'false').lower() == 'true'
+        me_url = f'{ME_BACKEND_URL}/api/military-posture?days={days}&refresh={force}'
+        r = requests.get(me_url, timeout=30)  # longer timeout — full scan
+        if r.status_code != 200:
+            return jsonify({'error': f'ME backend returned {r.status_code}'}), r.status_code
+        return jsonify(r.json())
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 
-@app.route('/api/military/posture/<target>', methods=['GET'])
+@app.route('/api/military/posture/<target>', methods=['GET', 'OPTIONS'])
 def military_posture_target(target):
-    """Military posture for a specific target (e.g. china, india, north_korea)."""
-    if not MILITARY_TRACKER_AVAILABLE:
-        return jsonify({'error': 'Military tracker not available'}), 503
+    """
+    Proxy: forward per-target military posture requests to ME backend.
+    Asia caches ME's response briefly to reduce cross-backend traffic.
+    """
+    if request.method == 'OPTIONS':
+        return '', 200
 
+    # Check local proxy cache
+    now = time.time()
+    cached = _military_proxy_cache.get(target)
+    if cached and (now - cached[0] < MILITARY_PROXY_CACHE_TTL):
+        resp = dict(cached[1])
+        resp['_proxy_cache'] = True
+        resp['_proxy_cache_age_s'] = int(now - cached[0])
+        return jsonify(resp)
+
+    # Fetch from ME backend
     try:
-        data = get_military_posture(target)
+        me_url = f'{ME_BACKEND_URL}/api/military-posture/{target}'
+        r = requests.get(me_url, timeout=MILITARY_PROXY_TIMEOUT)
+        if r.status_code != 200:
+            print(f"[Military Proxy] {target}: ME returned HTTP {r.status_code}")
+            return jsonify(_military_proxy_safe_default(f'ME backend returned {r.status_code}')), 200
+        data = r.json()
+        _military_proxy_cache[target] = (now, data)
+        data['_proxy_cache'] = False
         return jsonify(data)
+    except requests.exceptions.Timeout:
+        print(f"[Military Proxy] {target}: ME backend timeout")
+        return jsonify(_military_proxy_safe_default('ME backend timeout')), 200
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        print(f"[Military Proxy] {target}: {str(e)[:100]}")
+        return jsonify(_military_proxy_safe_default(str(e)[:100])), 200
 
 
 @app.route('/health', methods=['GET'])
