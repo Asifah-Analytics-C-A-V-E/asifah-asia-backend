@@ -59,83 +59,47 @@ BLUESKY_TIMEOUT = 8
 #          Use ['*'] for all targets (global scope / USG).
 # ────────────────────────────────────────────────────────────────
 BLUESKY_ACCOUNTS_ASIA = [
-    # ── US Government — native Bluesky (global scope) ───────────
-    ('state-department.bsky.social',  1.0, ['*'],
-        'US State Department (official) — travel advisories, diplomatic signals'),
+    # v1.0.1 (April 2026) — Handle list pruned based on live-scan evidence.
+    # Previous version had ~15 handles returning HTTP 400. This version keeps
+    # ONLY handles confirmed to return 200 OK in production scans, plus a
+    # small number of well-known accounts likely to work.
+    #
+    # Lessons learned from first deployment:
+    #   - govmirrors has SOME accounts but not all (potus, secdef, centcom,
+    #     indopacom, mndkorea all return 400 — they don't exist there)
+    #   - Analyst handles I guessed at (adam-weinstein, anildayal) don't exist
+    #   - Official "native" Bluesky handles we assumed (osintdefender) don't exist
+    #   - Custom domain handles work IF the domain is configured
+    #
+    # Rule going forward: only add a handle after verifying it returns 200 OK.
 
-    # ── US Government — govmirrors.com (X-sourced) ──────────────
-    # INDOPACOM and regional commands are primarily on X; mirrors enable
-    # monitoring without auth. If a mirror goes dark, comment it out.
-    ('potus.govmirrors.com',          1.2, ['*'],
-        'POTUS (X mirror) — White House executive statements on Asia'),
-    ('realdonaldtrump.govmirrors.com', 1.2, ['*'],
+    # ── CONFIRMED WORKING (returned 200 OK in production scans) ──
+    ('state-department.bsky.social',   1.0,  ['*'],
+        'US State Department (official native) — travel advisories, diplomatic'),
+    ('statedept.govmirrors.com',       0.9,  ['*'],
+        'StateDept (X mirror via govmirrors) — backup to native'),
+    ('realdonaldtrump.govmirrors.com', 1.2,  ['*'],
         'Trump (X mirror) — Iran/China/DPRK/Pakistan statements'),
-    ('secdef.govmirrors.com',          1.1, ['*'],
-        'US SecDef (X mirror) — deployment and posture signals'),
-    ('secrubio.govmirrors.com',        1.1, ['*'],
-        'US SecState Rubio (X mirror) — Asia policy'),
-    ('statedept.govmirrors.com',       0.9, ['*'],
-        'StateDept (X mirror) — redundant with native, kept as backup'),
-
-    # ── Regional Combatant Commands ─────────────────────────────
-    ('indopacom.govmirrors.com',       1.0, ['china', 'taiwan', 'south_korea', 'japan', 'north_korea'],
-        'US INDOPACOM (X mirror) — Pacific military posture'),
-    ('centcom.govmirrors.com',         1.0, ['afghanistan', 'pakistan'],
-        'US CENTCOM (X mirror) — Afghan/Pakistan/Iran AOR'),
-
-    # ── DPRK-specific analytical accounts ───────────────────────
-    # NK News, 38 North, and NK Leadership Watch are the gold standard
-    # for DPRK OSINT. Most have native Bluesky presence.
-    ('nknewsorg.bsky.social',          0.95, ['north_korea'],
-        'NK News — DPRK specialist, breaking news on missile tests'),
-    ('38northorg.bsky.social',         0.95, ['north_korea'],
-        '38 North (Stimson Center) — DPRK analysis, satellite imagery'),
-    ('nkleadershipwatch.bsky.social',  0.9, ['north_korea'],
-        'NK Leadership Watch — Kim family activity tracking'),
-    ('dailynkenglish.bsky.social',     0.9, ['north_korea'],
-        'Daily NK (English) — defector-sourced DPRK reporting'),
-
-    # ── China / Taiwan analytical accounts ──────────────────────
-    ('plaprimer.bsky.social',          0.9, ['china', 'taiwan'],
-        'PLA Primer — PLA analysis (if native)'),
-    ('chinatalk.bsky.social',          0.85, ['china', 'taiwan'],
-        'ChinaTalk (Jordan Schneider) — PRC/tech/security commentary'),
-    ('sinocism.bsky.social',           0.85, ['china'],
-        'Sinocism (Bill Bishop) — China watcher, Xi/PRC statements'),
-
-    # ── Pakistan / Afghanistan analytical ───────────────────────
-    ('adam-weinstein.bsky.social',     0.85, ['pakistan', 'afghanistan'],
-        'Adam Weinstein (Quincy) — Pakistan/Afghan analyst'),
-    ('steveinmans.bsky.social',        0.85, ['afghanistan', 'pakistan'],
-        'Steve Inskeep / NPR — Afghan-Pak conflict coverage (if native)'),
-
-    # ── India / Pakistan / South Asia ───────────────────────────
-    ('anildayal.bsky.social',          0.85, ['india', 'pakistan'],
-        'India-Pakistan analyst (if native)'),
-
-    # ── OSINT aggregators (global, high signal) ─────────────────
-    ('osintdefender.bsky.social',      0.9, ['*'],
-        'OSINT Defender — global conflict monitoring'),
     ('wartranslated.bsky.social',      0.85, ['*'],
-        'WarTranslated — Russia/global military translation'),
-
-    # ── Japan / South Korea partner statements ──────────────────
-    # Most East Asian government accounts are on X; mirrors only where
-    # the account actually exists in govmirrors.
-    ('mofa-japan.govmirrors.com',      0.9, ['china', 'north_korea', 'taiwan', 'japan'],
-        'Japan MOFA (X mirror) — East China Sea, DPRK, Taiwan'),
-
-    # ── Taiwan government statements ────────────────────────────
-    ('taiwanmnd.govmirrors.com',       0.95, ['taiwan', 'china'],
-        'Taiwan MND (X mirror) — daily ADIZ violation reports'),
-    ('mofa-taiwan.govmirrors.com',     0.9, ['taiwan', 'china'],
-        'Taiwan MOFA (X mirror) — diplomatic response to PRC pressure'),
-
-    # ── DPRK / South Korea inter-Korean signals ─────────────────
-    # South Korea's MND and MOFA are on X; mirrors enable tracking.
-    ('mndkorea.govmirrors.com',        0.9, ['north_korea', 'south_korea'],
-        'ROK MND (X mirror) — DPRK missile tracking, inter-Korean'),
+        'WarTranslated — Russia/DPRK/global military translation'),
 ]
+
+# v1.0.1 — Aspirational handles to verify manually before adding:
+# - @rferl.org (Radio Free Europe/Radio Liberty)
+# - @voiceofamerica.bsky.social (or custom domain)
+# - Japan MOFA, ROK MND, Taiwan MND — verify existence on Bluesky directly
+# - NK News, 38 North, Daily NK — verify if they've migrated to Bluesky
+#
+# To check a handle before adding: visit https://bsky.app/profile/{handle}
+# and confirm the account exists. Then add with confidence.
+
+
+# v1.0.1 — Handle failure cache to avoid re-requesting known-dead handles.
+# When a handle returns 400 or 404, we remember it for 1 hour. This prevents
+# the 10+ dead handles from each eating a 500ms round-trip on every scan,
+# saving ~5 seconds per scan across 8 countries.
+_BLUESKY_HANDLE_FAILURES = {}  # handle -> unix_timestamp_retry_after
+_BLUESKY_HANDLE_FAILURE_COOLDOWN = 60 * 60  # 1 hour
 
 
 def fetch_bluesky_account(handle, weight=1.0, limit=20, timeout=BLUESKY_TIMEOUT):
@@ -145,10 +109,17 @@ def fetch_bluesky_account(handle, weight=1.0, limit=20, timeout=BLUESKY_TIMEOUT)
     Uses the public AppView API — no authentication required.
     Returns list of article dicts matching the Asia backend schema.
 
-    On 404 (handle doesn't exist) → logs and returns []
+    On 400/404 (handle doesn't exist) → caches failure for 1h, returns []
     On 429 (rate limit) → logs and returns []
     On network/parse error → logs and returns []
     """
+    # ── v1.0.1 — Skip handles we've already confirmed are dead ──
+    now_ts = time.time()
+    retry_after = _BLUESKY_HANDLE_FAILURES.get(handle, 0)
+    if retry_after > now_ts:
+        # Silently skip — don't spam logs for every scan
+        return []
+
     headers = {
         'User-Agent': 'AsifahAnalytics-Asia/1.0 (+https://asifahanalytics.com)',
         'Accept': 'application/json',
@@ -158,9 +129,14 @@ def fetch_bluesky_account(handle, weight=1.0, limit=20, timeout=BLUESKY_TIMEOUT)
     try:
         resp = requests.get(BLUESKY_API, headers=headers, params=params, timeout=timeout)
 
+        if resp.status_code == 400:
+            # 400 usually means "invalid handle" — same as 404 for our purposes
+            print(f'[Bluesky Asia] @{handle}: HTTP 400 (invalid handle) — caching failure for 1h')
+            _BLUESKY_HANDLE_FAILURES[handle] = now_ts + _BLUESKY_HANDLE_FAILURE_COOLDOWN
+            return []
         if resp.status_code == 404:
-            # 404 means handle doesn't exist. Log once — we won't retry.
-            print(f'[Bluesky Asia] @{handle}: handle not found (404) — consider removing from list')
+            print(f'[Bluesky Asia] @{handle}: handle not found (404) — caching failure for 1h')
+            _BLUESKY_HANDLE_FAILURES[handle] = now_ts + _BLUESKY_HANDLE_FAILURE_COOLDOWN
             return []
         if resp.status_code == 429:
             print(f'[Bluesky Asia] @{handle}: rate-limited (429) — backing off')
