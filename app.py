@@ -44,6 +44,17 @@ except ImportError:
     TELEGRAM_AVAILABLE = False
     print("[Asia Backend] ⚠️ Telegram signals not available")
 
+# v1.1.0 (April 2026) — Bluesky as alternate source to Telegram.
+# When 13/18 Telegram channels are flood-waited, Bluesky fills the gap.
+# Graceful fallback: if module missing, just skip.
+try:
+    from bluesky_signals_asia import fetch_bluesky_for_target
+    BLUESKY_AVAILABLE = True
+    print("[Asia Backend] ✅ Bluesky signals available")
+except ImportError:
+    BLUESKY_AVAILABLE = False
+    print("[Asia Backend] ⚠️ Bluesky signals not available")
+
 try:
     from rhetoric_tracker_china import register_china_rhetoric_endpoints
     CHINA_RHETORIC_AVAILABLE = True
@@ -101,8 +112,11 @@ CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=False)
 NEWSAPI_KEY = os.environ.get('NEWSAPI_KEY')
 GDELT_BASE_URL = "http://api.gdeltproject.org/api/v2/doc/doc"
 
-# Cache TTL in seconds (12 hours)
-CACHE_TTL = 12 * 60 * 60
+# Cache TTL in seconds
+# v1.1.0 (April 2026) — 12h → 6h. With self-caching working and GDELT
+# cooldowns preventing wasted cycles, 4 refreshes/day gives better
+# recovery from transient failures and fresher data for users.
+CACHE_TTL = 6 * 60 * 60
 
 # NOTAM cache TTL (2 hours)
 NOTAM_CACHE_TTL = 2 * 60 * 60
@@ -515,9 +529,12 @@ SOURCE_WEIGHTS = {
         'sources': [
             'NHK World', 'Japan Times', 'Mainichi', 'Asahi Shimbun',
             'Korea Herald', 'Korea Times', 'Chosun Ilbo',
+            'KBS World',  # v1.1.0 — DPRK coverage
             # Pakistan regional — all aligned to RSS-call strings
             'Dawn', 'The News International', 'Geo News',
+            'Express Tribune',  # v1.1.0
             'RFE/RL Gandhara (PK)', 'RFE/RL Gandhara', 'SATP Pakistan',
+            'Al Jazeera PK',  # v1.1.0
             # India
             'Times of India', 'Hindustan Times', 'NDTV',
             # Taiwan
@@ -525,7 +542,7 @@ SOURCE_WEIGHTS = {
             # China state
             'Global Times', 'Xinhua', 'CGTN',
             # Broadcast + DPRK specialists
-            'Radio Free Asia', 'NK News', 'Daily NK',
+            'Radio Free Asia', 'NK News', 'Daily NK', '38 North',
             # Afghan outlets — aligned to RSS-call strings
             'Tolo News', 'TOLOnews', 'Ariana News',
             'Pajhwok Afghan News', 'Khaama Press',
@@ -544,9 +561,13 @@ SOURCE_WEIGHTS = {
 # TARGET BASELINES — ASIA-PACIFIC
 # ========================================
 TARGET_BASELINES = {
+    # v1.1.0 (April 2026) — Baselines adjusted for nuclear-armed states
+    # with active border conflicts. Previously DPRK at +20 and Pakistan
+    # at +12 were too low; actual chronic elevated state warrants higher
+    # floor given missile tests (DPRK) and Iran/Afghan border wars (Pak).
     'afghanistan': {'base_adjustment': +18, 'description': 'Active Taliban governance; ISIS-K; Level 4 advisory; no US embassy'},
-    'north_korea': {'base_adjustment': +20, 'description': 'Nuclear state; active provocations; Level 4 advisory; no US embassy'},
-    'pakistan':    {'base_adjustment': +12, 'description': 'TTP insurgency; Iran border strikes; Level 3 advisory'},
+    'north_korea': {'base_adjustment': +25, 'description': 'Nuclear state; active provocations; Level 4 advisory; no US embassy; chronic missile tests'},
+    'pakistan':    {'base_adjustment': +18, 'description': 'Nuclear state; TTP insurgency; Iran border strikes; Afghan "open war"; Level 3 advisory'},
     'taiwan':      {'base_adjustment': +10, 'description': 'Active PLA exercises; strait tensions; Level 2 advisory'},
     'south_korea': {'base_adjustment': +8,  'description': 'DPRK artillery/nuclear range; DMZ; Level 1 but active threat'},
     'china':       {'base_adjustment': +8,  'description': 'Regional power competition; SCS disputes; Level 2 advisory'},
@@ -1286,16 +1307,40 @@ def fetch_direct_rss(url, source_name, weight=0.85, max_items=15):
 # ARTICLE FETCHING — REDDIT
 # ========================================
 
+# v1.1.0 — Reddit cooldown (platform-wide, not per-subreddit)
+# Reddit aggressively rate-limits unauthenticated requests, often returning
+# 429 (Too Many Requests) or 403 (Forbidden) without explicit retry-after.
+# When we hit one, cool down ALL Reddit calls for 30 minutes to avoid
+# burning through our request budget on a single scan.
+_REDDIT_COOLDOWN_UNTIL = 0  # unix timestamp
+_REDDIT_COOLDOWN_SECONDS = 30 * 60
+
+
 def fetch_reddit_posts(target, keywords, days=7):
     """Fetch Reddit posts from relevant subreddits."""
+    global _REDDIT_COOLDOWN_UNTIL
+
     articles = []
     subreddits = REDDIT_SUBREDDITS.get(target, [])
     if not subreddits:
         return []
+
+    # ── v1.1.0 — Respect cooldown ──
+    now_ts = time.time()
+    if _REDDIT_COOLDOWN_UNTIL > now_ts:
+        remaining = int(_REDDIT_COOLDOWN_UNTIL - now_ts)
+        print(f"[Asia Reddit] In cooldown ({remaining}s remaining) — skipping all subs")
+        return []
+
     since = datetime.now(timezone.utc) - timedelta(days=days)
+    total_fetched = 0
+    sub_successes = 0
+    sub_failures = 0
+
     for subreddit in subreddits:
-        try:
-            for keyword in keywords[:3]:
+        sub_article_count = 0
+        for keyword in keywords[:3]:
+            try:
                 url = f"https://www.reddit.com/r/{subreddit}/search.json"
                 params = {
                     'q': keyword,
@@ -1308,25 +1353,52 @@ def fetch_reddit_posts(target, keywords, days=7):
                     url, params=params, timeout=10,
                     headers={"User-Agent": REDDIT_USER_AGENT}
                 )
-                if response.status_code == 200:
-                    posts = response.json().get('data', {}).get('children', [])
-                    for post in posts:
-                        post_data = post.get('data', {})
-                        created = post_data.get('created_utc', 0)
-                        post_time = datetime.fromtimestamp(created, tz=timezone.utc)
-                        if post_time >= since:
-                            articles.append({
-                                'title': post_data.get('title', ''),
-                                'description': post_data.get('selftext', '')[:500],
-                                'url': f"https://www.reddit.com{post_data.get('permalink', '')}",
-                                'publishedAt': post_time.isoformat(),
-                                'source': {'name': f"r/{subreddit}"},
-                                'content': post_data.get('selftext', '')[:500],
-                                'language': 'en',
-                            })
+
+                # ── v1.1.0 — Observable failure handling ──
+                if response.status_code == 429:
+                    print(f"[Asia Reddit] 429 rate-limited — cooling down {_REDDIT_COOLDOWN_SECONDS // 60}min")
+                    _REDDIT_COOLDOWN_UNTIL = time.time() + _REDDIT_COOLDOWN_SECONDS
+                    # Bail entirely — don't hammer other subs during cooldown
+                    print(f"[Asia Reddit] Summary: {total_fetched} posts fetched before cooldown ({sub_successes}/{len(subreddits)} subs)")
+                    return articles
+                if response.status_code == 403:
+                    print(f"[Asia Reddit] 403 forbidden (r/{subreddit}) — skipping")
+                    break
+                if response.status_code != 200:
+                    print(f"[Asia Reddit] r/{subreddit} HTTP {response.status_code} — skipping")
+                    break
+
+                posts = response.json().get('data', {}).get('children', [])
+                for post in posts:
+                    post_data = post.get('data', {})
+                    created = post_data.get('created_utc', 0)
+                    post_time = datetime.fromtimestamp(created, tz=timezone.utc)
+                    if post_time >= since:
+                        articles.append({
+                            'title': post_data.get('title', ''),
+                            'description': post_data.get('selftext', '')[:500],
+                            'url': f"https://www.reddit.com{post_data.get('permalink', '')}",
+                            'publishedAt': post_time.isoformat(),
+                            'source': {'name': f"r/{subreddit}"},
+                            'content': post_data.get('selftext', '')[:500],
+                            'language': 'en',
+                        })
+                        sub_article_count += 1
                 time.sleep(0.5)
-        except Exception as e:
-            print(f"[Asia Reddit] r/{subreddit} error: {str(e)[:80]}")
+            except requests.Timeout:
+                print(f"[Asia Reddit] r/{subreddit} timeout on '{keyword}' — skipping keyword")
+                continue
+            except Exception as e:
+                print(f"[Asia Reddit] r/{subreddit} error: {str(e)[:80]}")
+                continue
+
+        total_fetched += sub_article_count
+        if sub_article_count > 0:
+            sub_successes += 1
+        else:
+            sub_failures += 1
+
+    print(f"[Asia Reddit] {target}: {total_fetched} posts from {sub_successes}/{len(subreddits)} subs")
     return articles
 
 
@@ -1732,6 +1804,42 @@ def _run_threat_scan(target, days=7):
                 '북한 미사일 OR 김정은', 'North Korea News (KO)', lang='ko', gl='KR'))
         except Exception as e:
             print(f"North Korea KO RSS error: {e}")
+        # v1.1.0 — DPRK premium sources
+        # NK News — DPRK specialist (semi-paywalled but RSS headlines free)
+        try:
+            rss_articles.extend(fetch_direct_rss(
+                'https://www.nknews.org/feed/',
+                'NK News', weight=0.95))
+        except Exception as e:
+            print(f"NK News RSS error: {e}")
+        # Daily NK — ground-level DPRK reporting from defector networks
+        try:
+            rss_articles.extend(fetch_direct_rss(
+                'https://www.dailynk.com/english/feed/',
+                'Daily NK', weight=0.9))
+        except Exception as e:
+            print(f"Daily NK RSS error: {e}")
+        # 38 North — Stimson Center DPRK analysis
+        try:
+            rss_articles.extend(fetch_direct_rss(
+                'https://www.38north.org/feed/',
+                '38 North', weight=0.95))
+        except Exception as e:
+            print(f"38 North RSS error: {e}")
+        # Yonhap News (English) — South Korea wire service with DPRK desk
+        try:
+            rss_articles.extend(fetch_direct_rss(
+                'https://en.yna.co.kr/RSS/northkorea.xml',
+                'Yonhap News', weight=1.0))
+        except Exception as e:
+            print(f"Yonhap RSS error: {e}")
+        # KBS World English — South Korean public broadcaster NK desk
+        try:
+            rss_articles.extend(fetch_direct_rss(
+                'http://world.kbs.co.kr/rss/rss_news.htm?lang=e&id=Po',
+                'KBS World', weight=0.85))
+        except Exception as e:
+            print(f"KBS World RSS error: {e}")
 
     if target == 'china':
         try:
@@ -1783,6 +1891,21 @@ def _run_threat_scan(target, days=7):
                 'SATP Pakistan', weight=0.9))
         except Exception as e:
             print(f"SATP RSS error: {e}")
+        # v1.1.0 — Additional Pakistan premium sources
+        # Express Tribune — English daily, strong on Afghan/TTP desk
+        try:
+            rss_articles.extend(fetch_direct_rss(
+                'https://tribune.com.pk/feed/home',
+                'Express Tribune', weight=0.85))
+        except Exception as e:
+            print(f"Express Tribune RSS error: {e}")
+        # Al Jazeera Pakistan/Afghanistan coverage
+        try:
+            rss_articles.extend(fetch_google_news_rss(
+                'Pakistan Afghanistan TTP site:aljazeera.com',
+                'Al Jazeera PK'))
+        except Exception as e:
+            print(f"Al Jazeera PK RSS error: {e}")
 
     if target == 'afghanistan':
         # Google News — English operational reporting
@@ -1927,11 +2050,28 @@ def _run_threat_scan(target, days=7):
         except Exception as e:
             print(f"[Asia Scan] Telegram error: {str(e)[:100]}")
 
+    # v1.1.0 (April 2026) — Bluesky signals (replaces gap from flood-waited Telegram)
+    bluesky_articles = []
+    if BLUESKY_AVAILABLE:
+        try:
+            from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(fetch_bluesky_for_target, target, days, 20)
+                try:
+                    bluesky_articles = future.result(timeout=45)
+                except FuturesTimeout:
+                    print(f"[{target}] Bluesky fetch >45s — skipping this scan")
+                    bluesky_articles = []
+        except Exception as e:
+            print(f"[{target}] Bluesky error: {str(e)[:100]}")
+            bluesky_articles = []
+
     all_articles = (
         articles_en + articles_gdelt_en +
         articles_gdelt_zh + articles_gdelt_ko +
         articles_gdelt_ur + articles_gdelt_fa + articles_gdelt_ja +
-        articles_reddit + rss_articles + telegram_articles
+        articles_reddit + rss_articles + telegram_articles +
+        bluesky_articles
     )
 
     # Deduplicate by URL — prevents same article scoring multiple times
@@ -2082,9 +2222,15 @@ def _run_threat_scan(target, days=7):
         'articles_reddit': [a for a in all_articles
                             if isinstance(a.get('source'), dict) and
                             a.get('source', {}).get('name', '').startswith('r/')][:20],
+        'articles_bluesky': [a for a in all_articles
+                             if isinstance(a.get('source'), dict) and
+                             a.get('source', {}).get('name', '').startswith('Bluesky @')][:20],
+        'articles_telegram': [a for a in all_articles
+                              if isinstance(a.get('source'), dict) and
+                              a.get('source', {}).get('name', '').startswith('Telegram @')][:20],
         'days_analyzed': days,
         'cached_at': datetime.now(timezone.utc).isoformat(),
-        'version': '1.0.0-asia',
+        'version': '1.1.0-asia',  # v1.1.0 — Phase A + Phase B fixes applied
     }
 
     # ============================================
