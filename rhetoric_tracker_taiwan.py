@@ -769,7 +769,51 @@ RSS_SOURCES = {
         'url': 'https://amti.csis.org/feed/',
         'name': 'CSIS AMTI',
         'weight': 0.95,
-        'note': 'SCS/Taiwan Strait satellite imagery',
+        'note': 'South China Sea satellite imagery analysis',
+    },
+    # ============================================
+    # v1.4.0 (April 2026) — Cross-theater source expansion
+    # Added to catch stories like China-Iran military fusion
+    # (e.g. FT April 18 2026: TEE-01B satellite story).
+    # Israeli press often breaks China-Iran cooperation first.
+    # Premier investigative outlets catch intelligence scoops
+    # that Asia-regional feeds don't prioritize.
+    # ============================================
+    'jpost': {
+        'url': 'https://rss.jpost.com/rss/rssfeedsheadlines.aspx',
+        'name': 'Jerusalem Post',
+        'weight': 0.90,
+        'note': 'Breaks China-Iran cooperation stories; Mossad-adjacent sourcing',
+    },
+    'times_of_israel': {
+        'url': 'https://www.timesofisrael.com/feed/',
+        'name': 'Times of Israel',
+        'weight': 0.90,
+        'note': 'Iranian/proxy operations coverage with ME-regional angle',
+    },
+    'al_monitor': {
+        'url': 'https://www.al-monitor.com/rss',
+        'name': 'Al-Monitor',
+        'weight': 0.90,
+        'note': 'ME analysis incl. China/Russia engagement in region',
+    },
+    'ft_world': {
+        'url': 'https://www.ft.com/world?format=rss',
+        'name': 'Financial Times (World)',
+        'weight': 1.0,
+        'note': 'Premier investigative — breaks intelligence/finance stories like TEE-01B satellite',
+    },
+    'reuters_world': {
+        'url': 'https://feeds.reuters.com/Reuters/worldNews',
+        'name': 'Reuters World',
+        'weight': 1.0,
+        'note': 'Newswire baseline — picks up most major breaking stories',
+    },
+    'middle_east_eye': {
+        'url': 'https://www.middleeasteye.net/rss.xml',
+        'name': 'Middle East Eye',
+        'weight': 0.85,
+        'note': 'ME regional — China/Russia activity in Gulf & Levant',
     },
 }
 
