@@ -178,11 +178,9 @@ ACTORS = {
         ],
         'baseline_statements_per_week': 3,
         'tripwires': [
-            'reunification by force',
-            '武力统一',
-            'by 2027',
-            'xi orders military action',
-            'xi inspects eastern theater',
+            'rare earth export ban',
+            'china blockades taiwan ports',
+            'tsmc targeted',
         ],
     },
 
