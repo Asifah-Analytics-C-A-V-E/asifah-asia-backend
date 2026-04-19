@@ -89,7 +89,7 @@ except ImportError:
     print("[Asia Backend] ⚠️ China humanitarian module not available")
 
 # In-memory Telegram cache — fetched ONCE per refresh cycle, shared across all country scans
-_telegram_cache = {'messages': [], 'fetched_at': None, 'ttl_seconds': 3600}
+_telegram_cache = {'messages': [], 'fetched_at': None, 'ttl_seconds': 4 * 3600}  # v1.1.0 — 4h TTL (was 1h)
 
 app = Flask(__name__)
 # Belt-and-suspenders CORS: both flask_cors AND after_request handler
@@ -508,15 +508,28 @@ SOURCE_WEIGHTS = {
         'weight': 1.0
     },
     'regional_asia': {
+        # v1.1.0 (April 2026) — Source names must match EXACTLY what's passed
+        # into fetch_direct_rss() calls below. Previously had "Dawn (Pakistan)"
+        # here while RSS call passed "Dawn" — every Pakistan article fell
+        # through to standard 0.5 weight. Fixed by aligning strings.
         'sources': [
             'NHK World', 'Japan Times', 'Mainichi', 'Asahi Shimbun',
             'Korea Herald', 'Korea Times', 'Chosun Ilbo',
-            'Dawn (Pakistan)', 'The News International', 'Geo News',
+            # Pakistan regional — all aligned to RSS-call strings
+            'Dawn', 'The News International', 'Geo News',
+            'RFE/RL Gandhara (PK)', 'RFE/RL Gandhara', 'SATP Pakistan',
+            # India
             'Times of India', 'Hindustan Times', 'NDTV',
+            # Taiwan
             'Taipei Times', 'Focus Taiwan', 'Liberty Times',
+            # China state
             'Global Times', 'Xinhua', 'CGTN',
+            # Broadcast + DPRK specialists
             'Radio Free Asia', 'NK News', 'Daily NK',
-            'TOLOnews', 'Ariana News', 'Pajhwok',
+            # Afghan outlets — aligned to RSS-call strings
+            'Tolo News', 'TOLOnews', 'Ariana News',
+            'Pajhwok Afghan News', 'Khaama Press',
+            # International broadcasters
             'Voice of America', 'Radio Free Europe',
         ],
         'weight': 0.8
@@ -1125,8 +1138,24 @@ def fetch_newsapi_articles(query, days=7):
 # ARTICLE FETCHING — GDELT
 # ========================================
 
+# v1.1.0 — GDELT rate-limit cooldown cache
+# When GDELT soft-blocks a language (429 or non-JSON HTML), we remember
+# the timestamp and skip that language for 15 minutes to avoid making
+# the whole Asia scan exceed the 25s endpoint timeout.
+_GDELT_COOLDOWN = {}  # language -> unix_timestamp_when_ok_to_retry
+_GDELT_COOLDOWN_SECONDS = 15 * 60  # 15 minutes
+
+
 def fetch_gdelt_articles(query, days=7, language='eng'):
-    """Fetch articles from GDELT API."""
+    """Fetch articles from GDELT API. Hardened against soft-blocks and non-JSON."""
+    # ── v1.1.0 — Respect per-language cooldown ──
+    now = time.time()
+    cooldown_until = _GDELT_COOLDOWN.get(language, 0)
+    if cooldown_until > now:
+        remaining = int(cooldown_until - now)
+        print(f"[Asia GDELT] {language}: In cooldown ({remaining}s remaining) — skipping")
+        return []
+
     try:
         params = {
             'query': query,
@@ -1141,7 +1170,8 @@ def fetch_gdelt_articles(query, days=7, language='eng'):
             try:
                 resp = requests.get(GDELT_BASE_URL, params=params, timeout=(5, 15))
                 if resp.status_code == 429:
-                    print(f"[Asia GDELT] {language}: Rate limited (429) — skipping")
+                    print(f"[Asia GDELT] {language}: Rate limited (429) — cooling down {_GDELT_COOLDOWN_SECONDS // 60}min")
+                    _GDELT_COOLDOWN[language] = now + _GDELT_COOLDOWN_SECONDS
                     return []
                 if resp.status_code == 200:
                     break
@@ -1153,10 +1183,18 @@ def fetch_gdelt_articles(query, days=7, language='eng'):
                 raise
 
         if resp and resp.status_code == 200:
+            # ── v1.1.0 — Detect HTML error pages (GDELT soft-block signature) ──
+            body = resp.text.lstrip()
+            if body.startswith('<') or 'html' in resp.headers.get('content-type', '').lower():
+                print(f"[Asia GDELT] {language}: HTML response (likely soft-block) — cooling down {_GDELT_COOLDOWN_SECONDS // 60}min")
+                _GDELT_COOLDOWN[language] = now + _GDELT_COOLDOWN_SECONDS
+                return []
+
             try:
                 data = resp.json()
             except (json.JSONDecodeError, ValueError):
-                print(f"[Asia GDELT] {language}: Non-JSON response, skipping")
+                print(f"[Asia GDELT] {language}: Non-JSON response — cooling down {_GDELT_COOLDOWN_SECONDS // 60}min")
+                _GDELT_COOLDOWN[language] = now + _GDELT_COOLDOWN_SECONDS
                 return []
 
             lang_map = {
@@ -1174,6 +1212,8 @@ def fetch_gdelt_articles(query, days=7, language='eng'):
                     'content': art.get('title', ''),
                     'language': lang_map.get(language, language),
                 })
+            if articles:
+                print(f"[Asia GDELT] {language}: ✓ {len(articles)} articles")
             return articles
     except Exception as e:
         print(f"[Asia GDELT] {language} error: {str(e)[:80]}")
@@ -1378,7 +1418,13 @@ def calculate_threat_probability(articles, days=7, target=None):
 
         source_name = article.get('source', {}).get('name', 'Unknown') if isinstance(
             article.get('source'), dict) else str(article.get('source', 'Unknown'))
-        source_weight = get_source_weight(source_name)
+        # v1.1.0 — Honor per-article weight override from fetch_direct_rss.
+        # Previously ignored, meaning Dawn (weight=0.95) was scored at 0.5 anyway.
+        override = article.get('source_weight_override')
+        if isinstance(override, (int, float)) and 0 < override <= 1.0:
+            source_weight = float(override)
+        else:
+            source_weight = get_source_weight(source_name)
 
         contribution = severity * source_weight * time_decay
         scored_articles.append({
@@ -1841,7 +1887,13 @@ def _run_threat_scan(target, days=7):
                 (now - _telegram_cache['fetched_at']).total_seconds()
                 if _telegram_cache['fetched_at'] else 9999
             )
-            if cache_age_secs > _telegram_cache['ttl_seconds'] or not _telegram_cache['messages']:
+            # v1.1.0 — CRITICAL FIX: Do NOT force re-fetch when messages list is empty.
+            # Previously `if ... or not _telegram_cache['messages']` meant every scan
+            # after a flood-waited fetch would hammer Telegram again, creating a
+            # doom loop of 13/18 channels getting rate-limited on every request.
+            # Now we respect the TTL regardless of result size — empty is a valid
+            # cache state that means "we tried recently and got nothing useful."
+            if cache_age_secs > _telegram_cache['ttl_seconds']:
                 print(f"[Telegram Cache] Fetching fresh (last fetch: {int(cache_age_secs)}s ago)")
                 try:
                     from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
@@ -2004,7 +2056,7 @@ def _run_threat_scan(target, days=7):
     except Exception as e:
         print(f"Flight disruption scan error: {e}")
 
-    return {
+    result = {
         'success': True,
         'target': target,
         'region': 'asia',
@@ -2034,6 +2086,25 @@ def _run_threat_scan(target, days=7):
         'cached_at': datetime.now(timezone.utc).isoformat(),
         'version': '1.0.0-asia',
     }
+
+    # ============================================
+    # v1.1.0 (April 2026) — CRITICAL: Self-caching inside the scan function.
+    # Previously, the endpoint's 25s timeout would detach the scan via
+    # executor.shutdown(wait=False) — which meant background scans NEVER wrote
+    # their results to Redis. Countries like DPRK and Pakistan (multi-language
+    # GDELT makes them slow) got stuck in "warming" forever because every scan
+    # exceeded 25s and its result was thrown away. Now the scan writes to cache
+    # as its FINAL step, regardless of whether the endpoint is still waiting.
+    # Endpoint cache-write becomes defensive/idempotent — double-write is safe.
+    # ============================================
+    try:
+        cache_set(f'threat_{target}_{days}d', result)
+        save_threat_cache_redis(target, result, days)
+        print(f"[{target}] ✓ Scan result self-cached (probability: {probability}%, {len(all_articles)} articles)")
+    except Exception as cache_err:
+        print(f"[{target}] ⚠️  Self-cache failed: {str(cache_err)[:100]}")
+
+    return result
 
 
 def _run_notam_scan():
@@ -2462,6 +2533,12 @@ def rate_limit_status():
 @app.route('/robots.txt')
 def robots():
     return "User-agent: *\nDisallow: /api/\n", 200, {'Content-Type': 'text/plain'}
+
+
+@app.route('/favicon.ico', methods=['GET', 'HEAD'])
+def favicon():
+    """v1.1.0 — Prevent 500 error spam from browser favicon requests."""
+    return '', 204
 
 
 @app.route('/', methods=['GET'])
