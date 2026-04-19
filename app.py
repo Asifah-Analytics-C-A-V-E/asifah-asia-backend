@@ -1187,9 +1187,15 @@ def fetch_gdelt_articles(query, days=7, language='eng'):
             'sourcelang': language,
         }
         resp = None
+        headers = {
+            # v1.1.1 — Add explicit UA. Render's default urllib3 UA may trigger
+            # GDELT's soft-block heuristics. A real-looking UA reduces false 429s.
+            'User-Agent': 'AsifahAnalytics/1.1 (+https://asifahanalytics.com; research)',
+            'Accept': 'application/json,text/plain',
+        }
         for attempt in range(2):
             try:
-                resp = requests.get(GDELT_BASE_URL, params=params, timeout=(5, 15))
+                resp = requests.get(GDELT_BASE_URL, params=params, headers=headers, timeout=(5, 15))
                 if resp.status_code == 429:
                     print(f"[Asia GDELT] {language}: Rate limited (429) — cooling down {_GDELT_COOLDOWN_SECONDS // 60}min")
                     _GDELT_COOLDOWN[language] = now + _GDELT_COOLDOWN_SECONDS
@@ -2006,6 +2012,10 @@ def _run_threat_scan(target, days=7):
     if TELEGRAM_AVAILABLE:
         try:
             now = datetime.now(timezone.utc)
+            # v1.1.1 — Force fetch on first-ever call (fetched_at is None).
+            # Previously the 9999 sentinel was less than the 4h TTL, so we
+            # stayed on an empty cache forever until a later restart.
+            first_time_fetch = _telegram_cache['fetched_at'] is None
             cache_age_secs = (
                 (now - _telegram_cache['fetched_at']).total_seconds()
                 if _telegram_cache['fetched_at'] else 9999
@@ -2016,7 +2026,7 @@ def _run_threat_scan(target, days=7):
             # doom loop of 13/18 channels getting rate-limited on every request.
             # Now we respect the TTL regardless of result size — empty is a valid
             # cache state that means "we tried recently and got nothing useful."
-            if cache_age_secs > _telegram_cache['ttl_seconds']:
+            if first_time_fetch or cache_age_secs > _telegram_cache['ttl_seconds']:
                 print(f"[Telegram Cache] Fetching fresh (last fetch: {int(cache_age_secs)}s ago)")
                 try:
                     from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
@@ -2051,17 +2061,15 @@ def _run_threat_scan(target, days=7):
             print(f"[Asia Scan] Telegram error: {str(e)[:100]}")
 
     # v1.1.0 (April 2026) — Bluesky signals (replaces gap from flood-waited Telegram)
+    # v1.1.1 — NO nested ThreadPoolExecutor here. When the endpoint's 25s timeout
+    # detaches this scan into background, nested executors fail with
+    # "cannot schedule new futures after interpreter shutdown". Bluesky already
+    # has per-request timeouts (8s each × ~5 handles = ~40s max), and the scan
+    # thread can tolerate that without nested async wrapping.
     bluesky_articles = []
     if BLUESKY_AVAILABLE:
         try:
-            from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
-            with ThreadPoolExecutor(max_workers=1) as executor:
-                future = executor.submit(fetch_bluesky_for_target, target, days, 20)
-                try:
-                    bluesky_articles = future.result(timeout=45)
-                except FuturesTimeout:
-                    print(f"[{target}] Bluesky fetch >45s — skipping this scan")
-                    bluesky_articles = []
+            bluesky_articles = fetch_bluesky_for_target(target, days, max_posts_per_account=20)
         except Exception as e:
             print(f"[{target}] Bluesky error: {str(e)[:100]}")
             bluesky_articles = []
