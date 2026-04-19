@@ -339,7 +339,72 @@ ACTORS = {
             'rare earth export ban',
             'china blockades taiwan ports',
             'tsmc targeted',
+        ],'china blockades taiwan ports',
+            'tsmc targeted',
         ],
+    },
+
+    # ── CROSS-THEATER OUTBOUND ACTOR ─────────────────────────────
+    # v1.2.0 (April 2026) — China-Iran Axis as dedicated actor.
+    # China's role in enabling Iran is architecturally different
+    # from its economic coercion of Taiwan. ISR/logistics support
+    # to Iran during US-Iran conflict is an aggressive cross-theater
+    # projection that belongs in OUTBOUND. Sub-scored across four
+    # categories (weapons, ISR, dual-use, diplomatic) — see
+    # CHINA_IRAN_AXIS_TRIGGERS below for the ladder.
+    'china_iran_axis': {
+        'name': 'China → Iran (Axis Support)',
+        'flag': '🇮🇷',
+        'icon': '🛰️',
+        'color': '#dc2626',
+        'dashboard': 'outbound',
+        'role': 'Cross-Theater — Chinese Support Enabling Iran',
+        'description': (
+            'China as active supporter of Iran. Sub-categorized across: '
+            'weapons/hardware transfer (MANPADS, missiles, components), '
+            'ISR/satellite cooperation (TEE-01B, Emposat, Earth Eye Co — '
+            'FT Apr 2026), dual-use logistics (chemicals, fuel, electronics), '
+            'and diplomatic cover (UN shields, sanctions blocking). '
+            'The ISR dimension is particularly consequential as it enables '
+            'kinetic targeting of US installations.'
+        ),
+        'keywords': [
+            # Direct mentions (both word orders)
+            'china iran', 'iran china', 'chinese iran', 'iran chinese',
+            'beijing tehran', 'tehran beijing', 'china tehran', 'beijing iran',
+            # Material / capability transfers
+            'china arms iran', 'china backs iran', 'china supplies iran',
+            'china military aid iran', 'china iran axis',
+            'china sends missiles iran', 'china manpads iran',
+            # ISR / satellite / space (multiple orders for FT-style headlines)
+            'chinese satellite', 'chinese spy satellite', 'china satellite iran',
+            'iran chinese satellite', 'irgc chinese satellite',
+            'chinese isr iran', 'china ground station iran',
+            'iran used chinese satellite',
+            # Named entities — TEE-01B story
+            'tee-01b', 'tee01b', 'emposat', 'earth eye co', 'earth eye',
+            'chang guang satellite',  # Houthi ISR support precedent
+            # Dual-use
+            'china dual use iran', 'china components iran',
+            'china chemicals iran military', 'china fuel iran military',
+            # Diplomatic cover
+            'china shields iran un', 'china blocks iran sanctions',
+            'china iran oil sanctions', 'china buys iranian oil war',
+            # Cross-language
+            '中国伊朗', '中伊', '中国武器伊朗', '中国支持伊朗',
+            'الصين تسلح إيران', 'الصين إيران',
+            'چین ایران', 'ایران چین',
+        ],
+        'baseline_statements_per_week': 3,
+        'tripwires': [
+            'china directly arms iran',
+            'china sends missiles iran confirmed',
+            'chinese spy satellite iran targeting',
+            'pla weapons iran conflict',
+        ],
+    },
+
+    # ── INBOUND ACTORS ───────────────────────────────────────────
     },
 
     # ── INBOUND ACTORS ───────────────────────────────────────────
@@ -610,10 +675,20 @@ TAO_TRIGGERS = {
     ],
 }
 
-# ── CROSS-THEATER: China-Iran Axis (v1.1.0 — April 2026) ──
-# Tracks Chinese military/dual-use support to Iran during US-Iran conflict.
-# This is the key cross-theater signal for the Global Pressure Index.
-IRAN_AXIS_TRIGGERS = {
+# ============================================
+# v1.2.0 (April 2026) — China-Iran Axis: SUB-SCORED trigger ladders
+# Replaces the previous unused IRAN_AXIS_TRIGGERS with four
+# separate trigger dicts, one per dimension. The china_iran_axis
+# actor's score is the MAX of all four sub-scores. Writing them
+# separately lets the cross-theater fingerprint surface which
+# dimension is elevated (e.g. "ISR L4" is worse than "diplomatic L4"
+# because ISR enables kinetic targeting).
+# Russia-specific satellite triggers moved to russia_iran_axis
+# on the Russia tracker — not China's responsibility to track.
+# ============================================
+
+# WEAPONS: Direct material support — missiles, MANPADS, components
+CHINA_IRAN_WEAPONS_TRIGGERS = {
     5: [
         'china sends missiles iran', 'china ships missiles iran',
         'china manpads iran', 'chinese missiles used iran',
@@ -631,24 +706,94 @@ IRAN_AXIS_TRIGGERS = {
     ],
     3: [
         'china iran military', 'china supports iran war',
-        'china dual use iran', 'china chemicals iran military',
-        'china fuel iran military', 'china components iran missiles',
         'china helps iran', 'china backing iran',
-        'beijing tehran military', 'china iran axis',
-        'russia satellite iran targeting', 'russia targeting data iran',
-        'russia intelligence iran us ships', 'russia iran coordination war',
-        '中国支持伊朗', '俄罗斯卫星伊朗',
+        'chinese components iran missiles',
+        '中国支持伊朗',
     ],
     2: [
-        'china iran oil sanctions', 'china buys iranian oil war',
-        'china iran trade war', 'china neutral iran conflict',
-        'beijing iran war stance', 'china iran us conflict',
-        'russia iran military cooperation', 'russia iran war support',
-        '中国伊朗石油', '中伊关系',
+        'china iran military cooperation', 'china arms iran',
+        'china iran hardware',
     ],
     1: [
-        'china iran', 'beijing tehran', 'russia iran',
-        'iran axis', '中伊', '伊朗中国',
+        'china iran weapons', 'chinese arms iran',
+    ],
+}
+
+# ISR / SATELLITE: Intelligence, surveillance, reconnaissance enablement
+# The highest-consequence dimension — enables kinetic targeting.
+CHINA_IRAN_ISR_TRIGGERS = {
+    5: [
+        'chinese spy satellite iran targeting', 'tee-01b irgc targeting',
+        'china satellite strike iran', 'chinese imagery iran strike',
+        'china satellite us base target iran',
+    ],
+    4: [
+        'iran used chinese satellite', 'chinese satellite iran bases',
+        'chinese spy satellite iran', 'irgc chinese satellite',
+        'emposat iran irgc', 'earth eye co iran',
+        'tee-01b', 'tee01b',
+        'chang guang satellite iran',
+        '中国卫星伊朗',
+    ],
+    3: [
+        'chinese satellite iran', 'china satellite iran',
+        'china ground station iran', 'chinese isr iran',
+        'china targeting data iran', 'in-orbit transfer iran',
+        'china space cooperation iran',
+    ],
+    2: [
+        'china iran space', 'chinese imagery iran',
+        'belt and road iran space',
+    ],
+    1: [
+        'china iran satellite', 'chinese iran imagery',
+    ],
+}
+
+# DUAL-USE: Chemicals, fuel, electronics, semiconductors — fungible goods
+CHINA_IRAN_DUALUSE_TRIGGERS = {
+    5: [
+        'china dual use iran confirmed', 'pla dual use iran',
+        'china ballistic materials iran',
+    ],
+    4: [
+        'china chemicals iran military', 'china fuel iran military',
+        'china components iran missiles', 'china missile fuel iran',
+        'china electronics iran military',
+    ],
+    3: [
+        'china dual use iran', 'china components iran',
+        'china semiconductor iran military', 'china precursor chemicals iran',
+    ],
+    2: [
+        'china iran trade precursor', 'chinese parts iran',
+    ],
+    1: [
+        'china iran trade', 'chinese goods iran',
+    ],
+}
+
+# DIPLOMATIC: UN shields, sanctions blocking, framing cover
+CHINA_IRAN_DIPLOMATIC_TRIGGERS = {
+    5: [
+        'china vetoes iran sanctions', 'china blocks iran un resolution',
+        'beijing shields iran un security council',
+    ],
+    4: [
+        'china shields iran un', 'china blocks iran sanctions',
+        'china opposes iran sanctions', 'beijing defends iran un',
+    ],
+    3: [
+        'china iran oil sanctions', 'china buys iranian oil war',
+        'china neutral iran conflict', 'beijing iran war stance',
+    ],
+    2: [
+        'china iran trade war', 'china iran us conflict',
+        'china calls restraint iran',
+    ],
+    1: [
+        'china iran diplomatic', 'beijing tehran', 'china iran axis',
+        '中伊关系', '中国伊朗石油',
     ],
 }
 
@@ -1245,6 +1390,8 @@ def _score_actor(actor_key, articles):
     actor = ACTORS[actor_key]
     now   = datetime.now(timezone.utc)
 
+    # Standard single-ladder actors
+    # Standard single-ladder actors
     trigger_map = {
         'xi_cmc':            XI_CMC_TRIGGERS,
         'pla_operational':   PLA_OPERATIONAL_TRIGGERS,
@@ -1256,6 +1403,19 @@ def _score_actor(actor_key, articles):
         'japan_regional':    JAPAN_REGIONAL_TRIGGERS,
     }.get(actor_key, {})
 
+    # v1.2.0 — china_iran_axis merges four sub-scored ladders
+    # into one combined trigger_map for scoring purposes. The MAX level
+    # across all four sub-categories becomes the actor's level.
+    # Sub-levels are computed separately below for fingerprint writing.
+    if actor_key == 'china_iran_axis':
+        trigger_map = {}
+        for lvl in range(1, 6):
+            trigger_map[lvl] = (
+                CHINA_IRAN_WEAPONS_TRIGGERS.get(lvl, [])
+                + CHINA_IRAN_ISR_TRIGGERS.get(lvl, [])
+                + CHINA_IRAN_DUALUSE_TRIGGERS.get(lvl, [])
+                + CHINA_IRAN_DIPLOMATIC_TRIGGERS.get(lvl, [])
+            )
     matched_triggers = []
     top_articles     = []
     weighted_score   = 0.0
@@ -1382,6 +1542,47 @@ def _score_actor(actor_key, articles):
 
 
 # ============================================
+# v1.2.0 — CHINA-IRAN AXIS SUB-SCORING (April 2026)
+# Computes individual sub-scores per dimension for the cross-theater
+# fingerprint, so downstream consumers know WHICH dimension is elevated
+# (ISR L4 is more consequential than diplomatic L4 — ISR enables kinetic).
+# ============================================
+
+def _score_china_iran_axis_subscores(articles):
+    """
+    Score each dimension of China-Iran axis separately.
+    Returns a dict with per-dimension max levels and the overall max.
+    Run in addition to standard _score_actor for china_iran_axis,
+    solely to surface granular sub-levels for the fingerprint.
+    """
+    dimensions = {
+        'weapons':    CHINA_IRAN_WEAPONS_TRIGGERS,
+        'isr':        CHINA_IRAN_ISR_TRIGGERS,
+        'dualuse':    CHINA_IRAN_DUALUSE_TRIGGERS,
+        'diplomatic': CHINA_IRAN_DIPLOMATIC_TRIGGERS,
+    }
+    scores = {dim: 0 for dim in dimensions}
+
+    for article in articles:
+        title = (article.get('title', '') or '').lower()
+        desc  = (article.get('description', '') or '').lower()
+        text  = f"{title} {desc}"
+
+        for dim, ladder in dimensions.items():
+            for level in range(5, 0, -1):
+                for phrase in ladder.get(level, []):
+                    if phrase.lower() in text:
+                        if level > scores[dim]:
+                            scores[dim] = level
+                        break
+                if scores[dim] >= level:
+                    break
+
+    scores['max'] = max(scores.values()) if scores else 0
+    return scores
+
+
+# ============================================
 # COMPOSITE SCORING
 # ============================================
 
@@ -1393,6 +1594,11 @@ def _compute_outbound_score(actor_results):
         'mfa_globaltimes':   1.5,
         'tao':               1.5,
         'economic_coercion': 1.0,
+        # v1.2.0 — China-Iran axis weighted at 2.5 because it's a
+        # high-consequence cross-theater signal (ISR support enables
+        # kinetic strikes). Weighted below xi_cmc/pla but above mfa/tao
+        # since material support is more significant than rhetoric.
+        'china_iran_axis':   2.5,
     }
     total_weight = sum(weights.values())
     weighted_sum = 0.0
@@ -1449,9 +1655,19 @@ def _compute_inbound_score(actor_results):
 # ============================================
 
 def _write_crosstheater_fingerprint(outbound_score, outbound_max, inbound_max,
-                                    overall_level, actor_results):
-    """Write China fingerprint to shared Redis cross-theater key."""
+                                    overall_level, actor_results,
+                                    axis_subscores=None):
+    """
+    Write China fingerprint to shared Redis cross-theater key.
+    v1.2.0: includes china_iran_axis sub-scores so downstream consumers
+    (Iran tracker, Global Pressure Index) can see WHICH dimension of
+    China support is elevated — ISR is more consequential than diplomatic.
+    """
     fingerprints = _redis_get(CROSSTHEATER_KEY) or {}
+
+    # v1.2.0 — Safe defaults if caller didn't pass axis_subscores
+    axis_subscores = axis_subscores or {}
+    axis_level     = actor_results.get('china_iran_axis', {}).get('level', 0)
 
     fingerprints['china'] = {
         'level':          overall_level,
@@ -1465,12 +1681,22 @@ def _write_crosstheater_fingerprint(outbound_score, outbound_max, inbound_max,
         'econ_level':     actor_results.get('economic_coercion', {}).get('level', 0),
         'japan_friction': actor_results.get('japan_regional', {}).get('level', 0),
         'us_commitment':  actor_results.get('us_commitment', {}).get('level', 0),
+        # ── v1.2.0 China-Iran Axis (April 2026) ──
+        # Written from China's perspective: what China is DOING toward Iran.
+        # Overall level + per-dimension sub-levels for granular downstream use.
+        'china_iran_axis_level':        axis_level,
+        'china_iran_weapons_level':     axis_subscores.get('weapons', 0),
+        'china_iran_isr_level':         axis_subscores.get('isr', 0),
+        'china_iran_dualuse_level':     axis_subscores.get('dualuse', 0),
+        'china_iran_diplomatic_level':  axis_subscores.get('diplomatic', 0),
+        # Binary flag for map-overlay / frontend consumers:
+        'china_iran_active':            axis_level >= 2,
         'label':          ESCALATION_LEVELS[overall_level]['label'],
         'updated_at':     datetime.now(timezone.utc).isoformat(),
     }
 
     _redis_set(CROSSTHEATER_KEY, fingerprints)
-    print(f"[China Rhetoric] Cross-theater fingerprint written (L{overall_level})")
+    print(f"[China Rhetoric] Cross-theater fingerprint written (L{overall_level}, axis L{axis_level})")
 
 
 # ============================================
@@ -1614,10 +1840,18 @@ def run_china_rhetoric_scan():
     overall_level = outbound_max
     overall_label = ESCALATION_LEVELS[overall_level]['label']
 
+    # v1.2.0 — compute China-Iran axis sub-scores for fingerprint granularity
+    axis_subscores = _score_china_iran_axis_subscores(all_articles)
+    if axis_subscores.get('max', 0) > 0:
+        print(f"[China Rhetoric] Axis sub-scores — "
+              f"weapons:{axis_subscores['weapons']}, isr:{axis_subscores['isr']}, "
+              f"dualuse:{axis_subscores['dualuse']}, diplomatic:{axis_subscores['diplomatic']}")
+
     # Write cross-theater fingerprint
     _write_crosstheater_fingerprint(
         outbound_score, outbound_max, inbound_max,
-        overall_level, actor_results
+        overall_level, actor_results,
+        axis_subscores=axis_subscores
     )
 
     scan_time = round(time.time() - scan_start, 1)
