@@ -337,8 +337,6 @@ ACTORS = {
             'rare earth export ban',
             'china blockades taiwan ports',
             'tsmc targeted',
-        ],'china blockades taiwan ports',
-            'tsmc targeted',
         ],
     },
 
@@ -400,9 +398,6 @@ ACTORS = {
             'chinese spy satellite iran targeting',
             'pla weapons iran conflict',
         ],
-    },
-
-    # ── INBOUND ACTORS ───────────────────────────────────────────
     },
 
     # ── INBOUND ACTORS ───────────────────────────────────────────
