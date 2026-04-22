@@ -110,6 +110,19 @@ from datetime import datetime, timezone, timedelta
 from email.utils import parsedate_to_datetime
 from flask import jsonify, request
 
+# Signal interpreter (Red Lines + Historical + So What)
+try:
+    from taiwan_signal_interpreter import (
+        check_red_lines,
+        build_so_what,
+        build_historical_matches,
+    )
+    _INTERPRETER_AVAILABLE = True
+    print("[Taiwan Rhetoric] Signal interpreter loaded")
+except ImportError as e:
+    print(f"[Taiwan Rhetoric] WARNING: taiwan_signal_interpreter not available ({e})")
+    _INTERPRETER_AVAILABLE = False
+
 # ============================================
 # CONFIG
 # ============================================
@@ -1570,6 +1583,39 @@ def run_taiwan_rhetoric_scan():
 
     scan_time = round(time.time() - scan_start, 1)
 
+    # ── Signal interpreter (Red Lines + Historical + So What) ──
+    red_lines_triggered = []
+    historical_matches  = []
+    so_what             = {}
+    if _INTERPRETER_AVAILABLE:
+        try:
+            interp_scan_data = {
+                'actors':          actor_results,
+                'articles':        all_articles,
+                'mass_emigration': 0,  # placeholder; future: wire from dedicated scanner
+            }
+            red_lines_triggered = check_red_lines(all_articles, actor_results)
+            def _lvl(key):
+                return actor_results.get(key, {}).get('level', 0)
+            _det_strength = max(_lvl('us_partnership'), _lvl('roc_defense'), _lvl('diplomatic_posture'))
+            _inbound      = max(_lvl('pla_pressure'), _lvl('beijing_coercion'), _lvl('economic_pressure'))
+            _resolve      = max(_lvl('lai_presidential'), _lvl('asymmetric_resilience'))
+            interp_vectors = {
+                'deterrence_strength': _det_strength,
+                'inbound_pressure':    _inbound,
+                'domestic_resolve':    _resolve,
+                'deterrence_gap':      max(0, _inbound - _det_strength),
+                'mass_emigration':     0,
+            }
+            historical_matches = build_historical_matches(actor_results, interp_vectors)
+            so_what = build_so_what(interp_scan_data, red_lines_triggered, historical_matches)
+            print(f"[Taiwan Rhetoric] Interpreter: "
+                  f"{len(red_lines_triggered)} red lines, "
+                  f"deterrence_gap: L{so_what.get('deterrence_gap', 0)}, "
+                  f"scenario: {so_what.get('scenario_icon','')} {so_what.get('scenario','')[:40]}")
+        except Exception as e:
+            print(f"[Taiwan Rhetoric] Interpreter error: {e}")
+
     result = {
         'success':           True,
         'scanned_at':        datetime.now(timezone.utc).isoformat(),
@@ -1606,8 +1652,13 @@ def run_taiwan_rhetoric_scan():
         'china_overall_level': china_fp.get('level', 0) if china_fp else 0,
         'china_fingerprint_age': china_fp.get('updated_at', '') if china_fp else '',
 
+        # Interpreter output
+        'red_lines':          red_lines_triggered,
+        'historical_matches': historical_matches,
+        'so_what':            so_what,
+
         'escalation_levels': ESCALATION_LEVELS,
-        'version':           '1.0.0-taiwan',
+        'version':           '1.1.0-taiwan',  # bumped for interpreter wiring
     }
 
     # Cache to Redis
@@ -1725,7 +1776,16 @@ def register_taiwan_rhetoric_endpoints(app):
             'china_xi_level':     cached.get('china_xi_level', 0),
             'china_overall_level': cached.get('china_overall_level', 0),
             'total_articles':     cached.get('total_articles', 0),
-            'version':            '1.0.0-taiwan',
+            # Interpreter summary (for cross-page BLUF use)
+            'red_lines_count':     len(cached.get('red_lines', [])),
+            'scenario':            (cached.get('so_what') or {}).get('scenario', ''),
+            'scenario_icon':       (cached.get('so_what') or {}).get('scenario_icon', ''),
+            'scenario_color':      (cached.get('so_what') or {}).get('scenario_color', '#6b7280'),
+            'deterrence_strength': (cached.get('so_what') or {}).get('deterrence_strength', 0),
+            'inbound_pressure':    (cached.get('so_what') or {}).get('inbound_pressure', 0),
+            'domestic_resolve':    (cached.get('so_what') or {}).get('domestic_resolve', 0),
+            'deterrence_gap':      (cached.get('so_what') or {}).get('deterrence_gap', 0),
+            'version':             '1.1.0-taiwan',
         })
 
     @app.route('/api/rhetoric/taiwan/history', methods=['GET'])
