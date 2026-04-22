@@ -94,6 +94,19 @@ from datetime import datetime, timezone, timedelta
 from email.utils import parsedate_to_datetime
 from flask import jsonify, request
 
+# Signal interpreter (Red Lines + Historical + So What)
+try:
+    from china_signal_interpreter import (
+        check_red_lines,
+        build_so_what,
+        build_historical_matches,
+    )
+    _INTERPRETER_AVAILABLE = True
+    print("[China Rhetoric] Signal interpreter loaded")
+except ImportError as e:
+    print(f"[China Rhetoric] WARNING: china_signal_interpreter not available ({e})")
+    _INTERPRETER_AVAILABLE = False
+
 # ============================================
 # CONFIG
 # ============================================
@@ -1849,6 +1862,35 @@ def run_china_rhetoric_scan():
 
     scan_time = round(time.time() - scan_start, 1)
 
+    # ── Signal interpreter (Red Lines + Historical + So What) ──
+    red_lines_triggered = []
+    historical_matches  = []
+    so_what             = {}
+    if _INTERPRETER_AVAILABLE:
+        try:
+            # Build scan_data shape that interpreter expects
+            interp_scan_data = {
+                'actors':            actor_results,
+                'articles':          all_articles,
+                'domestic_fracture': 0,  # placeholder; future: wire from dedicated scanner
+            }
+            red_lines_triggered = check_red_lines(all_articles, actor_results)
+            def _lvl(key):
+                return actor_results.get(key, {}).get('level', 0)
+            interp_vectors = {
+                'kinetic_pressure':  max(_lvl('pla_operational'), _lvl('xi_cmc') if _lvl('xi_cmc') >= 3 else 0),
+                'economic_pressure': _lvl('economic_coercion'),
+                'domestic_fracture': 0,
+                'us_commitment':     _lvl('us_commitment'),
+            }
+            historical_matches = build_historical_matches(actor_results, interp_vectors)
+            so_what = build_so_what(interp_scan_data, red_lines_triggered, historical_matches)
+            print(f"[China Rhetoric] Interpreter: "
+                  f"{len(red_lines_triggered)} red lines, "
+                  f"scenario: {so_what.get('scenario_icon','')} {so_what.get('scenario','')[:40]}")
+        except Exception as e:
+            print(f"[China Rhetoric] Interpreter error: {e}")
+
     result = {
         'success':           True,
         'scanned_at':        datetime.now(timezone.utc).isoformat(),
@@ -1879,8 +1921,13 @@ def run_china_rhetoric_scan():
         'us_commitment_level':   actor_results.get('us_commitment', {}).get('level', 0),
         'japan_level':           actor_results.get('japan_regional', {}).get('level', 0),
 
+        # Interpreter output
+        'red_lines':          red_lines_triggered,
+        'historical_matches': historical_matches,
+        'so_what':            so_what,
+
         'escalation_levels': ESCALATION_LEVELS,
-        'version':           '1.0.0-china',
+        'version':           '1.1.0-china',  # bumped for interpreter wiring
     }
 
     # Cache to Redis
@@ -1994,7 +2041,15 @@ def register_china_rhetoric_endpoints(app):
             'us_commitment_level':  cached.get('us_commitment_level', 0),
             'japan_level':        cached.get('japan_level', 0),
             'total_articles':     cached.get('total_articles', 0),
-            'version':            '1.0.0-china',
+            # Interpreter summary (for cross-page BLUF use)
+            'red_lines_count':    len(cached.get('red_lines', [])),
+            'scenario':           (cached.get('so_what') or {}).get('scenario', ''),
+            'scenario_icon':      (cached.get('so_what') or {}).get('scenario_icon', ''),
+            'scenario_color':     (cached.get('so_what') or {}).get('scenario_color', '#6b7280'),
+            'kinetic_pressure':   (cached.get('so_what') or {}).get('kinetic_pressure', 0),
+            'economic_pressure':  (cached.get('so_what') or {}).get('economic_pressure', 0),
+            'coalition_pushback': (cached.get('so_what') or {}).get('coalition_pushback', 0),
+            'version':            '1.1.0-china',
         })
 
     @app.route('/api/rhetoric/china/history', methods=['GET'])
