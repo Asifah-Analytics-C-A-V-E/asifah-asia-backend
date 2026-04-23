@@ -1,33 +1,24 @@
 """
 asia_regional_bluf.py
 Asifah Analytics -- Asia Backend Module
-v1.0.0 -- April 2026
+v1.1.0 -- April 2026 (hardened)
 
 Asia-Pacific Regional BLUF synthesizer.
 
-Reads from China + Taiwan Redis summary caches (populated by their
-respective rhetoric trackers) and produces a regional synthesis:
-posture, prose BLUF, signals array, vector readouts.
+Reads from China + Taiwan Redis caches (populated by their respective
+rhetoric trackers) and produces a regional synthesis: posture, prose
+BLUF, signals array, vector readouts.
 
 Matches the ME /api/rhetoric/me/bluf response contract so that
 rhetoric-asia.html can use the same fetch pattern as rhetoric-index.html.
 
-Expected response shape:
-{
-    'success':        True,
-    'posture_label':  'ELEVATED',
-    'posture_color':  '#ef4444',
-    'bluf':           '<prose synthesis>',
-    'signals':        [{'icon': '⚔️', 'color': '#ef4444', 'text': '...'}, ...],
-    'generated_at':   ISO timestamp,
-    'from_cache':     bool,
-    # additional analytical data:
-    'peak_level':         int,
-    'deterrence_gap':     int (Taiwan-specific),
-    'red_lines_breached': int,
-    'trackers_live':      int,
-    'trackers_total':     int,
-}
+v1.1.0 changes (hardened vs v1.0.0):
+- Full traceback logging to Render logs for any crash
+- NEW /api/rhetoric/asia/bluf/debug endpoint -- reveals cache contents
+- Bullet-proof type handling (None/int/str/dict/list all safe)
+- Redis SET pattern matches trackers (command-array format)
+- Graceful single-tracker mode
+- Safe-access helpers throughout
 
 Author: RCGG / Asifah Analytics
 """
@@ -36,6 +27,7 @@ import os
 import json
 import time
 import threading
+import traceback
 from datetime import datetime, timezone
 import requests
 from flask import jsonify
@@ -53,18 +45,43 @@ TAIWAN_CACHE_KEY  = 'rhetoric:taiwan:latest'
 
 # Our synthesis cache
 BLUF_CACHE_KEY    = 'rhetoric:asia:bluf'
-BLUF_CACHE_TTL    = 15 * 60   # 15 minutes
+BLUF_CACHE_TTL    = 15 * 60     # 15 minutes
 
 # Background refresh
-REFRESH_INTERVAL  = 15 * 60   # 15 minutes
-BOOT_DELAY        = 90        # wait for trackers on cold start
+REFRESH_INTERVAL  = 15 * 60     # 15 minutes
+BOOT_DELAY        = 90          # seconds to wait for trackers on cold boot
 
 
 # ============================================================
-# REDIS HELPERS (REST)
+# SAFE-ACCESS HELPERS (bullet-proof type handling)
+# ============================================================
+def _safe_dict(val):
+    """Always return a dict -- even if val is None, non-dict, or missing."""
+    return val if isinstance(val, dict) else {}
+
+def _safe_list(val):
+    """Always return a list -- even if val is None, non-list, or missing."""
+    return val if isinstance(val, list) else []
+
+def _safe_int(val, default=0):
+    """Always return an int -- even if val is None, str, float, or missing."""
+    try:
+        return int(val) if val is not None else default
+    except (TypeError, ValueError):
+        return default
+
+def _safe_str(val, default=''):
+    """Always return a string -- even if val is None, int, or missing."""
+    return str(val) if val is not None else default
+
+
+# ============================================================
+# REDIS HELPERS (REST) — matching trackers' patterns
 # ============================================================
 def _redis_get(key):
+    """GET key from Upstash Redis REST. Returns parsed JSON dict or None."""
     if not (UPSTASH_REDIS_URL and UPSTASH_REDIS_TOKEN):
+        print("[Asia BLUF] WARNING: Redis creds missing from env")
         return None
     try:
         r = requests.get(
@@ -73,6 +90,7 @@ def _redis_get(key):
             timeout=6,
         )
         if r.status_code != 200:
+            print(f"[Asia BLUF] Redis GET {key} -> HTTP {r.status_code}")
             return None
         data = r.json().get('result')
         if not data:
@@ -84,17 +102,24 @@ def _redis_get(key):
 
 
 def _redis_set(key, value, ttl=BLUF_CACHE_TTL):
+    """
+    SET key using tracker-compatible command-array pattern.
+    This mirrors how rhetoric_tracker_china writes to Redis.
+    """
     if not (UPSTASH_REDIS_URL and UPSTASH_REDIS_TOKEN):
         return False
     try:
-        payload = json.dumps(value)
-        r = requests.post(
-            f'{UPSTASH_REDIS_URL}/set/{key}',
-            headers={'Authorization': f'Bearer {UPSTASH_REDIS_TOKEN}'},
-            json={'value': payload, 'EX': ttl},
-            timeout=6,
+        payload = json.dumps(value, default=str)
+        requests.post(
+            UPSTASH_REDIS_URL,
+            headers={
+                'Authorization': f'Bearer {UPSTASH_REDIS_TOKEN}',
+                'Content-Type': 'application/json'
+            },
+            json=["SET", key, payload, "EX", str(ttl)],
+            timeout=5,
         )
-        return r.status_code == 200
+        return True
     except Exception as e:
         print(f"[Asia BLUF] redis_set error for {key}: {e}")
         return False
@@ -104,27 +129,26 @@ def _redis_set(key, value, ttl=BLUF_CACHE_TTL):
 # POSTURE DETERMINATION
 # ============================================================
 def _determine_regional_posture(china, taiwan):
-    """
-    Roll up posture across China + Taiwan to a single Asia-Pacific regional label.
-    Taiwan's deterrence_gap is a critical extra signal unique to this region.
-    """
-    cn_level = (china or {}).get('overall_level', 0)
-    tw_level = (taiwan or {}).get('overall_level', 0)
+    """Roll up posture across China + Taiwan."""
+    china  = _safe_dict(china)
+    taiwan = _safe_dict(taiwan)
+
+    cn_level  = _safe_int(china.get('overall_level'))
+    tw_level  = _safe_int(taiwan.get('overall_level'))
     max_level = max(cn_level, tw_level)
 
-    # Extract interpreter fields (if trackers are v1.1.0+, these will exist)
-    cn_red_lines = (china or {}).get('red_lines', [])
-    tw_red_lines = (taiwan or {}).get('red_lines', [])
-    cn_breached = sum(1 for r in cn_red_lines if r.get('status') == 'BREACHED')
-    tw_breached = sum(1 for r in tw_red_lines if r.get('status') == 'BREACHED')
+    cn_red_lines = _safe_list(china.get('red_lines'))
+    tw_red_lines = _safe_list(taiwan.get('red_lines'))
+    cn_breached  = sum(1 for r in cn_red_lines if _safe_dict(r).get('status') == 'BREACHED')
+    tw_breached  = sum(1 for r in tw_red_lines if _safe_dict(r).get('status') == 'BREACHED')
     total_breached = cn_breached + tw_breached
 
-    cn_so_what = (china or {}).get('so_what', {}) or {}
-    tw_so_what = (taiwan or {}).get('so_what', {}) or {}
+    cn_so_what = _safe_dict(china.get('so_what'))
+    tw_so_what = _safe_dict(taiwan.get('so_what'))
 
-    deterrence_gap    = tw_so_what.get('deterrence_gap', 0)
-    kinetic_pressure  = cn_so_what.get('kinetic_pressure', 0)
-    inbound_pressure  = tw_so_what.get('inbound_pressure', 0)
+    deterrence_gap   = _safe_int(tw_so_what.get('deterrence_gap'))
+    kinetic_pressure = _safe_int(cn_so_what.get('kinetic_pressure'))
+    inbound_pressure = _safe_int(tw_so_what.get('inbound_pressure'))
 
     # ── Scenario ladder ──
     if total_breached >= 2 or max_level >= 5:
@@ -163,31 +187,26 @@ def _determine_regional_posture(china, taiwan):
 # BLUF PROSE SYNTHESIS
 # ============================================================
 def _build_bluf_prose(posture, china, taiwan):
-    """
-    Generate regional prose paragraph. 2-4 sentences synthesizing the state.
-    """
-    cn = china or {}
-    tw = taiwan or {}
-    cn_so_what = cn.get('so_what', {}) or {}
-    tw_so_what = tw.get('so_what', {}) or {}
+    """Generate regional prose paragraph. 2-4 sentences."""
+    cn = _safe_dict(china)
+    tw = _safe_dict(taiwan)
+    cn_so_what = _safe_dict(cn.get('so_what'))
+    tw_so_what = _safe_dict(tw.get('so_what'))
 
     date_str = datetime.now(timezone.utc).strftime('%b %d, %Y')
-
     parts = [f"Asia-Pacific Rhetoric Monitor ({date_str}):"]
 
-    # Regional posture lead
     parts.append(
         f"Regional posture at {posture['label']} -- peak escalation L{posture['peak_level']} "
         f"across China + Taiwan trackers."
     )
 
     # China vector
-    cn_level    = cn.get('overall_level', 0)
-    cn_kinetic  = cn_so_what.get('kinetic_pressure', 0)
-    cn_econ     = cn_so_what.get('economic_pressure', 0)
-    cn_coalition = cn_so_what.get('coalition_pushback', 0)
-    cn_pla      = cn.get('pla_level', 0)
-    cn_xi       = cn.get('xi_level', 0)
+    cn_level   = _safe_int(cn.get('overall_level'))
+    cn_kinetic = _safe_int(cn_so_what.get('kinetic_pressure'))
+    cn_econ    = _safe_int(cn_so_what.get('economic_pressure'))
+    cn_pla     = _safe_int(cn.get('pla_level'))
+    cn_xi      = _safe_int(cn.get('xi_level'))
 
     if cn_level or cn_kinetic or cn_econ:
         china_desc = f"China coercion at L{cn_level}"
@@ -207,13 +226,11 @@ def _build_bluf_prose(posture, china, taiwan):
         parts.append(china_desc)
 
     # Taiwan vector
-    tw_level    = tw.get('overall_level', 0)
-    tw_def      = tw.get('defense_level', 0)
-    tw_us       = tw.get('us_level', 0)
-    tw_diplo    = tw.get('diplomatic_level', 0)
-    tw_gap      = tw_so_what.get('deterrence_gap', 0)
-    tw_det      = tw_so_what.get('deterrence_strength', 0)
-    tw_resolve  = tw_so_what.get('domestic_resolve', 0)
+    tw_level   = _safe_int(tw.get('overall_level'))
+    tw_def     = _safe_int(tw.get('defense_level'))
+    tw_us      = _safe_int(tw.get('us_level'))
+    tw_gap     = _safe_int(tw_so_what.get('deterrence_gap'))
+    tw_det     = _safe_int(tw_so_what.get('deterrence_strength'))
 
     if tw_level or tw_gap or tw_det:
         tw_desc = f"Taiwan deterrence at L{tw_level}"
@@ -253,104 +270,105 @@ def _build_bluf_prose(posture, china, taiwan):
 # SIGNALS ARRAY
 # ============================================================
 def _build_signals(posture, china, taiwan):
-    """
-    Build the bluf signals array -- short analytical blurbs with icon+color.
-    Frontend renders each as a colored pill.
-    """
-    cn = china or {}
-    tw = taiwan or {}
-    cn_so_what = cn.get('so_what', {}) or {}
-    tw_so_what = tw.get('so_what', {}) or {}
-    cn_red_lines = cn.get('red_lines', [])
-    tw_red_lines = tw.get('red_lines', [])
+    """Build the bluf signals array -- short analytical blurbs with icon+color."""
+    cn = _safe_dict(china)
+    tw = _safe_dict(taiwan)
+    cn_so_what = _safe_dict(cn.get('so_what'))
+    tw_so_what = _safe_dict(tw.get('so_what'))
+    cn_red_lines = _safe_list(cn.get('red_lines'))
+    tw_red_lines = _safe_list(tw.get('red_lines'))
 
     signals = []
 
-    # Red-line signals first (most important)
+    # Red-line signals first
     for rl in cn_red_lines[:2]:
-        if rl.get('status') == 'BREACHED':
+        rl = _safe_dict(rl)
+        status = _safe_str(rl.get('status'))
+        label  = _safe_str(rl.get('label'))
+        if status == 'BREACHED':
             signals.append({
-                'icon':  '🔴',
-                'color': '#dc2626',
-                'text':  f"CHINA BREACH: {rl.get('label', '')}",
+                'icon': '🔴', 'color': '#dc2626',
+                'text': f"CHINA BREACH: {label}",
             })
-        elif rl.get('status') == 'APPROACHING':
+        elif status == 'APPROACHING':
             signals.append({
-                'icon':  '🟠',
-                'color': '#f97316',
-                'text':  f"China approaching: {rl.get('label', '')}",
+                'icon': '🟠', 'color': '#f97316',
+                'text': f"China approaching: {label}",
             })
 
     for rl in tw_red_lines[:2]:
-        if rl.get('status') == 'BREACHED':
-            is_positive = rl.get('color') == '#22c55e'
+        rl = _safe_dict(rl)
+        status = _safe_str(rl.get('status'))
+        label  = _safe_str(rl.get('label'))
+        is_positive = _safe_str(rl.get('color')) == '#22c55e'
+        if status == 'BREACHED':
             signals.append({
                 'icon':  '🟢' if is_positive else '🔴',
                 'color': '#22c55e' if is_positive else '#dc2626',
-                'text':  f"TAIWAN {'DETERRENCE-POSITIVE' if is_positive else 'BREACH'}: {rl.get('label', '')}",
+                'text':  f"TAIWAN {'DETERRENCE-POSITIVE' if is_positive else 'BREACH'}: {label}",
             })
-        elif rl.get('status') == 'APPROACHING':
+        elif status == 'APPROACHING':
             signals.append({
-                'icon':  '🟠',
-                'color': '#f97316',
-                'text':  f"Taiwan approaching: {rl.get('label', '')}",
+                'icon': '🟠', 'color': '#f97316',
+                'text': f"Taiwan approaching: {label}",
             })
 
-    # Vector-based signals (if no red-line signals were added, add context)
+    # Vector-based fallback signals
     if not signals:
-        cn_kinetic = cn_so_what.get('kinetic_pressure', 0)
-        cn_econ    = cn_so_what.get('economic_pressure', 0)
+        cn_kinetic = _safe_int(cn_so_what.get('kinetic_pressure'))
+        cn_econ    = _safe_int(cn_so_what.get('economic_pressure'))
+        cn_level   = _safe_int(cn.get('overall_level'))
+        cn_pla     = _safe_int(cn.get('pla_level'))
         if cn_kinetic >= 3:
             signals.append({
-                'icon':  '⚔️', 'color': '#ef4444',
-                'text':  f"CHINA L{cn.get('overall_level', 0)}: PLA operational "
-                         f"L{cn.get('pla_level', 0)} -- cross-strait coercion active"
+                'icon': '⚔️', 'color': '#ef4444',
+                'text': f"CHINA L{cn_level}: PLA operational L{cn_pla} -- cross-strait coercion active"
             })
         if cn_econ >= 3:
             signals.append({
-                'icon':  '💰', 'color': '#f97316',
-                'text':  f"CHINA: Economic coercion L{cn_econ} -- trade/investment pressure active"
+                'icon': '💰', 'color': '#f97316',
+                'text': f"CHINA: Economic coercion L{cn_econ} -- trade/investment pressure active"
             })
 
-    # Deterrence-gap signal (Taiwan-specific critical reading)
-    tw_gap = tw_so_what.get('deterrence_gap', 0)
+    # Deterrence gap signal
+    tw_gap = _safe_int(tw_so_what.get('deterrence_gap'))
     if tw_gap >= 3:
         signals.append({
-            'icon':  '⚠️', 'color': '#dc2626',
-            'text':  f"DETERRENCE GAP L{tw_gap}: inbound pressure exceeding coalition response"
+            'icon': '⚠️', 'color': '#dc2626',
+            'text': f"DETERRENCE GAP L{tw_gap}: inbound pressure exceeding coalition response"
         })
     elif tw_gap >= 2:
         signals.append({
-            'icon':  '📉', 'color': '#f59e0b',
-            'text':  f"Deterrence gap L{tw_gap}: coalition signaling lagging inbound pressure"
+            'icon': '📉', 'color': '#f59e0b',
+            'text': f"Deterrence gap L{tw_gap}: coalition signaling lagging inbound pressure"
         })
 
     # Coalition strength signal
-    tw_us  = tw.get('us_level', 0)
-    tw_def = tw.get('defense_level', 0)
-    if tw_us >= 3 and tw_def >= 3 and not any('DETERRENCE' in s.get('text','') for s in signals):
+    tw_us  = _safe_int(tw.get('us_level'))
+    tw_def = _safe_int(tw.get('defense_level'))
+    if tw_us >= 3 and tw_def >= 3 and not any('DETERRENCE' in _safe_str(s.get('text')) for s in signals):
         signals.append({
-            'icon':  '🤝', 'color': '#10b981',
-            'text':  f"COALITION STRONG: US L{tw_us}, Taiwan defense L{tw_def} -- deterrence coordinated"
+            'icon': '🤝', 'color': '#10b981',
+            'text': f"COALITION STRONG: US L{tw_us}, Taiwan defense L{tw_def} -- deterrence coordinated"
         })
 
-    # Mutual escalation warning
-    cn_level = cn.get('overall_level', 0)
-    tw_level = tw.get('overall_level', 0)
+    # Mutual escalation
+    cn_level = _safe_int(cn.get('overall_level'))
+    tw_level = _safe_int(tw.get('overall_level'))
     if cn_level >= 3 and tw_level >= 3:
         signals.append({
-            'icon':  '🌀', 'color': '#dc2626',
-            'text':  f"MUTUAL ESCALATION: both sides L3+ simultaneously -- coordination window compressed"
+            'icon': '🌀', 'color': '#dc2626',
+            'text': f"MUTUAL ESCALATION: both sides L3+ simultaneously -- coordination window compressed"
         })
 
     # Baseline fallback
     if not signals:
         signals.append({
-            'icon':  '🌏', 'color': '#6b7280',
-            'text':  'All Asia-Pacific theaters at baseline -- monitoring for coercion escalation'
+            'icon': '🌏', 'color': '#6b7280',
+            'text': 'All Asia-Pacific theaters at baseline -- monitoring for coercion escalation'
         })
 
-    return signals[:6]  # Cap at 6 signals
+    return signals[:6]
 
 
 # ============================================================
@@ -358,62 +376,61 @@ def _build_signals(posture, china, taiwan):
 # ============================================================
 def synthesize_asia_bluf():
     """
-    Main synthesis function. Reads China + Taiwan caches, produces BLUF dict.
+    Main synthesis. Reads China + Taiwan caches, produces BLUF dict.
     Returns None if both source caches are empty.
+    Full traceback logged on any exception.
     """
-    china  = _redis_get(CHINA_CACHE_KEY)
-    taiwan = _redis_get(TAIWAN_CACHE_KEY)
+    try:
+        china  = _redis_get(CHINA_CACHE_KEY)
+        taiwan = _redis_get(TAIWAN_CACHE_KEY)
 
-    if not china and not taiwan:
-        print("[Asia BLUF] Both source caches empty -- skipping synthesis")
-        return None
+        if not china and not taiwan:
+            print("[Asia BLUF] Both source caches empty -- skipping synthesis")
+            return None
 
-    trackers_live  = sum(1 for t in [china, taiwan] if t is not None)
-    trackers_total = 2
+        trackers_live = sum(1 for t in [china, taiwan] if t is not None)
 
-    posture = _determine_regional_posture(china, taiwan)
-    bluf    = _build_bluf_prose(posture, china, taiwan)
-    signals = _build_signals(posture, china, taiwan)
+        posture = _determine_regional_posture(china, taiwan)
+        bluf    = _build_bluf_prose(posture, china, taiwan)
+        signals = _build_signals(posture, china, taiwan)
 
-    # Count breached red lines
-    red_lines_breached = posture['breached_count']
+        result = {
+            'success':            True,
+            'posture_label':      posture['label'],
+            'posture_color':      posture['color'],
+            'bluf':               bluf,
+            'signals':            signals,
+            'generated_at':       datetime.now(timezone.utc).isoformat(),
+            'from_cache':         False,
+            # Analytical detail
+            'peak_level':         posture['peak_level'],
+            'cn_level':           posture['cn_level'],
+            'tw_level':           posture['tw_level'],
+            'deterrence_gap':     posture['deterrence_gap'],
+            'kinetic_pressure':   posture['kinetic_pressure'],
+            'red_lines_breached': posture['breached_count'],
+            'trackers_live':      trackers_live,
+            'trackers_total':     2,
+            'version':            '1.1.0-asia-bluf',
+        }
 
-    result = {
-        'success':            True,
-        'posture_label':      posture['label'],
-        'posture_color':      posture['color'],
-        'bluf':               bluf,
-        'signals':            signals,
-        'generated_at':       datetime.now(timezone.utc).isoformat(),
-        'from_cache':         False,
-        # Analytical detail
-        'peak_level':         posture['peak_level'],
-        'cn_level':           posture['cn_level'],
-        'tw_level':           posture['tw_level'],
-        'deterrence_gap':     posture['deterrence_gap'],
-        'kinetic_pressure':   posture['kinetic_pressure'],
-        'red_lines_breached': red_lines_breached,
-        'trackers_live':      trackers_live,
-        'trackers_total':     trackers_total,
-        'version':            '1.0.0-asia-bluf',
-    }
+        _redis_set(BLUF_CACHE_KEY, result, ttl=BLUF_CACHE_TTL)
+        print(f"[Asia BLUF] Synthesized: {posture['label']} "
+              f"(peak L{posture['peak_level']}, {posture['breached_count']} breached, "
+              f"deterrence gap L{posture['deterrence_gap']})")
+        return result
 
-    # Cache it
-    _redis_set(BLUF_CACHE_KEY, result, ttl=BLUF_CACHE_TTL)
-    print(f"[Asia BLUF] Synthesized: {posture['label']} "
-          f"(peak L{posture['peak_level']}, {red_lines_breached} breached, "
-          f"deterrence gap L{posture['deterrence_gap']})")
-
-    return result
+    except Exception as e:
+        # FULL TRACEBACK to Render logs -- the whole point of v1.1.0
+        print(f"[Asia BLUF] SYNTHESIS EXCEPTION: {e}")
+        print(f"[Asia BLUF] Traceback follows:")
+        print(traceback.format_exc())
+        raise  # Re-raise so endpoint handler returns 500 with the message
 
 
 # ============================================================
 # BACKGROUND REFRESH
 # ============================================================
-_refresh_running = False
-_refresh_lock    = threading.Lock()
-
-
 def _background_refresh_loop():
     """Sleep BOOT_DELAY, then synthesize every REFRESH_INTERVAL."""
     time.sleep(BOOT_DELAY)
@@ -422,7 +439,7 @@ def _background_refresh_loop():
         try:
             synthesize_asia_bluf()
         except Exception as e:
-            print(f"[Asia BLUF] Background refresh error: {e}")
+            print(f"[Asia BLUF] Background refresh caught: {e}")
         time.sleep(REFRESH_INTERVAL)
 
 
@@ -430,22 +447,19 @@ def _background_refresh_loop():
 # FLASK ENDPOINT REGISTRATION
 # ============================================================
 def register_asia_bluf_endpoint(app):
-    """Register /api/rhetoric/asia/bluf on the given Flask app."""
+    """Register /api/rhetoric/asia/bluf + debug endpoint on the given Flask app."""
 
     @app.route('/api/rhetoric/asia/bluf', methods=['GET'])
     def api_asia_rhetoric_bluf():
-        """
-        Asia-Pacific regional BLUF. Returns cached synthesis; regenerates
-        if cache missing. Matches ME /api/rhetoric/me/bluf contract.
-        """
-        # Try cache first
-        cached = _redis_get(BLUF_CACHE_KEY)
-        if cached:
-            cached['from_cache'] = True
-            return jsonify(cached)
-
-        # Cache miss -- synthesize on the fly
+        """Asia-Pacific regional BLUF."""
         try:
+            # Try cache first
+            cached = _redis_get(BLUF_CACHE_KEY)
+            if cached and isinstance(cached, dict):
+                cached['from_cache'] = True
+                return jsonify(cached)
+
+            # Cache miss -- synthesize on the fly
             result = synthesize_asia_bluf()
             if result is None:
                 return jsonify({
@@ -454,11 +468,58 @@ def register_asia_bluf_endpoint(app):
                 }), 404
             return jsonify(result)
         except Exception as e:
-            print(f"[Asia BLUF] Synthesis error: {e}")
-            return jsonify({'success': False, 'error': str(e)[:200]}), 500
+            # Full traceback logged inside synthesize_asia_bluf already
+            return jsonify({
+                'success': False,
+                'error':   f'{type(e).__name__}: {str(e)[:300]}',
+            }), 500
+
+    @app.route('/api/rhetoric/asia/bluf/debug', methods=['GET'])
+    def api_asia_rhetoric_bluf_debug():
+        """
+        v1.1.0 debug endpoint -- reveals what's actually in Redis for each cache.
+        Does NOT attempt synthesis. Safe to hit even when synthesis is crashing.
+        """
+        try:
+            china  = _redis_get(CHINA_CACHE_KEY)
+            taiwan = _redis_get(TAIWAN_CACHE_KEY)
+            bluf   = _redis_get(BLUF_CACHE_KEY)
+
+            def _describe(obj, name):
+                if obj is None:
+                    return {'status': 'MISSING', 'name': name}
+                if not isinstance(obj, dict):
+                    return {'status': 'BAD_TYPE', 'name': name, 'type': type(obj).__name__}
+                return {
+                    'status':          'OK',
+                    'name':            name,
+                    'top_level_keys':  sorted(obj.keys()),
+                    'has_so_what':     isinstance(obj.get('so_what'), dict),
+                    'so_what_keys':    sorted(_safe_dict(obj.get('so_what')).keys()),
+                    'has_red_lines':   isinstance(obj.get('red_lines'), list),
+                    'red_lines_count': len(_safe_list(obj.get('red_lines'))),
+                    'overall_level':   obj.get('overall_level'),
+                    'scanned_at':      obj.get('scanned_at'),
+                    'version':         obj.get('version'),
+                }
+
+            return jsonify({
+                'success':          True,
+                'redis_configured': bool(UPSTASH_REDIS_URL and UPSTASH_REDIS_TOKEN),
+                'china_cache':      _describe(china,  CHINA_CACHE_KEY),
+                'taiwan_cache':     _describe(taiwan, TAIWAN_CACHE_KEY),
+                'bluf_cache':       _describe(bluf,   BLUF_CACHE_KEY),
+                'module_version':   '1.1.0-asia-bluf',
+            })
+        except Exception as e:
+            return jsonify({
+                'success':   False,
+                'error':     f'{type(e).__name__}: {str(e)[:300]}',
+                'traceback': traceback.format_exc()[:1500],
+            }), 500
 
     # Start background refresh thread
     bg = threading.Thread(target=_background_refresh_loop, daemon=True)
     bg.start()
 
-    print("[Asia BLUF] Endpoint registered: /api/rhetoric/asia/bluf")
+    print("[Asia BLUF] Endpoints registered: /api/rhetoric/asia/bluf + /bluf/debug")
