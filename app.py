@@ -78,18 +78,6 @@ try:
 except ImportError:
     ASIA_BLUF_AVAILABLE = False
     print("[Asia Backend] ⚠️ Asia regional BLUF not available")
-    print("[Asia Backend] ✅ China rhetoric tracker loaded")
-except ImportError:
-    CHINA_RHETORIC_AVAILABLE = False
-    print("[Asia Backend] ⚠️ China rhetoric tracker not available")
-
-try:
-    from china_stability import register_china_stability_endpoints
-    CHINA_STABILITY_AVAILABLE = True
-    print("[Asia Backend] ✅ China stability module loaded")
-except ImportError:
-    CHINA_STABILITY_AVAILABLE = False
-    print("[Asia Backend] ⚠️ China stability module not available")
 
 try:
     from china_stability import register_china_stability_endpoints
