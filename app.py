@@ -2820,6 +2820,32 @@ def health():
     })
 
 
+@app.route('/debug/routes', methods=['GET'])
+def debug_routes():
+    """
+    Temporary diagnostic endpoint -- lists every Flask route + allowed methods.
+    Confirms what's actually registered in the URL map.
+    """
+    routes = []
+    for rule in app.url_map.iter_rules():
+        routes.append({
+            'rule':     str(rule),
+            'methods':  sorted(rule.methods - {'HEAD', 'OPTIONS'}),
+            'endpoint': rule.endpoint,
+        })
+    routes.sort(key=lambda r: r['rule'])
+    return jsonify({
+        'total_routes':       len(routes),
+        'taiwan_routes':      [r for r in routes if 'taiwan' in r['rule']],
+        'china_routes':       [r for r in routes if 'china' in r['rule']],
+        'rhetoric_routes':    [r for r in routes if 'rhetoric' in r['rule']],
+        'all_routes':         routes,
+        'china_loaded_flag':  CHINA_RHETORIC_AVAILABLE,
+        'taiwan_loaded_flag': TAIWAN_RHETORIC_AVAILABLE,
+        'asia_bluf_flag':     ASIA_BLUF_AVAILABLE,
+    })
+
+
 # ========================================
 # START BACKGROUND REFRESH ON BOOT
 # ========================================
