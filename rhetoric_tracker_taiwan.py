@@ -1,100 +1,84 @@
 """
-Asifah Analytics -- Taiwan Rhetoric & Deterrence Tracker
+Asifah Analytics -- China Rhetoric & Coercion Tracker
 v1.0.0 -- March 2026
 
 ANALYTICAL FRAME:
-This tracker answers the mirror question to rhetoric_tracker_china.py:
+This tracker answers one question:
 
-  "How is Taiwan and its coalition responding to Chinese coercion --
-   and is Taiwan's own posture hardening in ways that could trigger
-   a PLA response cycle?"
+  "Will China attempt to annex / take back Taiwan by force?"
+  (plus: is friction with Japan and/or the United States escalating?)
 
-Taiwan is not a passive actor. Lai Ching-te independence language,
-US arms deals, senior US official visits to Taipei, and Japan naming
-Taiwan as a security concern all TRIGGER PLA exercise response cycles.
-This tracker catches both the defensive deterrence posture AND the
-inadvertent escalation signals from the Taiwan side.
+The CCP does not telegraph operations the way Iran does. Signals are
+institutional and formulaic -- meaning SPIKES above baseline are the
+signal, not the raw volume. A PLA MND spokesperson saying "shoot fish
+in a barrel" is orders of magnitude more significant than ten routine
+"safeguard sovereignty" statements.
 
 DUAL DASHBOARD:
 
-  OUTBOUND -- "Is Taiwan hardening its posture / triggering PLA response?"
-    Tracks: Presidential independence signals (Lai Ching-te),
-            ROC defense budget / capability announcements,
-            US arms acquisition signals,
-            Diplomatic recognition pushes / foreign visits,
-            Taiwan asymmetric warfare posture
+  OUTBOUND -- "Is China moving toward coercive action?"
+    Tracks: Xi/CMC authorization language, PLA exercise escalation,
+            MFA/Global Times rhetoric spikes, TAO coercion signals,
+            PLAN/PLAAF deployment language, economic coercion signals
 
-  INBOUND -- "What is the PLA / Beijing signaling at Taiwan right now?"
-    READS China rhetoric fingerprint from Redis (written by rhetoric_tracker_china.py)
-    Also tracks: PLA ADIZ violations (raw count from Taiwan MND),
-                 PLA exercise announcements targeting Taiwan,
-                 Beijing coercion signals (TAO, MFA) directed at Taiwan,
-                 Economic coercion signals
+  INBOUND -- "What is the status quo coalition signaling back?"
+    Tracks: Taiwan MND ADIZ violation counts, ROC defense posture,
+            US 7th Fleet / arms sales / official visits,
+            Japan JSDF posture / Senkaku signals,
+            AUKUS/Australia deployment language
 
-  The INBOUND dashboard is the cross-theater integration layer --
-  Taiwan's inbound IS China's outbound. We don't re-scan for it;
-  we read the fingerprint China already wrote.
+FIVE OUTBOUND THREAT VECTORS:
+  1. XI / CMC AUTHORIZATION  -- top-level political signaling, timeline language
+  2. PLA OPERATIONAL POSTURE -- exercise escalation, live fire, blockade drills
+  3. MFA / GLOBAL TIMES      -- rhetoric spikes above formulaic baseline
+  4. TAO COERCION            -- Taiwan Affairs Office pressure/incentive swings
+  5. ECONOMIC COERCION       -- trade restrictions, semiconductor, rare earth signals
 
-FIVE OUTBOUND VECTORS (Taiwan side):
-  1. LAI / PRESIDENTIAL     -- independence language, status quo signals,
-                               provocation language that triggers PLA
-  2. ROC DEFENSE POSTURE    -- defense budget, capability, readiness signals
-  3. US PARTNERSHIP         -- arms acquisition, joint exercises, US visits
-  4. DIPLOMATIC POSTURE     -- recognition pushes, international space signals,
-                               UN bids, foreign minister visits
-  5. ASYMMETRIC / RESILIENCE -- civilian defense, drone program, reserve reform,
-                               civil defense buildup signals
+THREE INBOUND VECTORS:
+  1. TAIWAN DEFENSE          -- ADIZ violations, scrambles, MND posture signals
+  2. US COMMITMENT           -- 7th Fleet ops, arms sales, senior visits, FONOPS
+  3. JAPAN / REGIONAL        -- JSDF posture, Senkaku, AUKUS, basing signals
 
-FOUR INBOUND VECTORS (China pressure on Taiwan):
-  1. PLA DIRECT PRESSURE    -- read from China fingerprint (pla_level)
-  2. XI / CMC SIGNALS       -- read from China fingerprint (xi_level)
-  3. ECONOMIC COERCION      -- read from China fingerprint (econ_level)
-  4. TAO / MFA PRESSURE     -- read from China fingerprint (mfa_level + tao_level)
+SCORING WEIGHTS:
+  Xi/CMC Authorization    weight 3.5
+  PLA Operational         weight 3.0
+  MFA/Global Times        weight 1.5
+  TAO Coercion            weight 1.5
+  Economic Coercion       weight 1.0
+  Convergence bonus:      +10 if 3+ outbound vectors simultaneously at L3+
+  Japan friction bonus:   +5 if Japan vector at L3+
 
-SCORING:
-  Outbound weights:
-    Lai/Presidential    3.0 (independence language = primary PLA trigger)
-    ROC Defense         2.0
-    US Partnership      2.5 (US visits/arms = guaranteed PLA response cycle)
-    Diplomatic Posture  1.5
-    Asymmetric          1.0
-  Inbound:
-    Computed from China fingerprint Redis read -- no independent scan needed
-
-TRIPWIRES -- Taiwan side (auto-escalate to L4):
-  - Lai Ching-te uses "Taiwan is a country" / "two states" language
-  - Senior US Cabinet official visits Taipei
-  - Taiwan declares independence formally
-  - Taiwan US defense treaty announced
-  - Taiwan requests UN General Assembly seat
-  - Taiwan-Japan mutual defense commitment announced
+KEY TRIPWIRES (auto-escalate to L4+):
+  - Named exercise announced (Joint Sword, Justice Mission, Strait Thunder)
+  - "Reunification by force" language from Xi or CMC directly
+  - PLAN carrier enters Taiwan Strait east side
+  - PLA median line crossings exceed 20 aircraft in 24h
+  - US senior official visits Taipei (triggers PLA response cycle)
+  - Japan explicitly names Taiwan as security concern at minister level
 
 SOURCE STRATEGY:
-  Primary RSS:  Focus Taiwan (CNA), Taipei Times, Taiwan News,
-                Taiwan MND ADIZ reports, USNI News (US commitment),
-                Nikkei Asia (Japan-Taiwan), SCMP (China reaction)
-  Secondary:    GDELT (eng, zho traditional), Google News RSS (EN + ZH-TW)
-  Reddit:       r/taiwan, r/Taiwanese, r/CredibleDefense, r/geopolitics,
-                r/LessCredibleDefence, r/GlobalPowers, r/Sino,
-                r/anime_titties, r/Japan, r/Philippines
+  Primary RSS:  PRC MND (EN), Global Times, Xinhua, China Military,
+                Taiwan MND ADIZ, Focus Taiwan (CNA), Taipei Times,
+                USNI News, SCMP, Nikkei Asia, CSIS AMTI
+  Secondary:    GDELT (eng, zho, jpn), Google News RSS (EN + ZH)
+  Reddit:       r/CredibleDefense, r/Sino, r/taiwan, r/geopolitics,
+                r/LessCredibleDefence, r/GlobalPowers, r/OSINT,
+                r/anime_titties, r/Philippines, r/Japan, r/australia
   Telegram:     Routed through telegram_signals_asia shared cache
-  Cross-theater: READS rhetoric:crosstheater:fingerprints (China key)
 
 REDIS KEYS:
-  Cache:         rhetoric:taiwan:latest
-  Legacy:        taiwan_rhetoric_cache
-  History:       rhetoric:taiwan:history
-  Cross-theater: rhetoric:crosstheater:fingerprints (READS china key,
-                 WRITES taiwan key)
+  Cache:         rhetoric:china:latest
+  Legacy:        china_rhetoric_cache
+  History:       rhetoric:china:history
+  Cross-theater: rhetoric:crosstheater:fingerprints (WRITES)
 
 ENDPOINTS:
-  GET /api/rhetoric/taiwan
-  GET /api/rhetoric/taiwan/summary
-  GET /api/rhetoric/taiwan/history
+  GET /api/rhetoric/china
+  GET /api/rhetoric/china/summary
+  GET /api/rhetoric/china/history
 
 CHANGELOG:
-  v1.0.0 (2026-03-24): Initial build -- mirror dual dashboard,
-                        cross-theater Redis integration with China tracker
+  v1.0.0 (2026-03-24): Initial build -- dual dashboard, Taiwan Strait focus
 
 COPYRIGHT 2025-2026 Asifah Analytics. All rights reserved.
 """
@@ -112,15 +96,16 @@ from flask import jsonify, request
 
 # Signal interpreter (Red Lines + Historical + So What)
 try:
-    from taiwan_signal_interpreter import (
+    from china_signal_interpreter import (
         check_red_lines,
         build_so_what,
         build_historical_matches,
+        build_top_signals,
     )
     _INTERPRETER_AVAILABLE = True
-    print("[Taiwan Rhetoric] Signal interpreter loaded")
+    print("[China Rhetoric] Signal interpreter loaded")
 except ImportError as e:
-    print(f"[Taiwan Rhetoric] WARNING: taiwan_signal_interpreter not available ({e})")
+    print(f"[China Rhetoric] WARNING: china_signal_interpreter not available ({e})")
     _INTERPRETER_AVAILABLE = False
 
 # ============================================
@@ -134,14 +119,15 @@ GDELT_BASE_URL      = 'https://api.gdeltproject.org/api/v2/doc/doc'
 try:
     from telegram_signals_asia import fetch_asia_telegram_signals
     TELEGRAM_AVAILABLE = True
-    print("[Taiwan Rhetoric] Telegram signals available")
+    print("[China Rhetoric] Telegram signals available")
 except ImportError:
     TELEGRAM_AVAILABLE = False
-    print("[Taiwan Rhetoric] Telegram signals not available -- RSS/GDELT only")
+    print("[China Rhetoric] Telegram signals not available -- RSS/GDELT only")
 
-RHETORIC_CACHE_KEY        = 'rhetoric:taiwan:latest'
-RHETORIC_CACHE_KEY_LEGACY = 'taiwan_rhetoric_cache'
-HISTORY_KEY               = 'rhetoric:taiwan:history'
+RHETORIC_CACHE_KEY        = 'rhetoric:china:latest'
+RHETORIC_CACHE_KEY_LEGACY = 'china_rhetoric_cache'
+HISTORY_KEY               = 'rhetoric:china:history'
+BASELINE_KEY              = 'rhetoric_baseline:china'
 CROSSTHEATER_KEY          = 'rhetoric:crosstheater:fingerprints'
 
 RHETORIC_CACHE_TTL  = 6 * 3600
@@ -155,12 +141,12 @@ _rhetoric_lock    = threading.Lock()
 # ESCALATION LEVELS
 # ============================================
 ESCALATION_LEVELS = {
-    0: {'label': 'Baseline',        'color': '#6b7280', 'description': 'Normal defense posture, no significant signals'},
-    1: {'label': 'Rhetoric',        'color': '#3b82f6', 'description': 'Standard defense statements, routine US engagement'},
-    2: {'label': 'Warning',         'color': '#f59e0b', 'description': 'Elevated defense signals, arms acquisition, mild provocation'},
-    3: {'label': 'Confrontation',   'color': '#f97316', 'description': 'Defense budget surge, senior US visit, Lai independence signals'},
-    4: {'label': 'High Alert',      'color': '#ef4444', 'description': 'Major US arms deal, Taiwan-US defense commitment, formal independence push'},
-    5: {'label': 'Active Conflict', 'color': '#dc2626', 'description': 'Independence declaration, full mobilization, active hostilities'},
+    0: {'label': 'Baseline',        'color': '#6b7280', 'description': 'Routine statements, no significant signals'},
+    1: {'label': 'Rhetoric',        'color': '#3b82f6', 'description': 'Standard sovereignty language, formulaic warnings'},
+    2: {'label': 'Warning',         'color': '#f59e0b', 'description': 'Elevated exercise tempo, escalatory MFA language'},
+    3: {'label': 'Confrontation',   'color': '#f97316', 'description': 'Named exercises, live-fire drills, explicit threat signals'},
+    4: {'label': 'Coercion',        'color': '#ef4444', 'description': 'Blockade posture, direct authorization language from Xi/CMC'},
+    5: {'label': 'Active Conflict', 'color': '#dc2626', 'description': 'Confirmed military action, blockade in effect, invasion underway'},
 }
 
 
@@ -169,320 +155,381 @@ ESCALATION_LEVELS = {
 # ============================================
 ACTORS = {
 
-    # ── OUTBOUND ACTORS (Taiwan-side signals) ────────────────────
+    # ── OUTBOUND ACTORS ──────────────────────────────────────────
 
-    'lai_presidential': {
-        'name': 'Lai Ching-te / Presidential Office',
-        'flag': '🇹🇼',
+    'xi_cmc': {
+        'name': 'Xi Jinping / CMC',
+        'flag': '🇨🇳',
         'icon': '👁️',
         'color': '#dc2626',
         'dashboard': 'outbound',
-        'role': 'Presidential Authorization / Independence Signals',
-        'description': 'Lai Ching-te is the primary PLA trigger on the Taiwan side. Independence-adjacent language from the Presidential Office almost always generates a PLA exercise response cycle within days.',
+        'role': 'Supreme Authorization Authority',
+        'description': 'Xi as CMC chairman -- final authority on PLA operations. Direct Xi statements on Taiwan are the highest-value signal in this tracker.',
         'keywords': [
-            # Lai direct
-            'lai ching-te', 'lai chingte', 'lai president taiwan',
-            'taiwan president warns', 'taiwan president says',
-            'taiwan president military', 'roc president',
-            # Independence signals -- the primary PLA trigger
-            'taiwan is a country', 'taiwan sovereign state',
-            'two states', 'two countries', 'taiwan independence',
-            'declare independence', 'independence referendum',
-            'taiwan not part of china', 'taiwan separate nation',
-            'taiwan self-determination', 'taiwan status quo',
-            'taiwan sovereignty', 'maintain taiwan sovereignty',
-            # Lai specific provocation language
-            'lai separatist', 'lai independence speech',
-            'lai warns china', 'lai on reunification',
-            'lai rejects reunification', 'lai rejects one china',
-            'lai one china', 'taiwan two states theory',
-            # Presidential office general
-            'presidential office taiwan', 'taipei presidential',
-            'taiwan government warns', 'taiwan government says',
-            # Traditional Chinese
-            '賴清德', '台灣總統', '台獨',
-            '兩國論', '台灣主權', '台灣獨立',
-            '總統府', '台灣是主權國家',
-        ],
-        'baseline_statements_per_week': 5,
-        'tripwires': [
-            'taiwan is a country',
-            'two states',
-            'declare independence',
-            'taiwan not part of china',
-            'lai two states',
-            'independence referendum',
-        ],
-    },
-
-    'roc_defense': {
-        'name': 'ROC Defense Posture',
-        'flag': '🇹🇼',
-        'icon': '⚔️',
-        'color': '#b91c1c',
-        'dashboard': 'outbound',
-        'role': 'Military Readiness / Capability Signals',
-        'description': 'ROC MND defense posture signals -- budget announcements, capability acquisitions, readiness changes, conscription reform. Rising defense investment signals Taiwan hardening for a long conflict.',
-        'keywords': [
-            # Defense budget
-            'taiwan defense budget', 'taiwan military spending',
-            'taiwan gdp defense', 'taiwan 3 percent defense',
-            'taiwan defense increase', 'taiwan special defense budget',
-            'taiwan arms procurement', 'taiwan weapons budget',
-            # Capability signals
-            'taiwan patriot', 'taiwan himars', 'taiwan f-16',
-            'taiwan submarine', 'taiwan hai kun',
-            'taiwan drone program', 'taiwan drone',
-            'taiwan missile', 'taiwan harpoon',
-            'taiwan stinger', 'taiwan javelin',
-            'taiwan asymmetric warfare', 'taiwan porcupine',
-            'taiwan overall defense concept', 'odc taiwan',
-            # Readiness / mobilization
-            'taiwan military exercise', 'han kuang',
-            'taiwan combat readiness', 'taiwan reserve reform',
-            'taiwan conscription', 'taiwan extended conscription',
-            'taiwan mobilization', 'taiwan civil defense',
-            'taiwan wartime', 'taiwan full-scale exercise',
-            # JSDF / US joint exercises
-            'taiwan us joint exercise', 'taiwan japan exercise',
-            'taiwan us training', 'taiwan military cooperation',
-            # MND official statements
-            'taiwan mnd', 'taiwan defense ministry',
-            'taiwan ministry defense', 'taiwan armed forces',
-            'taiwan military', 'republic of china military',
-            'roc military', 'roc armed forces',
-            # Traditional Chinese
-            '台灣國防部', '國防預算', '漢光演習',
-            '台灣軍事', '兵役', '國軍', '海鯤',
-        ],
-        'baseline_statements_per_week': 10,
-        'tripwires': [
-            'han kuang exercise',
-            'taiwan extends conscription',
-            'taiwan emergency mobilization',
-            'taiwan declares emergency',
-        ],
-    },
-
-    'us_partnership': {
-        'name': 'US-Taiwan Partnership',
-        'flag': '🇺🇸',
-        'icon': '🤝',
-        'color': '#1d4ed8',
-        'dashboard': 'outbound',
-        'role': 'US Arms / Visits / Commitments -- Primary PLA Trigger',
-        'description': 'US-Taiwan relationship signals. Every senior US official visit to Taipei and every major arms sale approval triggers a PLA exercise response cycle. This actor captures the signals that Beijing is watching most closely.',
-        'keywords': [
-            # US official visits -- each one triggers a PLA response
-            'us official visits taipei', 'us senator taiwan',
-            'us congressman taiwan', 'us secretary taiwan',
-            'us cabinet taiwan', 'us official taipei',
-            'pelosi taiwan', 'us delegation taiwan',
-            'us lawmaker taiwan', 'us military delegation taiwan',
-            # Arms sales -- specific systems that change calculus
-            'us arms sale taiwan', 'us weapons taiwan',
-            'taiwan arms sale approved', 'f-16 taiwan sale',
-            'taiwan m1 abrams', 'taiwan stinger sale',
-            'taiwan harpoon sale', 'taiwan himars sale',
-            'taiwan patriot sale', 'taiwan javelin sale',
-            'taiwan submarine sale', 'us taiwan arms',
-            # Joint defense / treaty language
-            'us taiwan defense treaty', 'us taiwan mutual defense',
-            'us taiwan alliance', 'us committed taiwan',
-            'us defend taiwan', 'us would defend taiwan',
-            'biden defend taiwan', 'trump taiwan defense',
-            'us taiwan relations act', 'tra invoked',
-            # Taiwan Relations Act / TAIPEI Act
-            'taiwan relations act', 'taipei act',
-            'us taiwan security commitment',
-            # Military cooperation
-            'us taiwan joint exercise', 'us taiwan military cooperation',
-            'us military advisor taiwan', 'us troops taiwan',
-            'us taiwan military training',
-            # Intelligence / tech sharing
-            'us taiwan intelligence', 'us taiwan technology',
-            'us taiwan chip cooperation', 'tsmc us',
-            # Traditional Chinese
-            '美台軍售', '美台關係', '台灣關係法',
-            '美國訪台', '美台防衛', '聯合演習',
-        ],
-        'baseline_statements_per_week': 6,
-        'tripwires': [
-            'us official visits taipei',
-            'us cabinet official taipei',
-            'us taiwan defense treaty',
-            'us troops taiwan deployed',
-            'us taiwan mutual defense announced',
-        ],
-    },
-
-    'diplomatic_posture': {
-        'name': 'Taiwan Diplomatic Posture',
-        'flag': '🇹🇼',
-        'icon': '🌐',
-        'color': '#0891b2',
-        'dashboard': 'outbound',
-        'role': 'International Space / Recognition Pushes',
-        'description': 'Taiwan international space signals -- formal diplomatic recognition gains, UN participation pushes, foreign minister visits. Beijing responds aggressively to any expansion of Taiwan\'s international space.',
-        'keywords': [
-            # Diplomatic recognition
-            'taiwan diplomatic recognition', 'recognizes taiwan',
-            'country recognizes taiwan', 'establishes relations taiwan',
-            'taiwan formal relations', 'taiwan ally',
-            'taiwan loses ally', 'switches recognition taiwan',
-            'taiwan only has', 'taiwan allies',
-            # UN / multilateral
-            'taiwan un bid', 'taiwan united nations',
-            'taiwan who participation', 'taiwan icao',
-            'taiwan international organizations',
-            'meaningful participation taiwan',
-            # Foreign minister / visits
-            'taiwan foreign minister', 'joseph wu',
-            'taiwan mofa', 'taiwan diplomat',
-            'foreign official visits taiwan',
-            'eu taiwan', 'europe taiwan relations',
-            'g7 taiwan', 'nato taiwan',
-            'india taiwan', 'czech taiwan',
-            'lithuania taiwan',
-            # Pacific allies
-            'taiwan pacific ally', 'palau taiwan',
-            'marshall islands taiwan', 'tuvalu taiwan',
-            # Trade agreements
-            'taiwan trade agreement', 'taiwan fta',
-            'taiwan us trade', 'taiwan eu trade',
-            # Traditional Chinese
-            '台灣外交', '台灣邦交', '外交部',
-            '台灣國際空間', '邦交國',
-        ],
-        'baseline_statements_per_week': 4,
-        'tripwires': [
-            'taiwan requests un membership',
-            'major country recognizes taiwan',
-            'taiwan eu formal relations',
-            'g7 taiwan security commitment',
-        ],
-    },
-
-    'asymmetric_resilience': {
-        'name': 'Asymmetric / Civil Defense',
-        'flag': '🇹🇼',
-        'icon': '🛡️',
-        'color': '#7c3aed',
-        'dashboard': 'outbound',
-        'role': 'Porcupine Strategy / Civil Defense / Resilience Signals',
-        'description': 'Taiwan asymmetric warfare and civil defense buildup. The "porcupine strategy" -- making Taiwan too costly to invade -- is a deterrence signal that also raises Beijing\'s perception of the cost of action.',
-        'keywords': [
-            # Asymmetric / porcupine
-            'taiwan porcupine strategy', 'overall defense concept',
-            'taiwan asymmetric', 'taiwan guerrilla',
-            'taiwan drone swarm', 'taiwan unmanned',
-            'taiwan sea mines', 'taiwan anti-ship',
-            'taiwan mobile missile', 'taiwan dispersal',
-            # Civil defense
-            'taiwan civil defense', 'taiwan air raid drill',
-            'taiwan bomb shelter', 'taiwan emergency drill',
-            'taiwan evacuation drill', 'taiwan blackout drill',
-            'taiwan wartime drill', 'taiwan resilience',
-            # Reserve / manpower reform
-            'taiwan reserve reform', 'taiwan reserve training',
-            'taiwan conscription extension', 'taiwan one year service',
-            'taiwan military training extended',
-            # Infrastructure resilience
-            'taiwan underground base', 'taiwan hardened',
-            'taiwan dispersed basing', 'taiwan survivability',
-            'taiwan critical infrastructure',
-            # Domestic production
-            'taiwan indigenous defense', 'taiwan domestic weapons',
-            'taiwan domestic submarine', 'taiwan indigenous fighter',
-            'taiwan ching-kuo', 'taiwan jet production',
-            # Traditional Chinese
-            '台灣不對稱', '全民防衛', '民防',
-            '防空演習', '避難演習', '後備軍',
+            'xi jinping taiwan', 'xi jinping reunification',
+            'xi jinping military', 'xi orders pla',
+            'xi inspects troops', 'xi addresses military',
+            'xi jinping pla', 'xi warns taiwan',
+            'xi jinping warns', 'xi jinping threatens',
+            'xi says taiwan', 'xi on taiwan',
+            'reunification is inevitable', 'reunification by force',
+            'china will be reunified', 'taiwan must be reunified',
+            'historical inevitability taiwan',
+            'xi jinping speech taiwan', 'xi jinping address',
+            'xi jinping military commission',
+            'central military commission taiwan',
+            'cmc taiwan', 'cmc orders', 'cmc directive',
+            'central military commission orders',
+            'military commission approves',
+            'reunification timeline', 'by 2027', 'by 2035', 'by 2049',
+            'historical mission taiwan', 'sacred mission taiwan',
+            'complete reunification', 'resolve taiwan question',
+            'taiwan question must be resolved',
+            '习近平 台湾', '习近平 军队', '习近平 解放军',
+            '习近平 统一', '统一台湾', '武力统一',
+            '中央军委', '两岸统一', '完成统一',
+            '台湾问题', '神圣使命', '历史使命',
         ],
         'baseline_statements_per_week': 3,
         'tripwires': [
-            'taiwan nationwide civil defense drill',
-            'taiwan activates reserve forces',
-            'taiwan emergency shelter order',
+            'rare earth export ban',
+            'china blockades taiwan ports',
+            'tsmc targeted',
         ],
     },
 
-    # ── INBOUND ACTORS (China pressure -- read from Redis fingerprint) ──
-
-    'pla_pressure': {
-        'name': 'PLA Direct Pressure',
+    'pla_operational': {
+        'name': 'PLA / Eastern Theater Command',
         'flag': '🇨🇳',
         'icon': '⚔️',
-        'color': '#dc2626',
-        'dashboard': 'inbound',
-        'role': 'PLA Exercise / ADIZ / Operational Pressure on Taiwan',
-        'description': 'PLA operational pressure on Taiwan -- read primarily from China rhetoric tracker fingerprint (pla_level). Also supplemented by Taiwan MND ADIZ reports.',
+        'color': '#b91c1c',
+        'dashboard': 'outbound',
+        'role': 'Military Operations / Exercise Escalation',
+        'description': 'PLA operational signals -- exercise announcements, live-fire drills, carrier deployments, median line crossings. Eastern Theater Command is the primary actor for Taiwan operations.',
         'keywords': [
-            # These are for the supplemental article scan only --
-            # primary data comes from China fingerprint
-            'pla exercise taiwan', 'pla drills taiwan',
-            'pla aircraft taiwan', 'median line crossing',
-            'adiz violation taiwan', 'pla bomber taiwan',
-            'pla carrier taiwan', 'eastern theater taiwan',
-            'pla encircles taiwan', 'pla blockade',
             'joint sword', 'strait thunder', 'justice mission',
-            '解放军台湾', '东部战区', '共机扰台', '联合利剑',
+            'pla exercise taiwan', 'pla drills taiwan',
+            'pla live fire', 'eastern theater command',
+            'eastern theater exercise', 'eastern theater drill',
+            'pla encirclement', 'pla blockade drill',
+            'pla taiwan drill', 'pla taiwan exercise',
+            'chinese carrier taiwan', 'plan carrier strait',
+            'liaoning taiwan', 'shandong taiwan', 'fujian taiwan',
+            'plan warship taiwan', 'chinese warship strait',
+            'plan enters strait', 'plan east of taiwan',
+            'chinese navy taiwan', 'plan deployment taiwan',
+            'pla aircraft taiwan', 'plaaf taiwan',
+            'median line violation', 'median line crossing',
+            'adiz violation taiwan', 'taiwan adiz intrusion',
+            'pla crosses median line', 'j-20 taiwan',
+            'h-6 taiwan', 'pla bomber taiwan',
+            'pla amphibious', 'pla landing exercise',
+            'amphibious assault china', 'type 075 taiwan',
+            'civilian ferry military', 'roll-on roll-off military',
+            'pla invasion drill', 'pla blockade taiwan',
+            'pla rocket force taiwan', 'df-26 taiwan',
+            'df-21d taiwan', 'df-17 taiwan',
+            'pla missile taiwan', 'rocket force exercise',
+            'pla combat readiness', 'pla readiness patrol',
+            'pla joint patrol taiwan', 'pla encircles taiwan',
+            '东部战区', '解放军演习', '解放军台湾',
+            '联合利剑', '海峡雷霆', '正义使命',
+            '解放军实弹', '航母台湾', '中线越线',
+            '火箭军', '东风导弹', '两栖登陆',
         ],
         'baseline_statements_per_week': 15,
         'tripwires': [
             'joint sword',
             'strait thunder',
-            'pla live fire taiwan',
+            'justice mission',
             'pla encircles taiwan',
+            'pla blockade',
+            'median line crossing',
+            'eastern theater live fire',
+            'pla missile launch taiwan',
         ],
     },
 
-    'beijing_coercion': {
-        'name': 'Beijing Political Coercion',
+    'mfa_globaltimes': {
+        'name': 'MFA / Global Times',
         'flag': '🇨🇳',
         'icon': '📢',
         'color': '#7c3aed',
-        'dashboard': 'inbound',
-        'role': 'Xi / MFA / TAO Coercion Directed at Taiwan',
-        'description': 'Beijing political coercion signals directed at Taiwan -- Xi authorization language, MFA threats, TAO pressure. Read primarily from China fingerprint (xi_level, mfa_level, tao_level).',
+        'dashboard': 'outbound',
+        'role': 'Rhetoric Escalation / Policy Signaling',
+        'description': 'MFA spokesperson statements and Global Times editorials -- formulaic 95% of the time. Score spikes above baseline only. Global Times is a deliberate CCP signaling instrument.',
         'keywords': [
-            'xi jinping warns taiwan', 'beijing warns taiwan',
-            'china threatens taiwan', 'mfa warns taiwan',
-            'tao warns taiwan', 'tao warns separatists',
-            'independence means war', 'china will reunify',
-            'china warns us taiwan', 'reunification by force',
-            'shoot fish in a barrel', 'firepower package',
-            '习近平警告台湾', '北京警告台湾', '独立即战争',
+            'mfa spokesperson taiwan', 'foreign ministry taiwan',
+            'china foreign ministry warns', 'beijing warns taiwan',
+            'china warns taiwan', 'china warns us taiwan',
+            'zhao lijian taiwan', 'wang wenbin taiwan',
+            'lin jian taiwan', 'mao ning taiwan',
+            'china urges us', 'china urges taiwan',
+            'china opposes taiwan', 'china firmly opposes',
+            'stop interfering taiwan', 'do not play with fire',
+            'those who play with fire', 'fire will burn themselves',
+            'cannon fodder taiwan', 'protection fees taiwan',
+            'shoot fish in a barrel', 'fish in a barrel',
+            'firepower package will be delivered',
+            'nowhere to hide', 'military force is on the table',
+            'use of force is not ruled out', 'peace or war',
+            'drastic measures', 'countermeasures taiwan',
+            'stern warning taiwan',
+            'global times editorial taiwan',
+            'global times warns taiwan', 'global times us taiwan',
+            'global times pla taiwan', 'hu xijin taiwan',
+            '外交部 台湾', '发言人 台湾', '中国警告',
+            '玩火者必自焚', '不排除使用武力', '环球时报 台湾',
+            '采取一切必要措施', '严正警告',
         ],
-        'baseline_statements_per_week': 12,
+        'baseline_statements_per_week': 20,
         'tripwires': [
-            'independence means war',
-            'reunification by force',
             'shoot fish in a barrel',
+            'firepower package will be delivered',
+            'use of force is not ruled out',
+            'military force is on the table',
+            'drastic measures',
         ],
     },
 
-    'economic_pressure': {
-        'name': 'China Economic Pressure',
+    'tao': {
+        'name': 'Taiwan Affairs Office (TAO)',
         'flag': '🇨🇳',
-        'icon': '💹',
-        'color': '#d97706',
-        'dashboard': 'inbound',
-        'role': 'Trade Bans / Rare Earth / Financial Pressure on Taiwan',
-        'description': 'China economic coercion directed at Taiwan and its coalition partners. Read primarily from China fingerprint (econ_level). Semiconductor and rare earth signals are particularly significant.',
+        'icon': '🏛️',
+        'color': '#0891b2',
+        'dashboard': 'outbound',
+        'role': 'Cross-Strait Policy / Coercion Signals',
+        'description': 'TAO is the PRC body directly responsible for Taiwan policy. Shifts from incentive to coercion language are leading indicators of political decision to escalate.',
         'keywords': [
+            'taiwan affairs office', 'tao statement', 'tao taiwan',
+            'chen binhua', 'zhu fenglian', 'tao spokesperson',
+            'taiwan affairs office warns', 'taiwan affairs office says',
+            'cross-strait relations', 'cross strait tensions',
+            'reunification incentives', 'taiwan economic benefits',
+            'taiwan travel ban', 'taiwan trade restriction',
+            'tao punishes taiwan', 'tao sanctions taiwan',
+            'tao warns separatists', 'dpp separatist',
+            'lai ching-te separatist', 'independence means war',
+            'taiwan independence means',
+            '国台办', '两岸关系', '台湾当局',
+            '分裂分子', '台独', '台湾独立',
+            '两岸统一大业', '反分裂',
+        ],
+        'baseline_statements_per_week': 8,
+        'tripwires': [
+            'independence means war',
+            'taiwan independence means war',
+            'tao punishes',
+        ],
+    },
+
+    'economic_coercion': {
+        'name': 'Economic Coercion Signals',
+        'flag': '🇨🇳',
+        'icon': '📊',
+        'color': '#d97706',
+        'dashboard': 'outbound',
+        'role': 'Economic Pressure / TSMC / Rare Earth Signals',
+        'description': 'China economic coercion against Taiwan, US, and Japan. Semiconductor, rare earth, and trade restriction signals are gray-zone tools that can precede or accompany military escalation.',
+        'keywords': [
+            'tsmc china threat', 'china tsmc', 'semiconductor china taiwan',
+            'chip war china taiwan', 'china export controls chips',
+            'china bans semiconductor', 'chip blockade',
+            'china rare earth ban', 'rare earth export controls',
+            'china restricts rare earth', 'china magnet ban',
+            'gallium germanium ban', 'china critical minerals',
             'china bans taiwan', 'china trade ban taiwan',
-            'china sanctions taiwan', 'china rare earth taiwan',
-            'china chip ban taiwan', 'china economic pressure taiwan',
-            'tsmc china threat', 'china blockade taiwan economy',
-            'china financial pressure taiwan',
-            '对台贸易限制', '经济制裁台湾', '稀土台湾',
+            'china sanctions taiwan', 'china restricts taiwan imports',
+            'china trade restriction taiwan',
+            'china economic coercion', 'gray zone taiwan',
+            'china blockade taiwan economy', 'china financial pressure',
+            '稀土出口管制', '半导体封锁', '对台经济制裁',
+            '台湾贸易限制', '芯片战争',
         ],
         'baseline_statements_per_week': 4,
         'tripwires': [
+            'rare earth export ban',
             'china blockades taiwan ports',
-            'rare earth total ban taiwan',
-            'china seizes tsmc',
+            'tsmc targeted',
+        ],
+    },
+
+    # ── CROSS-THEATER OUTBOUND ACTOR ─────────────────────────────
+    # v1.2.0 (April 2026) — China-Iran Axis as dedicated actor.
+    # China's role in enabling Iran is architecturally different
+    # from its economic coercion of Taiwan. ISR/logistics support
+    # to Iran during US-Iran conflict is an aggressive cross-theater
+    # projection that belongs in OUTBOUND. Sub-scored across four
+    # categories (weapons, ISR, dual-use, diplomatic) — see
+    # CHINA_IRAN_AXIS_TRIGGERS below for the ladder.
+    'china_iran_axis': {
+        'name': 'China → Iran (Axis Support)',
+        'flag': '🇮🇷',
+        'icon': '🛰️',
+        'color': '#dc2626',
+        'dashboard': 'outbound',
+        'role': 'Cross-Theater — Chinese Support Enabling Iran',
+        'description': (
+            'China as active supporter of Iran. Sub-categorized across: '
+            'weapons/hardware transfer (MANPADS, missiles, components), '
+            'ISR/satellite cooperation (TEE-01B, Emposat, Earth Eye Co — '
+            'FT Apr 2026), dual-use logistics (chemicals, fuel, electronics), '
+            'and diplomatic cover (UN shields, sanctions blocking). '
+            'The ISR dimension is particularly consequential as it enables '
+            'kinetic targeting of US installations.'
+        ),
+        'keywords': [
+            # Direct mentions (both word orders)
+            'china iran', 'iran china', 'chinese iran', 'iran chinese',
+            'beijing tehran', 'tehran beijing', 'china tehran', 'beijing iran',
+            # Material / capability transfers
+            'china arms iran', 'china backs iran', 'china supplies iran',
+            'china military aid iran', 'china iran axis',
+            'china sends missiles iran', 'china manpads iran',
+            # ISR / satellite / space (multiple orders for FT-style headlines)
+            'chinese satellite', 'chinese spy satellite', 'china satellite iran',
+            'iran chinese satellite', 'irgc chinese satellite',
+            'chinese isr iran', 'china ground station iran',
+            'iran used chinese satellite',
+            # Named entities — TEE-01B story
+            'tee-01b', 'tee01b', 'emposat', 'earth eye co', 'earth eye',
+            'chang guang satellite',  # Houthi ISR support precedent
+            # Dual-use
+            'china dual use iran', 'china components iran',
+            'china chemicals iran military', 'china fuel iran military',
+            # Diplomatic cover
+            'china shields iran un', 'china blocks iran sanctions',
+            'china iran oil sanctions', 'china buys iranian oil war',
+            # Cross-language
+            '中国伊朗', '中伊', '中国武器伊朗', '中国支持伊朗',
+            'الصين تسلح إيران', 'الصين إيران',
+            'چین ایران', 'ایران چین',
+        ],
+        'baseline_statements_per_week': 3,
+        'tripwires': [
+            'china directly arms iran',
+            'china sends missiles iran confirmed',
+            'chinese spy satellite iran targeting',
+            'pla weapons iran conflict',
+        ],
+    },
+
+    # ── INBOUND ACTORS ───────────────────────────────────────────
+
+    'taiwan_defense': {
+        'name': 'Taiwan MND / ROC Defense',
+        'flag': '🇹🇼',
+        'icon': '🛡️',
+        'color': '#16a34a',
+        'dashboard': 'inbound',
+        'role': 'Taiwan Defense Posture / ADIZ Ground Truth',
+        'description': 'ROC Ministry of National Defense -- ADIZ violation counts, scramble reports, defense budget signals. The ADIZ daily report is ground truth for PLA pressure tempo.',
+        'keywords': [
+            'taiwan adiz', 'taiwan adiz violation', 'taiwan adiz report',
+            'pla aircraft taiwan adiz', 'taiwan scrambles jets',
+            'taiwan air force scrambles', 'taiwan detects pla',
+            'taiwan tracks pla', 'taiwan monitors pla',
+            'median line violation', 'pla crosses median line',
+            'taiwan mnd report', 'taiwan defense ministry',
+            'taiwan raises alert', 'taiwan defense alert',
+            'taiwan military readiness', 'taiwan combat readiness',
+            'taiwan mobilizes', 'taiwan reserve',
+            'lai ching-te defense', 'taiwan defense budget',
+            'taiwan patriot', 'taiwan missile defense',
+            'taiwan f-16', 'taiwan submarine',
+            'taiwan drone', 'taiwan asymmetric',
+            'hai kun submarine', 'taiwan himars',
+            'taiwan us arms', 'us arms taiwan',
+            'lai ching-te warns', 'lai ching-te military',
+            '台灣國防部', '共機擾台', '防空識別區',
+            '中線越線', '台灣戰備', '台灣空軍',
+        ],
+        'baseline_statements_per_week': 7,
+        'tripwires': [
+            'taiwan raises alert level',
+            'taiwan mobilizes reserves',
+            'adiz violations exceed 50',
+        ],
+    },
+
+    'us_commitment': {
+        'name': 'US Commitment Signals',
+        'flag': '🇺🇸',
+        'icon': '🔷',
+        'color': '#2563eb',
+        'dashboard': 'inbound',
+        'role': 'US Deterrence Posture / 7th Fleet / Arms Sales',
+        'description': 'US signaling on Taiwan -- 7th Fleet FONOPS, arms sales, senior official visits to Taipei, strategic ambiguity language. US signals trigger PLA response cycles.',
+        'keywords': [
+            'seventh fleet taiwan', '7th fleet taiwan',
+            'us carrier taiwan', 'uss taiwan strait',
+            'us warship taiwan strait', 'us fonops taiwan',
+            'freedom of navigation taiwan', 'us transit taiwan strait',
+            'us navy taiwan', 'us arms taiwan', 'us weapons taiwan',
+            'us taiwan arms sale', 'f-16 taiwan',
+            'us taiwan military sale', 'pentagon taiwan',
+            'taiwan relations act', 'tra taiwan',
+            'us taiwan defense', 'taipei act',
+            'us official taiwan', 'us senator taiwan',
+            'us congressman taiwan', 'pelosi taiwan',
+            'us visit taipei', 'taipei visit us',
+            'us secretary taiwan', 'us diplomat taiwan',
+            'us defend taiwan', 'us military intervention taiwan',
+            'us strategic ambiguity taiwan', 'us would defend taiwan',
+            'biden defend taiwan', 'trump taiwan',
+            'us taiwan commitment', 'us taiwan security',
+            'quad taiwan', 'aukus taiwan', 'us japan taiwan',
+            'first island chain', 'indo-pacific taiwan',
+            '美国 台湾', '第七舰队', '台湾军售',
+            '美台军事', '美国干涉台湾',
+        ],
+        'baseline_statements_per_week': 8,
+        'tripwires': [
+            'us official visits taipei',
+            'us arms sale taiwan approved',
+            'seventh fleet enters strait',
+            'us would defend taiwan',
+            'us deploys carrier taiwan',
+        ],
+    },
+
+    'japan_regional': {
+        'name': 'Japan / Regional Coalition',
+        'flag': '🇯🇵',
+        'icon': '🗾',
+        'color': '#db2777',
+        'dashboard': 'inbound',
+        'role': 'Japan / JSDF / AUKUS Posture',
+        'description': 'Japan is the most under-rated actor in this space. A Japanese minister explicitly naming Taiwan as a security concern is a bigger signal than most PLA press releases. Also tracks AUKUS, Philippines, and Australia as coalition members.',
+        'keywords': [
+            'japan taiwan security', 'japan defend taiwan',
+            'japan taiwan contingency', 'japan taiwan conflict',
+            'japan would defend taiwan', 'takaichi taiwan',
+            'japan prime minister taiwan', 'japan foreign minister taiwan',
+            'japan names taiwan security', 'japan defense white paper taiwan',
+            'jsdf taiwan', 'japan self defense taiwan',
+            'japan scrambles jets china', 'japan adiz china',
+            'japan senkaku', 'senkaku islands',
+            'china japan senkaku', 'japan china east china sea',
+            'japan rearmament', 'japan defense budget',
+            'japan long range missile', 'japan tomahawk',
+            'japan strike capability', 'japan preemptive',
+            'japan kyushu missile', 'japan military buildup',
+            'aukus taiwan', 'australia taiwan', 'australia china taiwan',
+            'australia deploy', 'australia military taiwan',
+            'philippines taiwan', 'philippines china scs',
+            'us philippines basing', 'edca philippines',
+            'south korea taiwan', 'korea taiwan',
+            '台湾有事', '日本 台湾', '自衛隊 台湾',
+            '尖閣諸島', '日中関係', '中国軍',
+        ],
+        'baseline_statements_per_week': 5,
+        'tripwires': [
+            'japan would defend taiwan',
+            'japan names taiwan security',
+            'japan deploys forces',
+            'senkaku incident',
+            'aukus taiwan contingency',
         ],
     },
 }
@@ -491,204 +538,398 @@ ACTORS = {
 # ============================================
 # REPORTING ACTORS (language discounted)
 # ============================================
-# Inbound actors report ON Chinese actions rather than initiating threats.
-# Discount their rhetoric scores to avoid inflating the inbound dashboard.
-REPORTING_ACTORS = {'pla_pressure', 'beijing_coercion', 'economic_pressure'}
+REPORTING_ACTORS = {'taiwan_defense', 'us_commitment', 'japan_regional'}
 
 REPORTING_LANGUAGE = [
     'condemns', 'condemned', 'protests', 'denounces',
     'calls on', 'urges', 'expresses concern', 'deeply concerned',
     'in response to', 'following the drills', 'following the exercise',
     'according to', 'reports that', 'monitors', 'tracks',
-    'detected', 'observed', 'confirmed', 'taiwan mnd says',
-    '谴责', '抗议', '关切', '台灣國防部表示',
+    'detected', 'observed', 'confirmed',
+    '谴责', '抗议', '关切', '回应',
 ]
 
 
 # ============================================
-# THREAT VECTORS -- OUTBOUND (Taiwan)
+# THREAT VECTORS -- OUTBOUND
 # ============================================
 
-LAI_TRIGGERS = {
+XI_CMC_TRIGGERS = {
     5: [
-        'taiwan declares independence', 'formal independence declaration',
-        'taiwan is a sovereign nation', 'two states officially',
-        'end one china policy', 'taiwan nation state',
-        '台灣宣布獨立', '正式宣布台獨',
+        'reunification by force', 'military action taiwan authorized',
+        'xi orders eastern theater', 'xi orders pla attack',
+        'pla ordered to act', 'military operation taiwan begins',
+        '武力统一台湾', '习近平下令', '军事行动台湾',
     ],
     4: [
-        'taiwan is a country', 'two states theory',
-        'two countries theory', 'lai two states',
-        'independence referendum', 'taiwan not part of china',
-        'taiwan separate nation', 'taiwan self-determination',
-        'lai rejects one china', 'lai rejects reunification',
-        '兩國論', '台灣是國家', '公投獨立',
+        'reunification timeline accelerated', 'by 2027 taiwan',
+        'xi jinping warns taiwan directly', 'xi threatens taiwan',
+        'xi on full military readiness', 'cmc authorizes exercise',
+        'resolve taiwan question this generation',
+        '武统', '2027统一', '习近平警告台湾',
     ],
     3: [
-        'lai independence speech', 'lai warns china',
-        'taiwan sovereignty', 'maintain taiwan sovereignty',
-        'taiwan status quo', 'taiwan democratic',
-        'lai ching-te warns', 'taiwan resilience',
-        'taiwan determination', 'taiwan will defend',
-        '台灣主權', '賴清德警告', '台灣堅定',
+        'complete reunification', 'sacred mission taiwan',
+        'resolve taiwan question', 'reunification inevitable',
+        'xi jinping taiwan speech', 'xi addresses pla taiwan',
+        'historical mission taiwan', 'xi warns separatists',
+        '完成统一', '统一大业', '两岸统一',
     ],
     2: [
-        'lai ching-te says', 'taiwan president',
-        'presidential office taiwan', 'taipei says',
-        'taiwan government', 'roc president',
-        '賴清德', '台灣總統府',
+        'xi jinping taiwan', 'xi jinping military',
+        'central military commission', 'xi inspects troops',
+        'cmc directive', 'xi rearmament',
+        '习近平 军队', '中央军委',
     ],
     1: [
-        'lai ching-te', 'taiwan president', 'taipei',
-        '賴清德', '台北',
+        'xi jinping', 'cmc', 'beijing taiwan',
+        '习近平', '台湾问题',
     ],
 }
 
-ROC_DEFENSE_TRIGGERS = {
+PLA_OPERATIONAL_TRIGGERS = {
     5: [
-        'taiwan emergency mobilization', 'taiwan declares emergency',
-        'taiwan activates wartime powers', 'taiwan full mobilization',
-        '台灣緊急動員', '戒嚴',
+        'pla launches attack taiwan', 'pla invades taiwan',
+        'pla blockade in effect', 'pla fires missiles taiwan',
+        'eastern theater combat operations',
+        '解放军进攻台湾', '解放军封锁', '导弹袭击台湾',
     ],
     4: [
-        'taiwan defense budget surge', 'taiwan special defense budget',
-        'taiwan extends conscription', 'taiwan one year service confirmed',
-        'han kuang largest exercise', 'taiwan maximum readiness',
-        '漢光演習', '延長兵役', '特別國防預算',
+        'joint sword', 'strait thunder', 'justice mission',
+        'pla encircles taiwan', 'pla blockade drill',
+        'pla live fire taiwan', 'pla combat exercise taiwan',
+        'carrier east of taiwan', 'plan blockade simulation',
+        'pla amphibious assault drill', 'eastern theater live fire',
+        '联合利剑', '海峡雷霆', '正义使命',
+        '封锁演习', '实弹演习台湾',
     ],
     3: [
-        'taiwan defense budget increase', 'taiwan arms procurement',
-        'taiwan military exercise', 'taiwan combat readiness',
-        'taiwan reserve reform', 'taiwan asymmetric',
-        'taiwan submarine', 'taiwan drone program',
-        '國防預算增加', '台灣軍演', '後備改革',
+        'pla exercise taiwan', 'pla drills taiwan',
+        'median line violation', 'pla crosses median line',
+        'multiple pla aircraft adiz', 'pla bomber taiwan',
+        'pla carrier strait', 'plan warship taiwan',
+        'pla readiness patrol taiwan', 'eastern theater exercise',
+        '东部战区演习', '解放军越中线', '共机扰台',
     ],
     2: [
-        'taiwan defense', 'taiwan military', 'taiwan mnd',
-        'taiwan armed forces', 'taiwan patriot',
-        'taiwan f-16', 'taiwan himars',
-        '台灣國防', '國軍',
+        'pla aircraft taiwan', 'pla taiwan',
+        'plaaf taiwan', 'plan taiwan',
+        'pla patrol taiwan', 'chinese military taiwan',
+        '解放军台湾', '共机', '解放军巡逻',
     ],
     1: [
-        'taiwan military', 'roc military', 'taiwan defense',
-        '台灣軍事', '台灣國防部',
+        'pla', 'eastern theater', 'chinese military',
+        '解放军', '东部战区',
     ],
 }
 
-US_PARTNERSHIP_TRIGGERS = {
+MFA_TRIGGERS = {
     5: [
-        'us taiwan defense treaty signed', 'us taiwan mutual defense',
-        'us troops deployed taiwan', 'us taiwan alliance formal',
-        'us taiwan military alliance',
+        'shoot fish in a barrel', 'firepower package delivered',
+        'use of force is not ruled out', 'military force is on the table',
+        'nowhere to escape', 'nowhere to hide',
+        '武力选项', '不排除武力', '瓮中捉鳖',
     ],
     4: [
-        'us official visits taipei', 'us cabinet taipei',
-        'us secretary state taiwan', 'us arms sale approved taiwan',
-        'us taiwan defense commitment', 'us would defend taiwan',
-        'us major arms deal taiwan', 'large us arms package taiwan',
-        '美國高官訪台', '美台防禦承諾',
+        'drastic measures', 'stern warning', 'countermeasures taiwan',
+        'china will not hesitate', 'grave consequences taiwan',
+        'do not play with fire', 'those who play with fire',
+        '严正警告', '采取强有力措施', '玩火者必自焚',
     ],
     3: [
-        'us senator taiwan', 'us congressman taiwan',
-        'us delegation taipei', 'us arms sale taiwan',
-        'us taiwan relations act', 'us reaffirms taiwan',
-        'us navy transit strait', 'us fonops taiwan',
-        '美國訪台', '美台軍售',
+        'china firmly opposes', 'china resolutely opposes',
+        'cross red line', 'exceed china patience',
+        'china warns us taiwan', 'escalate taiwan tensions',
+        '坚决反对', '触碰红线', '中国警告',
     ],
     2: [
-        'us taiwan', 'us taipei', 'us arms taiwan',
-        'us taiwan security', 'us taiwan relations',
-        '美台', '美國台灣',
+        'china opposes', 'sovereignty and territorial integrity',
+        'internal affair china', 'non-interference taiwan',
+        'one china principle', 'one china policy',
+        '主权和领土完整', '内政', '一个中国',
     ],
     1: [
-        'taiwan relations act', 'us taiwan', 'seventh fleet',
-        '台灣關係法', '第七艦隊',
+        'foreign ministry', 'spokesperson', 'global times',
+        '外交部', '发言人', '环球时报',
     ],
 }
 
-DIPLOMATIC_TRIGGERS = {
+TAO_TRIGGERS = {
     5: [
-        'taiwan requests un seat', 'taiwan un general assembly',
-        'major power recognizes taiwan', 'eu recognizes taiwan',
-        'g7 taiwan security guarantee',
+        'independence means war', 'taiwan independence war',
+        'tao declares emergency', 'cross-strait war',
+        '台独就是战争', '两岸战争',
     ],
     4: [
-        'country recognizes taiwan', 'establishes relations taiwan',
-        'taiwan diplomatic recognition', 'taiwan nato link',
-        'eu taiwan formal relations', 'taiwan g7',
-        '建交台灣', '台灣邦交',
+        'tao punishes taiwan', 'tao sanctions dpp',
+        'cross-strait red line', 'tao travel ban',
+        'china blocks taiwan strait', 'tao economic retaliation',
+        '国台办制裁', '惩戒台独',
     ],
     3: [
-        'taiwan who participation', 'taiwan icao bid',
-        'taiwan international organization',
-        'taiwan loses ally', 'taiwan gains ally',
-        'foreign minister visits taiwan',
-        '台灣國際空間', '外交部長訪台',
+        'tao warns separatists', 'tao warns lai',
+        'dpp separatist tao', 'tao strong measures',
+        'tao condemns taiwan', 'tao taiwan warning',
+        '国台办警告', '分裂分子', '台独势力',
     ],
     2: [
-        'taiwan diplomacy', 'taiwan foreign relations',
-        'taiwan mofa', 'taiwan allies',
-        '台灣外交', '外交部',
+        'tao statement', 'taiwan affairs office says',
+        'cross-strait relations tao', 'tao spokesperson',
+        '国台办表示', '两岸关系',
     ],
     1: [
-        'taiwan foreign', 'taiwan diplomatic', 'taiwan international',
-        '台灣外交',
+        'taiwan affairs office', 'tao', '国台办',
     ],
 }
 
-ASYMMETRIC_TRIGGERS = {
+# ============================================
+# v1.2.0 (April 2026) — China-Iran Axis: SUB-SCORED trigger ladders
+# Replaces the previous unused IRAN_AXIS_TRIGGERS with four
+# separate trigger dicts, one per dimension. The china_iran_axis
+# actor's score is the MAX of all four sub-scores. Writing them
+# separately lets the cross-theater fingerprint surface which
+# dimension is elevated (e.g. "ISR L4" is worse than "diplomatic L4"
+# because ISR enables kinetic targeting).
+# Russia-specific satellite triggers moved to russia_iran_axis
+# on the Russia tracker — not China's responsibility to track.
+# ============================================
+
+# WEAPONS: Direct material support — missiles, MANPADS, components
+CHINA_IRAN_WEAPONS_TRIGGERS = {
     5: [
-        'taiwan nationwide civil defense', 'taiwan activates reserve',
-        'taiwan full civil defense activation',
-        '全民防衛動員', '後備動員',
+        'china sends missiles iran', 'china ships missiles iran',
+        'china manpads iran', 'chinese missiles used iran',
+        'china directly arms iran', 'pla weapons iran conflict',
+        'beijing arms tehran war', 'china military equipment iran war',
+        '中国向伊朗提供导弹', '中国武器伊朗',
     ],
     4: [
-        'taiwan civil defense drill nationwide', 'taiwan wartime drill',
-        'taiwan air raid drill major', 'taiwan bomb shelter order',
-        'taiwan extends military service confirmed',
-        '防空演習全國', '戰時演練',
+        'china ships weapons iran', 'china sends weapons iran',
+        'china arms iran conflict', 'chinese weapons iran us',
+        'beijing supplies iran war', 'china military aid iran',
+        'china iran missile shipment', 'manpads iran china',
+        'chinese shoulder fired missiles iran',
+        '中国向伊朗运送武器', '中伊军事合作',
     ],
     3: [
-        'taiwan civil defense', 'taiwan air raid drill',
-        'taiwan emergency drill', 'taiwan resilience drill',
-        'taiwan reserve training', 'taiwan porcupine',
-        'taiwan asymmetric warfare', 'taiwan drone swarm',
-        '民防演習', '台灣不對稱作戰',
+        'china iran military', 'china supports iran war',
+        'china helps iran', 'china backing iran',
+        'chinese components iran missiles',
+        '中国支持伊朗',
     ],
     2: [
-        'taiwan reserve', 'taiwan conscription',
-        'taiwan civil defense plan', 'taiwan defense resilience',
-        '後備軍', '台灣民防',
+        'china iran military cooperation', 'china arms iran',
+        'china iran hardware',
     ],
     1: [
-        'taiwan reserve', 'taiwan civil', 'taiwan drill',
-        '台灣演習', '民防',
+        'china iran weapons', 'chinese arms iran',
     ],
 }
 
-# Inbound triggers -- supplemental scan only (primary data from China fingerprint)
-PLA_PRESSURE_TRIGGERS = {
-    5: ['pla launches attack', 'pla invades', 'pla blockade in effect', '解放军进攻'],
-    4: ['joint sword', 'strait thunder', 'justice mission', 'pla encircles', '联合利剑'],
-    3: ['pla exercise taiwan', 'median line violation', 'pla live fire', '解放军演习'],
-    2: ['pla aircraft taiwan', 'pla taiwan', 'adiz violation', '共机扰台'],
-    1: ['pla', 'eastern theater', 'chinese military', '解放军'],
+# ISR / SATELLITE: Intelligence, surveillance, reconnaissance enablement
+# The highest-consequence dimension — enables kinetic targeting.
+CHINA_IRAN_ISR_TRIGGERS = {
+    5: [
+        'chinese spy satellite iran targeting', 'tee-01b irgc targeting',
+        'china satellite strike iran', 'chinese imagery iran strike',
+        'china satellite us base target iran',
+    ],
+    4: [
+        'iran used chinese satellite', 'chinese satellite iran bases',
+        'chinese spy satellite iran', 'irgc chinese satellite',
+        'emposat iran irgc', 'earth eye co iran',
+        'tee-01b', 'tee01b',
+        'chang guang satellite iran',
+        '中国卫星伊朗',
+    ],
+    3: [
+        'chinese satellite iran', 'china satellite iran',
+        'china ground station iran', 'chinese isr iran',
+        'china targeting data iran', 'in-orbit transfer iran',
+        'china space cooperation iran',
+    ],
+    2: [
+        'china iran space', 'chinese imagery iran',
+        'belt and road iran space',
+    ],
+    1: [
+        'china iran satellite', 'chinese iran imagery',
+    ],
 }
 
-BEIJING_COERCION_TRIGGERS = {
-    5: ['reunification by force', 'shoot fish in a barrel', 'military action authorized', '武力统一'],
-    4: ['drastic measures', 'independence means war', 'stern warning taiwan', '独立即战争'],
-    3: ['china firmly opposes', 'china warns taiwan', 'tao warns', 'beijing warns', '中国警告台湾'],
-    2: ['china opposes taiwan', 'one china principle', 'tao statement', '国台办'],
-    1: ['beijing', 'china taiwan', 'mfa taiwan', '北京', '外交部台湾'],
+# DUAL-USE: Chemicals, fuel, electronics, semiconductors — fungible goods
+CHINA_IRAN_DUALUSE_TRIGGERS = {
+    5: [
+        'china dual use iran confirmed', 'pla dual use iran',
+        'china ballistic materials iran',
+    ],
+    4: [
+        'china chemicals iran military', 'china fuel iran military',
+        'china components iran missiles', 'china missile fuel iran',
+        'china electronics iran military',
+    ],
+    3: [
+        'china dual use iran', 'china components iran',
+        'china semiconductor iran military', 'china precursor chemicals iran',
+    ],
+    2: [
+        'china iran trade precursor', 'chinese parts iran',
+    ],
+    1: [
+        'china iran trade', 'chinese goods iran',
+    ],
 }
 
-ECONOMIC_PRESSURE_TRIGGERS = {
-    5: ['china blockades taiwan', 'rare earth total ban', 'tsmc seized', '台湾港口封锁'],
-    4: ['rare earth export ban', 'china chip blockade', 'china economic blockade', '稀土禁令'],
-    3: ['china bans taiwan products', 'china trade war taiwan', 'china rare earth', '对台贸易限制'],
-    2: ['china export controls taiwan', 'china economic pressure', '出口管制台湾'],
-    1: ['china trade taiwan', 'economic coercion', 'tsmc', '台湾经济'],
+# DIPLOMATIC: UN shields, sanctions blocking, framing cover
+CHINA_IRAN_DIPLOMATIC_TRIGGERS = {
+    5: [
+        'china vetoes iran sanctions', 'china blocks iran un resolution',
+        'beijing shields iran un security council',
+    ],
+    4: [
+        'china shields iran un', 'china blocks iran sanctions',
+        'china opposes iran sanctions', 'beijing defends iran un',
+    ],
+    3: [
+        'china iran oil sanctions', 'china buys iranian oil war',
+        'china neutral iran conflict', 'beijing iran war stance',
+    ],
+    2: [
+        'china iran trade war', 'china iran us conflict',
+        'china calls restraint iran',
+    ],
+    1: [
+        'china iran diplomatic', 'beijing tehran', 'china iran axis',
+        '中伊关系', '中国伊朗石油',
+    ],
+}
+
+ECONOMIC_TRIGGERS = {
+    5: [
+        'china blockades taiwan ports', 'taiwan ports closed china',
+        'tsmc seized', 'rare earth total ban',
+        '台湾港口封锁', '全面禁运台湾',
+    ],
+    4: [
+        'rare earth export ban', 'rare earth ban taiwan',
+        'china semiconductor ban taiwan', 'china chip blockade',
+        'china cuts taiwan trade', 'china economic blockade',
+        '稀土出口禁令', '芯片封锁台湾',
+    ],
+    3: [
+        'china rare earth restriction', 'gallium ban',
+        'germanium ban', 'china critical mineral',
+        'china bans taiwan products', 'china trade war taiwan',
+        '稀土管制', '镓锗禁令', '对台贸易限制',
+    ],
+    2: [
+        'china export controls', 'china trade restriction',
+        'china economic pressure taiwan', 'china tsmc',
+        '出口管制', '经济压力台湾',
+    ],
+    1: [
+        'economic coercion', 'china trade taiwan',
+        'tsmc', 'rare earth', '稀土',
+    ],
+}
+
+
+# ============================================
+# THREAT VECTORS -- INBOUND
+# ============================================
+
+TAIWAN_DEFENSE_TRIGGERS = {
+    5: [
+        'taiwan raises combat alert', 'taiwan mobilizes reserves',
+        'taiwan detects imminent attack', 'taiwan activates wartime',
+        '台灣進入戰備', '台灣動員',
+    ],
+    4: [
+        'taiwan full alert', 'taiwan highest alert',
+        'taiwan emergency defense', 'taiwan deploys patriots',
+        'taiwan mobilizes', 'taiwan war footing',
+        '台灣進入高度戒備', '台灣緊急部署',
+    ],
+    3: [
+        'taiwan adiz mass violation', 'taiwan scrambles multiple jets',
+        'taiwan raises alert', 'taiwan tracks pla fleet',
+        'taiwan monitors carrier', 'taiwan defense heightened',
+        '共機大規模擾台', '台灣緊急升空',
+    ],
+    2: [
+        'taiwan adiz violation', 'taiwan scrambles',
+        'taiwan detects pla', 'taiwan monitors',
+        'taiwan defense', 'taiwan military',
+        '共機擾台', '台灣國防',
+    ],
+    1: [
+        'taiwan air force', 'taiwan military', 'taiwan mnd',
+        '台灣空軍', '國防部',
+    ],
+}
+
+US_COMMITMENT_TRIGGERS = {
+    5: [
+        'us deploys carrier taiwan conflict',
+        'us military intervention taiwan',
+        'us would go to war taiwan',
+        'us activates taiwan relations act',
+    ],
+    4: [
+        'us official visits taipei',
+        'us senior official taiwan',
+        'us arms sale taiwan approved',
+        'seventh fleet enters strait',
+        'us carrier taiwan contingency',
+        '美国官员访台', '美台军售',
+    ],
+    3: [
+        'us transit taiwan strait', 'us fonops taiwan',
+        'us warship taiwan strait', 'us navy taiwan',
+        'us reaffirms taiwan commitment', 'us taiwan relations act',
+        '美舰穿越台湾海峡', '美国重申台湾',
+    ],
+    2: [
+        'us taiwan', 'seventh fleet', 'us navy pacific',
+        'us arms taiwan', 'us taiwan security',
+        '美国 台湾', '第七舰队',
+    ],
+    1: [
+        'us pacific', 'us military asia', 'indo-pacific',
+        '美国太平洋', '印太',
+    ],
+}
+
+JAPAN_REGIONAL_TRIGGERS = {
+    5: [
+        'japan deploys forces taiwan', 'japan military action taiwan',
+        'japan defends taiwan', 'jsdf taiwan contingency activated',
+    ],
+    4: [
+        'japan names taiwan security concern',
+        'japan would defend taiwan',
+        'japan taiwan explicit commitment',
+        'senkaku incident armed',
+        'aukus taiwan deployment',
+        '日本明言防衛台灣', '台湾有事 日本',
+    ],
+    3: [
+        'japan taiwan contingency', 'japan taiwan conflict',
+        'jsdf taiwan', 'japan defense white paper taiwan',
+        'senkaku confrontation', 'japan scrambles china',
+        'aukus taiwan', 'australia china taiwan',
+        '台湾有事', '日本自衛隊',
+    ],
+    2: [
+        'japan taiwan', 'japan china tension',
+        'jsdf china', 'japan senkaku',
+        'australia taiwan', 'aukus',
+        '日台', '日中', '自衛隊',
+    ],
+    1: [
+        'japan', 'jsdf', 'australia', 'aukus',
+        '日本', '自衛隊',
+    ],
 }
 
 
@@ -696,18 +937,39 @@ ECONOMIC_PRESSURE_TRIGGERS = {
 # RSS SOURCES
 # ============================================
 RSS_SOURCES = {
-    # Taiwan primary -- outbound signals
+    'prc_mnd': {
+        'url': 'https://www.globaltimes.cn/rss/opinion.xml',
+        'name': 'PRC MND (Official)',
+        'weight': 1.0,
+        'note': 'PRC MND RSS dead -- using Global Times as primary CCP signal',
+    },
+    'global_times': {
+        'url': 'https://www.globaltimes.cn/rss/opinion.xml',
+        'name': 'Global Times',
+        'weight': 0.85,
+        'note': 'CCP signaling instrument',
+    },
+    'xinhua_en': {
+        'url': 'https://english.news.cn/rss/world.xml',
+        'name': 'Xinhua English',
+        'weight': 0.75,
+    },
+    'china_military': {
+        'url': 'https://www.scmp.com/rss/4/feed',
+        'name': 'China Military (via SCMP)',
+        'weight': 0.9,
+        'note': 'PLA official RSS dead -- SCMP China military coverage as replacement',
+    },
+    'taiwan_mnd': {
+        'url': 'https://focustaiwan.tw/rss/politics.xml',
+        'name': 'Taiwan MND (via Focus Taiwan Politics)',
+        'weight': 0.95,
+        'note': 'Taiwan MND RSS inaccessible -- Focus Taiwan politics covers MND releases',
+    },
     'focus_taiwan': {
         'url': 'https://focustaiwan.tw/rss/cross-strait.xml',
         'name': 'Focus Taiwan Cross-Strait',
         'weight': 0.95,
-        'note': 'Best English Taiwan cross-strait coverage',
-    },
-    'focus_taiwan_politics': {
-        'url': 'https://focustaiwan.tw/rss/politics.xml',
-        'name': 'Focus Taiwan Politics',
-        'weight': 0.95,
-        'note': 'ROC government and defense announcements',
     },
     'taipei_times': {
         'url': 'https://www.taipeitimes.com/xml/index.rss',
@@ -718,39 +980,23 @@ RSS_SOURCES = {
         'url': 'https://www.taiwannews.com.tw/rss/news.rss',
         'name': 'Taiwan News',
         'weight': 0.75,
-        'note': 'Fast on breaking cross-strait incidents',
     },
-    'taiwan_mnd': {
-        'url': 'https://focustaiwan.tw/rss/politics.xml',
-        'name': 'Taiwan MND (via Focus Taiwan)',
-        'weight': 0.95,
-        'note': 'Taiwan MND RSS inaccessible -- Focus Taiwan politics covers MND releases',
-    },
-    'prc_mnd': {
-        'url': 'https://www.globaltimes.cn/rss/opinion.xml',
-        'name': 'PRC MND (via Global Times)',
-        'weight': 0.9,
-        'note': 'PRC MND RSS dead -- Global Times as primary CCP signal',
-    },
-    'global_times_opinion': {
-        'url': 'https://www.globaltimes.cn/rss/opinion.xml',
-        'name': 'Global Times Opinion',
-        'weight': 0.85,
-    },
-    'china_military': {
-        'url': 'https://www.scmp.com/rss/4/feed',
-        'name': 'China Military (via SCMP)',
-        'weight': 0.9,
-        'note': 'PLA official RSS dead -- SCMP China section as replacement',
-    },
-    # US commitment signals
     'usni_news': {
         'url': 'https://news.usni.org/feed',
         'name': 'USNI News',
         'weight': 1.0,
-        'note': '7th Fleet movements, US arms sales',
+        'note': '7th Fleet movements -- critical for US commitment signals',
     },
-    # Regional analytical
+    'war_on_rocks': {
+        'url': 'https://warontherocks.com/feed/',
+        'name': 'War on the Rocks',
+        'weight': 0.95,
+    },
+    'the_diplomat': {
+        'url': 'https://thediplomat.com/feed/',
+        'name': 'The Diplomat',
+        'weight': 0.9,
+    },
     'scmp': {
         'url': 'https://www.scmp.com/rss/91/feed',
         'name': 'South China Morning Post',
@@ -760,23 +1006,16 @@ RSS_SOURCES = {
         'url': 'https://asia.nikkei.com/rss/feed/nar',
         'name': 'Nikkei Asia',
         'weight': 0.9,
-        'note': 'Japan-Taiwan security relationship',
     },
-    'the_diplomat': {
-        'url': 'https://thediplomat.com/feed/',
-        'name': 'The Diplomat',
-        'weight': 0.9,
-    },
-    'war_on_rocks': {
-        'url': 'https://warontherocks.com/feed/',
-        'name': 'War on the Rocks',
-        'weight': 0.95,
+    'japan_times': {
+        'url': 'https://japantimes.co.jp/feed/',
+        'name': 'Japan Times',
+        'weight': 0.85,
     },
     'rfa': {
         'url': 'https://www.rfa.org/english/rss2.xml',
         'name': 'Radio Free Asia',
         'weight': 0.85,
-        'note': 'Taiwan, Tibet, Xinjiang, Hong Kong',
     },
     'csis_amti': {
         'url': 'https://amti.csis.org/feed/',
@@ -831,19 +1070,20 @@ RSS_SOURCES = {
 }
 
 REDDIT_SUBREDDITS = [
-    'taiwan', 'Taiwanese', 'CredibleDefense', 'geopolitics',
-    'worldnews', 'LessCredibleDefence', 'GlobalPowers',
-    'Sino', 'OSINT', 'WarCollege', 'NCD', 'anime_titties',
-    'Japan', 'Philippines', 'australia', 'EastAsia', 'AsiaPacific',
-    'CombatFootage',
+    'CredibleDefense', 'geopolitics', 'worldnews', 'Sino',
+    'taiwan', 'Taiwanese', 'LessCredibleDefence', 'GlobalPowers',
+    'OSINT', 'WarCollege', 'NCD', 'anime_titties',
+    'Philippines', 'Japan', 'australia', 'vietnam',
+    'CombatFootage', 'EastAsia', 'AsiaPacific',
 ]
-REDDIT_USER_AGENT = 'AsifahAnalytics-Taiwan/1.0.0 (OSINT tracker)'
+REDDIT_USER_AGENT = 'AsifahAnalytics-China/1.0.0 (OSINT tracker)'
 
 GDELT_QUERIES = {
-    'eng_outbound': 'Taiwan independence Lai Ching-te defense military US arms',
-    'eng_inbound':  'PLA Taiwan exercise China military threat blockade',
-    'zho_outbound': '台灣 獨立 賴清德 國防 軍事',
-    'zho_inbound':  '解放軍 台灣 演習 武力 封鎖',
+    'eng_outbound': 'China PLA Taiwan military exercise threat OR blockade OR invasion',
+    'eng_inbound':  'Taiwan ADIZ US Navy strait Japan defense OR JSDF OR AUKUS',
+    'zho_outbound': '解放军 台湾 演习 OR 统一 OR 武力',
+    'zho_inbound':  '台湾 国防 OR 美军 OR 日本防衛',
+    'jpn_japan':    '台湾有事 OR 自衛隊 台湾 OR 中国軍',
 }
 
 
@@ -864,7 +1104,7 @@ def _redis_get(key):
         if data.get('result'):
             return json.loads(data['result'])
     except Exception as e:
-        print(f"[Taiwan Rhetoric] Redis GET error: {str(e)[:80]}")
+        print(f"[China Rhetoric] Redis GET error: {str(e)[:80]}")
     return None
 
 
@@ -883,11 +1123,12 @@ def _redis_set(key, value):
         )
         return True
     except Exception as e:
-        print(f"[Taiwan Rhetoric] Redis SET error: {str(e)[:80]}")
+        print(f"[China Rhetoric] Redis SET error: {str(e)[:80]}")
     return False
 
 
 def _redis_lpush_trim(key, value, max_len=336):
+    """Push to list and trim -- 336 entries = 6h intervals x 8 weeks."""
     if not UPSTASH_REDIS_URL or not UPSTASH_REDIS_TOKEN:
         return
     try:
@@ -911,63 +1152,7 @@ def _redis_lpush_trim(key, value, max_len=336):
             timeout=5
         )
     except Exception as e:
-        print(f"[Taiwan Rhetoric] Redis LPUSH error: {str(e)[:80]}")
-
-
-# ============================================
-# CROSS-THEATER: READ CHINA FINGERPRINT
-# ============================================
-
-def _read_china_fingerprint():
-    """
-    Read China rhetoric tracker fingerprint from shared Redis key.
-    Returns china_data dict or None if not available.
-    This is the primary input for Taiwan's inbound dashboard.
-    """
-    try:
-        fingerprints = _redis_get(CROSSTHEATER_KEY)
-        if fingerprints and 'china' in fingerprints:
-            china = fingerprints['china']
-            age_str = china.get('updated_at', '')
-            age_hours = 99.0
-            if age_str:
-                try:
-                    updated = datetime.fromisoformat(age_str.replace('Z', '+00:00'))
-                    age_hours = (datetime.now(timezone.utc) - updated).total_seconds() / 3600
-                except Exception:
-                    pass
-            print(f"[Taiwan Rhetoric] China fingerprint: L{china.get('level', 0)} "
-                  f"(PLA L{china.get('pla_level', 0)}, Xi L{china.get('xi_level', 0)}, "
-                  f"{age_hours:.1f}h old)")
-            return china
-    except Exception as e:
-        print(f"[Taiwan Rhetoric] China fingerprint read error: {str(e)[:80]}")
-    print("[Taiwan Rhetoric] China fingerprint not available -- inbound from article scan only")
-    return None
-
-
-def _write_taiwan_fingerprint(outbound_score, outbound_max, inbound_score,
-                               inbound_max, overall_level, actor_results):
-    """Write Taiwan fingerprint back to shared cross-theater key."""
-    fingerprints = _redis_get(CROSSTHEATER_KEY) or {}
-
-    fingerprints['taiwan'] = {
-        'level':           overall_level,
-        'outbound_score':  outbound_score,
-        'outbound_max':    outbound_max,
-        'inbound_score':   inbound_score,
-        'inbound_max':     inbound_max,
-        'lai_level':       actor_results.get('lai_presidential', {}).get('level', 0),
-        'defense_level':   actor_results.get('roc_defense', {}).get('level', 0),
-        'us_level':        actor_results.get('us_partnership', {}).get('level', 0),
-        'diplomatic_level': actor_results.get('diplomatic_posture', {}).get('level', 0),
-        'asymmetric_level': actor_results.get('asymmetric_resilience', {}).get('level', 0),
-        'label':           ESCALATION_LEVELS[overall_level]['label'],
-        'updated_at':      datetime.now(timezone.utc).isoformat(),
-    }
-
-    _redis_set(CROSSTHEATER_KEY, fingerprints)
-    print(f"[Taiwan Rhetoric] Taiwan fingerprint written (L{overall_level})")
+        print(f"[China Rhetoric] Redis LPUSH error: {str(e)[:80]}")
 
 
 # ============================================
@@ -975,6 +1160,7 @@ def _write_taiwan_fingerprint(outbound_score, outbound_max, inbound_score,
 # ============================================
 
 def _parse_pub_date(pub_str):
+    """Robustly parse publication date to UTC-aware datetime."""
     if not pub_str:
         return None
     try:
@@ -1001,11 +1187,13 @@ def _fetch_rss(url, source_name, weight=0.85, max_items=20):
     try:
         resp = requests.get(url, timeout=12, headers={'User-Agent': 'Mozilla/5.0'})
         if resp.status_code != 200:
-            print(f"[Taiwan RSS] {source_name}: HTTP {resp.status_code}")
+            print(f"[China RSS] {source_name}: HTTP {resp.status_code}")
             return []
+        # Strip BOM and leading whitespace before parsing -- some feeds have encoding preambles
         content = resp.content.lstrip(b'\xef\xbb\xbf').strip()
         root = ET.fromstring(content)
-        for item in root.findall('.//item')[:max_items]:
+        items = root.findall('.//item')
+        for item in items[:max_items]:
             title_el = item.find('title')
             link_el  = item.find('link')
             pub_el   = item.find('pubDate')
@@ -1022,15 +1210,16 @@ def _fetch_rss(url, source_name, weight=0.85, max_items=20):
                 'source_weight_override': weight,
                 'language':    'en',
             })
-        print(f"[Taiwan RSS] {source_name}: {len(articles)} articles")
+        print(f"[China RSS] {source_name}: {len(articles)} articles")
     except ET.ParseError as e:
-        print(f"[Taiwan RSS] {source_name}: XML error: {str(e)[:80]}")
+        print(f"[China RSS] {source_name}: XML parse error: {str(e)[:80]}")
     except Exception as e:
-        print(f"[Taiwan RSS] {source_name}: {str(e)[:80]}")
+        print(f"[China RSS] {source_name}: {str(e)[:80]}")
     return articles
 
 
 def _fetch_gdelt(query, language='eng', days=3, max_records=25):
+    """Fetch from GDELT."""
     articles = []
     try:
         params = {
@@ -1041,9 +1230,9 @@ def _fetch_gdelt(query, language='eng', days=3, max_records=25):
             'format':     'json',
             'sourcelang': language,
         }
-        resp = requests.get(GDELT_BASE_URL, params=params, timeout=(5, 15))
+        resp = requests.get(GDELT_BASE_URL, params=params, timeout=15)
         if resp.status_code == 200:
-            lang_map = {'eng': 'en', 'zho': 'zh', 'jpn': 'ja'}
+            lang_map = {'eng': 'en', 'zho': 'zh', 'jpn': 'ja', 'kor': 'ko'}
             for art in resp.json().get('articles', []):
                 articles.append({
                     'title':       art.get('title', ''),
@@ -1054,11 +1243,11 @@ def _fetch_gdelt(query, language='eng', days=3, max_records=25):
                     'content':     art.get('title', ''),
                     'language':    lang_map.get(language, language),
                 })
-            print(f"[Taiwan GDELT] {language}: {len(articles)} articles")
+            print(f"[China GDELT] {language}: {len(articles)} articles")
         else:
-            print(f"[Taiwan GDELT] {language}: HTTP {resp.status_code}")
+            print(f"[China GDELT] {language}: HTTP {resp.status_code}")
     except Exception as e:
-        print(f"[Taiwan GDELT] {language}: {str(e)[:80]}")
+        print(f"[China GDELT] {language}: {str(e)[:80]}")
     return articles
 
 
@@ -1066,7 +1255,7 @@ def _fetch_newsapi(query, days=3, max_results=30):
     """NewsAPI fallback when GDELT is rate-limited or timing out."""
     articles = []
     if not NEWSAPI_KEY:
-        print("[Taiwan NewsAPI] No API key configured — skipping")
+        print("[China NewsAPI] No API key configured — skipping")
         return []
     try:
         from_date = (datetime.now(timezone.utc) - timedelta(days=days)).strftime('%Y-%m-%d')
@@ -1093,15 +1282,15 @@ def _fetch_newsapi(query, days=3, max_results=30):
                     'content':     a.get('content', '') or a.get('description', '') or '',
                     'language':    'en',
                 })
-            print(f"[Taiwan NewsAPI] '{query[:40]}': {len(articles)} articles")
+            print(f"[China NewsAPI] '{query[:40]}': {len(articles)} articles")
         else:
-            print(f"[Taiwan NewsAPI] HTTP {resp.status_code}")
+            print(f"[China NewsAPI] HTTP {resp.status_code}")
     except Exception as e:
-        print(f"[Taiwan NewsAPI] Error: {str(e)[:80]}")
+        print(f"[China NewsAPI] Error: {str(e)[:80]}")
     return articles
-
-
+  
 def _fetch_google_news_rss(query, label, lang='en', gl='US', max_items=15):
+    """Fetch Google News RSS."""
     articles = []
     try:
         encoded = urllib.parse.quote(query)
@@ -1123,13 +1312,14 @@ def _fetch_google_news_rss(query, label, lang='en', gl='US', max_items=15):
                         'content':     title_el.text.strip(),
                         'language':    lang,
                     })
-        print(f"[Taiwan GNews] {label}: {len(articles)} articles")
+        print(f"[China GNews] {label}: {len(articles)} articles")
     except Exception as e:
-        print(f"[Taiwan GNews] {label}: {str(e)[:80]}")
+        print(f"[China GNews] {label}: {str(e)[:80]}")
     return articles
 
 
 def _fetch_reddit(subreddits, keywords, days=3, max_per_sub=8):
+    """Fetch Reddit posts."""
     articles = []
     since = datetime.now(timezone.utc) - timedelta(days=days)
     for sub in subreddits:
@@ -1159,8 +1349,8 @@ def _fetch_reddit(subreddits, keywords, days=3, max_per_sub=8):
                             })
                 time.sleep(0.5)
             except Exception as e:
-                print(f"[Taiwan Reddit] r/{sub}: {str(e)[:60]}")
-    print(f"[Taiwan Reddit] {len(articles)} posts")
+                print(f"[China Reddit] r/{sub}: {str(e)[:60]}")
+    print(f"[China Reddit] {len(articles)} posts across {len(subreddits)} subs")
     return articles
 
 
@@ -1169,6 +1359,7 @@ def _fetch_reddit(subreddits, keywords, days=3, max_per_sub=8):
 # ============================================
 
 def _get_source_weight(source_name):
+    """Return credibility weight for a source."""
     premium = [
         'Reuters', 'AP News', 'Associated Press', 'BBC',
         'Financial Times', 'Wall Street Journal', 'The Economist',
@@ -1177,8 +1368,9 @@ def _get_source_weight(source_name):
         'Focus Taiwan', 'South China Morning Post', 'Nikkei Asia',
     ]
     high = [
-        'Global Times', 'Xinhua', 'Taipei Times', 'Taiwan News',
-        'Japan Times', 'The Diplomat', 'Radio Free Asia',
+        'Global Times', 'Xinhua', 'CGTN',
+        'Taipei Times', 'Taiwan News', 'Japan Times',
+        'The Diplomat', 'Radio Free Asia', 'NK News',
         'AEI', 'Brookings', 'RAND', 'IISS', 'CSIS AMTI',
     ]
     src = source_name.lower()
@@ -1198,21 +1390,39 @@ def _get_source_weight(source_name):
 # ============================================
 
 def _score_actor(actor_key, articles):
-    """Score a single actor against trigger keywords."""
+    """
+    Score a single actor against their trigger keywords.
+    Returns level (0-5), matched triggers, article count, top articles.
+    """
     actor = ACTORS[actor_key]
     now   = datetime.now(timezone.utc)
 
+    # Standard single-ladder actors
+    # Standard single-ladder actors
     trigger_map = {
-        'lai_presidential':      LAI_TRIGGERS,
-        'roc_defense':           ROC_DEFENSE_TRIGGERS,
-        'us_partnership':        US_PARTNERSHIP_TRIGGERS,
-        'diplomatic_posture':    DIPLOMATIC_TRIGGERS,
-        'asymmetric_resilience': ASYMMETRIC_TRIGGERS,
-        'pla_pressure':          PLA_PRESSURE_TRIGGERS,
-        'beijing_coercion':      BEIJING_COERCION_TRIGGERS,
-        'economic_pressure':     ECONOMIC_PRESSURE_TRIGGERS,
+        'xi_cmc':            XI_CMC_TRIGGERS,
+        'pla_operational':   PLA_OPERATIONAL_TRIGGERS,
+        'mfa_globaltimes':   MFA_TRIGGERS,
+        'tao':               TAO_TRIGGERS,
+        'economic_coercion': ECONOMIC_TRIGGERS,
+        'taiwan_defense':    TAIWAN_DEFENSE_TRIGGERS,
+        'us_commitment':     US_COMMITMENT_TRIGGERS,
+        'japan_regional':    JAPAN_REGIONAL_TRIGGERS,
     }.get(actor_key, {})
 
+    # v1.2.0 — china_iran_axis merges four sub-scored ladders
+    # into one combined trigger_map for scoring purposes. The MAX level
+    # across all four sub-categories becomes the actor's level.
+    # Sub-levels are computed separately below for fingerprint writing.
+    if actor_key == 'china_iran_axis':
+        trigger_map = {}
+        for lvl in range(1, 6):
+            trigger_map[lvl] = (
+                CHINA_IRAN_WEAPONS_TRIGGERS.get(lvl, [])
+                + CHINA_IRAN_ISR_TRIGGERS.get(lvl, [])
+                + CHINA_IRAN_DUALUSE_TRIGGERS.get(lvl, [])
+                + CHINA_IRAN_DIPLOMATIC_TRIGGERS.get(lvl, [])
+            )
     matched_triggers = []
     top_articles     = []
     weighted_score   = 0.0
@@ -1245,19 +1455,23 @@ def _score_actor(actor_key, articles):
         else:
             decay = max(0.2, 1.0 - (age_hours / 168) * 0.8)
 
+        # Source weight
         src_weight = article.get('source_weight_override',
                                  _get_source_weight(article.get('source', {}).get('name', '')))
 
+        # Reporting language discount for inbound actors
         is_reporting = False
         if actor_key in REPORTING_ACTORS:
             if any(rl in text for rl in REPORTING_LANGUAGE):
                 is_reporting = True
                 src_weight *= 0.4
 
+        # Find highest trigger level
         article_level   = 0
         matched_trigger = None
         for level in [5, 4, 3, 2, 1]:
-            for trigger in trigger_map.get(level, []):
+            triggers = trigger_map.get(level, [])
+            for trigger in triggers:
                 if trigger in text:
                     article_level   = level
                     matched_trigger = trigger
@@ -1285,7 +1499,7 @@ def _score_actor(actor_key, articles):
             'is_reporting': is_reporting,
         })
 
-    # Normalize to 0-5
+    # Normalize weighted score to 0-5
     if weighted_score == 0:
         level = 0
     elif weighted_score < 3:
@@ -1299,7 +1513,7 @@ def _score_actor(actor_key, articles):
     else:
         level = 5
 
-    # Tripwire override
+    # Tripwire override -- any match auto-escalates to minimum L4
     for tripwire in actor.get('tripwires', []):
         for article in articles:
             text = (
@@ -1310,7 +1524,7 @@ def _score_actor(actor_key, articles):
                 level = max(level, 4)
                 if tripwire not in matched_triggers:
                     matched_triggers.append(f"TRIPWIRE: {tripwire}")
-                print(f"[Taiwan Rhetoric] TRIPWIRE: {actor_key} -> {tripwire}")
+                print(f"[China Rhetoric] TRIPWIRE: {actor_key} -> {tripwire}")
                 break
 
     top_articles.sort(key=lambda x: x['contribution'], reverse=True)
@@ -1335,17 +1549,63 @@ def _score_actor(actor_key, articles):
 
 
 # ============================================
+# v1.2.0 — CHINA-IRAN AXIS SUB-SCORING (April 2026)
+# Computes individual sub-scores per dimension for the cross-theater
+# fingerprint, so downstream consumers know WHICH dimension is elevated
+# (ISR L4 is more consequential than diplomatic L4 — ISR enables kinetic).
+# ============================================
+
+def _score_china_iran_axis_subscores(articles):
+    """
+    Score each dimension of China-Iran axis separately.
+    Returns a dict with per-dimension max levels and the overall max.
+    Run in addition to standard _score_actor for china_iran_axis,
+    solely to surface granular sub-levels for the fingerprint.
+    """
+    dimensions = {
+        'weapons':    CHINA_IRAN_WEAPONS_TRIGGERS,
+        'isr':        CHINA_IRAN_ISR_TRIGGERS,
+        'dualuse':    CHINA_IRAN_DUALUSE_TRIGGERS,
+        'diplomatic': CHINA_IRAN_DIPLOMATIC_TRIGGERS,
+    }
+    scores = {dim: 0 for dim in dimensions}
+
+    for article in articles:
+        title = (article.get('title', '') or '').lower()
+        desc  = (article.get('description', '') or '').lower()
+        text  = f"{title} {desc}"
+
+        for dim, ladder in dimensions.items():
+            for level in range(5, 0, -1):
+                for phrase in ladder.get(level, []):
+                    if phrase.lower() in text:
+                        if level > scores[dim]:
+                            scores[dim] = level
+                        break
+                if scores[dim] >= level:
+                    break
+
+    scores['max'] = max(scores.values()) if scores else 0
+    return scores
+
+
+# ============================================
 # COMPOSITE SCORING
 # ============================================
 
 def _compute_outbound_score(actor_results):
-    """Compute Taiwan outbound score (0-100)."""
+    """Compute composite outbound score (0-100)."""
     weights = {
-        'lai_presidential':      3.0,
-        'roc_defense':           2.0,
-        'us_partnership':        2.5,
-        'diplomatic_posture':    1.5,
-        'asymmetric_resilience': 1.0,
+        'xi_cmc':            3.5,
+        'pla_operational':   3.0,
+        'mfa_globaltimes':   1.5,
+        'tao':               1.5,
+        'economic_coercion': 1.0,
+        # v1.2.0 — China-Iran axis weighted at 2.5 because it's a
+        # high-consequence cross-theater signal (ISR support enables
+        # kinetic strikes). Weighted below xi_cmc/pla but above mfa/tao
+        # since material support is more significant than rhetoric.
+        'china_iran_axis':   2.5,
     }
     total_weight = sum(weights.values())
     weighted_sum = 0.0
@@ -1358,86 +1618,105 @@ def _compute_outbound_score(actor_results):
 
     score = int((weighted_sum / (total_weight * 5)) * 100)
 
-    # Convergence bonus: +8 if 3+ outbound actors at L3+
+    # Convergence bonus: +10 if 3+ outbound actors at L3+
     elevated = sum(
         1 for k in weights
         if actor_results.get(k, {}).get('level', 0) >= 3
     )
     if elevated >= 3:
-        score = min(100, score + 8)
-        print(f"[Taiwan Rhetoric] Convergence bonus: {elevated} outbound actors at L3+")
+        score = min(100, score + 10)
+        print(f"[China Rhetoric] Convergence bonus: {elevated} outbound actors at L3+")
 
     return score, max_level
 
 
-def _compute_inbound_score_from_fingerprint(china_fp, actor_results):
+def _compute_inbound_score(actor_results):
+    """Compute composite inbound score (0-100)."""
+    weights = {
+        'taiwan_defense': 2.0,
+        'us_commitment':  3.0,
+        'japan_regional': 2.0,
+    }
+    total_weight = sum(weights.values())
+    weighted_sum = 0.0
+    max_level    = 0
+
+    for actor_key, weight in weights.items():
+        level         = actor_results.get(actor_key, {}).get('level', 0)
+        weighted_sum += level * weight
+        max_level     = max(max_level, level)
+
+    score = int((weighted_sum / (total_weight * 5)) * 100)
+
+    # Japan friction bonus: +5 if Japan at L3+
+    japan_level = actor_results.get('japan_regional', {}).get('level', 0)
+    if japan_level >= 3:
+        score = min(100, score + 5)
+        print(f"[China Rhetoric] Japan friction bonus applied (Japan L{japan_level})")
+
+    return score, max_level
+
+
+# ============================================
+# CROSS-THEATER FINGERPRINT
+# ============================================
+
+def _write_crosstheater_fingerprint(outbound_score, outbound_max, inbound_max,
+                                    overall_level, actor_results,
+                                    axis_subscores=None):
     """
-    Compute Taiwan inbound score using China fingerprint as primary source.
-    Falls back to article scan if fingerprint unavailable.
-    Returns (score 0-100, max_level 0-5, source_note).
+    Write China fingerprint to shared Redis cross-theater key.
+    v1.2.0: includes china_iran_axis sub-scores so downstream consumers
+    (Iran tracker, Global Pressure Index) can see WHICH dimension of
+    China support is elevated — ISR is more consequential than diplomatic.
     """
-    if china_fp:
-        # Primary: use China fingerprint directly
-        pla_level  = china_fp.get('pla_level', 0)
-        xi_level   = china_fp.get('xi_level', 0)
-        mfa_level  = china_fp.get('mfa_level', 0)
-        tao_level  = china_fp.get('tao_level', 0)
-        econ_level = china_fp.get('econ_level', 0)
+    fingerprints = _redis_get(CROSSTHEATER_KEY) or {}
 
-        # Weighted composite of China pressure vectors
-        # PLA and Xi get highest weight -- most dangerous signals
-        weighted = (
-            pla_level  * 3.0 +
-            xi_level   * 2.5 +
-            mfa_level  * 1.5 +
-            tao_level  * 1.5 +
-            econ_level * 1.0
-        )
-        total_weight = 3.0 + 2.5 + 1.5 + 1.5 + 1.0   # 10.0
-        score        = int((weighted / (total_weight * 5)) * 100)
-        max_level    = max(pla_level, xi_level, mfa_level, tao_level, econ_level)
-        source_note  = 'china_fingerprint'
+    # v1.2.0 — Safe defaults if caller didn't pass axis_subscores
+    axis_subscores = axis_subscores or {}
+    axis_level     = actor_results.get('china_iran_axis', {}).get('level', 0)
 
-        print(f"[Taiwan Rhetoric] Inbound from China fingerprint: "
-              f"PLA L{pla_level} Xi L{xi_level} MFA L{mfa_level} -> {score}/100")
-        return score, max_level, source_note
+    fingerprints['china'] = {
+        'level':          overall_level,
+        'outbound_score': outbound_score,
+        'outbound_max':   outbound_max,
+        'inbound_max':    inbound_max,
+        'pla_level':      actor_results.get('pla_operational', {}).get('level', 0),
+        'xi_level':       actor_results.get('xi_cmc', {}).get('level', 0),
+        'mfa_level':      actor_results.get('mfa_globaltimes', {}).get('level', 0),
+        'tao_level':      actor_results.get('tao', {}).get('level', 0),
+        'econ_level':     actor_results.get('economic_coercion', {}).get('level', 0),
+        'japan_friction': actor_results.get('japan_regional', {}).get('level', 0),
+        'us_commitment':  actor_results.get('us_commitment', {}).get('level', 0),
+        # ── v1.2.0 China-Iran Axis (April 2026) ──
+        # Written from China's perspective: what China is DOING toward Iran.
+        # Overall level + per-dimension sub-levels for granular downstream use.
+        'china_iran_axis_level':        axis_level,
+        'china_iran_weapons_level':     axis_subscores.get('weapons', 0),
+        'china_iran_isr_level':         axis_subscores.get('isr', 0),
+        'china_iran_dualuse_level':     axis_subscores.get('dualuse', 0),
+        'china_iran_diplomatic_level':  axis_subscores.get('diplomatic', 0),
+        # Binary flag for map-overlay / frontend consumers:
+        'china_iran_active':            axis_level >= 2,
+        'label':          ESCALATION_LEVELS[overall_level]['label'],
+        'updated_at':     datetime.now(timezone.utc).isoformat(),
+    }
 
-    else:
-        # Fallback: use article scan inbound actors
-        weights = {
-            'pla_pressure':    3.0,
-            'beijing_coercion': 2.0,
-            'economic_pressure': 1.0,
-        }
-        total_weight = sum(weights.values())
-        weighted_sum = 0.0
-        max_level    = 0
-
-        for actor_key, weight in weights.items():
-            level         = actor_results.get(actor_key, {}).get('level', 0)
-            weighted_sum += level * weight
-            max_level     = max(max_level, level)
-
-        score       = int((weighted_sum / (total_weight * 5)) * 100)
-        source_note = 'article_scan_fallback'
-        print(f"[Taiwan Rhetoric] Inbound from article scan (China fingerprint unavailable): {score}/100")
-        return score, max_level, source_note
+    _redis_set(CROSSTHEATER_KEY, fingerprints)
+    print(f"[China Rhetoric] Cross-theater fingerprint written (L{overall_level}, axis L{axis_level})")
 
 
 # ============================================
 # MAIN SCAN
 # ============================================
 
-def run_taiwan_rhetoric_scan():
+def run_china_rhetoric_scan():
     """
-    Full Taiwan rhetoric scan. Fetches all sources, scores all actors,
-    reads China fingerprint for inbound dashboard, writes to Redis.
+    Full China rhetoric scan. Fetches all sources, scores all actors,
+    computes dual dashboard, writes to Redis.
     """
     scan_start = time.time()
-    print(f"\n[Taiwan Rhetoric] Starting scan at {datetime.now(timezone.utc).isoformat()}")
-
-    # Read China fingerprint FIRST -- before any article fetching
-    china_fp = _read_china_fingerprint()
+    print(f"\n[China Rhetoric] Starting scan at {datetime.now(timezone.utc).isoformat()}")
 
     all_articles = []
 
@@ -1453,69 +1732,67 @@ def run_taiwan_rhetoric_scan():
             all_articles.extend(articles)
             time.sleep(0.3)
         except Exception as e:
-            print(f"[Taiwan RSS] {feed_key}: {str(e)[:80]}")
+            print(f"[China RSS] {feed_key}: {str(e)[:80]}")
 
-    # Google News RSS
+    # Google News RSS -- English
     gn_queries = [
-        ('Taiwan Lai Ching-te independence defense military', 'GNews:Taiwan Outbound EN'),
-        ('Taiwan ADIZ PLA China exercise strait threat', 'GNews:Taiwan Inbound EN'),
-        ('US Taiwan arms sale senator visit Taipei', 'GNews:US Taiwan EN'),
-        ('Taiwan Japan defense JSDF contingency', 'GNews:Japan Taiwan EN'),
-        ('Taiwan civil defense reserve conscription drill', 'GNews:Taiwan Civil EN'),
+        ('China PLA Taiwan military exercise blockade invasion', 'GNews:China Military EN'),
+        ('Taiwan ADIZ violation defense strait', 'GNews:Taiwan Defense EN'),
+        ('US seventh fleet Taiwan Japan JSDF strait', 'GNews:US Japan Taiwan EN'),
+        ('China Taiwan reunification Xi Jinping force', 'GNews:Xi Taiwan EN'),
+        ('Joint Sword Strait Thunder PLA exercise Taiwan', 'GNews:PLA Exercise EN'),
     ]
     for query, label in gn_queries:
         try:
             all_articles.extend(_fetch_google_news_rss(query, label))
             time.sleep(0.3)
         except Exception as e:
-            print(f"[Taiwan GNews] {label}: {str(e)[:60]}")
+            print(f"[China GNews] {label}: {str(e)[:60]}")
 
-    # Google News RSS -- Traditional Chinese
+    # Google News RSS -- Chinese
     zh_queries = [
-        ('台灣 賴清德 獨立 國防 軍事', 'GNews:Taiwan Outbound ZH', 'zh', 'TW'),
-        ('共機擾台 解放軍 台灣海峽 演習', 'GNews:Taiwan Inbound ZH', 'zh', 'TW'),
+        ('解放军台湾演习 OR 武统 OR 联合利剑', 'GNews:PLA ZH', 'zh', 'TW'),
+        ('台湾国防 OR 共机扰台 OR 中线', 'GNews:Taiwan Defense ZH', 'zh', 'TW'),
     ]
     for query, label, lang, gl in zh_queries:
         try:
             all_articles.extend(_fetch_google_news_rss(query, label, lang=lang, gl=gl))
             time.sleep(0.3)
         except Exception as e:
-            print(f"[Taiwan GNews ZH] {label}: {str(e)[:60]}")
+            print(f"[China GNews ZH] {label}: {str(e)[:60]}")
 
-    # GDELT + NewsAPI fallback
+    # GDELT
     for query_key, query in GDELT_QUERIES.items():
         lang = 'eng'
         if 'zho' in query_key:
             lang = 'zho'
+        elif 'jpn' in query_key:
+            lang = 'jpn'
         try:
-            gdelt_results = _fetch_gdelt(query, language=lang, days=3)
-            if gdelt_results:
-                all_articles.extend(gdelt_results)
-            elif lang == 'eng':
-                print(f"[Taiwan GDELT] {query_key}: empty — trying NewsAPI fallback")
-                all_articles.extend(_fetch_newsapi(query, days=3))
+            all_articles.extend(_fetch_gdelt(query, language=lang, days=3))
             time.sleep(0.5)
         except Exception as e:
-            print(f"[Taiwan GDELT] {query_key}: {str(e)[:60]}")
-            if lang == 'eng':
-                all_articles.extend(_fetch_newsapi(query, days=3))
+            print(f"[China GDELT] {query_key}: {str(e)[:60]}")
 
     # Reddit
-    reddit_keywords = ['Taiwan defense', 'Lai Ching-te', 'Taiwan ADIZ', 'Taiwan independence']
+    reddit_keywords = [
+        'Taiwan strait', 'PLA exercise', 'China Taiwan',
+        'median line', 'Taiwan ADIZ',
+    ]
     try:
         all_articles.extend(_fetch_reddit(REDDIT_SUBREDDITS, reddit_keywords, days=3))
     except Exception as e:
-        print(f"[Taiwan Reddit]: {str(e)[:80]}")
+        print(f"[China Reddit]: {str(e)[:80]}")
 
-    # Telegram
+    # Telegram -- shared Asia cache
     if TELEGRAM_AVAILABLE:
         try:
             telegram_msgs = fetch_asia_telegram_signals(hours_back=72, include_extended=True)
-            taiwan_kws = ['taiwan', '台灣', 'lai ching', 'adiz', 'pla taiwan', 'taipei']
-            tg_count   = 0
+            china_kws = ['taiwan', 'pla', 'china military', 'strait', '解放军', '台湾']
+            tg_count  = 0
             for msg in (telegram_msgs or []):
                 txt = (msg.get('title', '') or '').lower()
-                if any(kw in txt for kw in taiwan_kws):
+                if any(kw in txt for kw in china_kws):
                     all_articles.append({
                         'title':       msg.get('title', '')[:200],
                         'description': msg.get('title', '')[:500],
@@ -1526,9 +1803,9 @@ def run_taiwan_rhetoric_scan():
                         'language':    'multi',
                     })
                     tg_count += 1
-            print(f"[Taiwan Rhetoric] Telegram: {tg_count} relevant messages")
+            print(f"[China Rhetoric] Telegram: {tg_count} relevant messages")
         except Exception as e:
-            print(f"[Taiwan Rhetoric] Telegram error: {str(e)[:80]}")
+            print(f"[China Rhetoric] Telegram error: {str(e)[:80]}")
 
     # Deduplicate by URL
     seen_urls = set()
@@ -1542,7 +1819,7 @@ def run_taiwan_rhetoric_scan():
         deduped.append(a)
     all_articles = deduped
 
-    print(f"[Taiwan Rhetoric] Total articles after dedup: {len(all_articles)}")
+    print(f"[China Rhetoric] Total articles after dedup: {len(all_articles)}")
 
     # Score all actors
     actor_results = {}
@@ -1550,9 +1827,9 @@ def run_taiwan_rhetoric_scan():
         try:
             actor_results[actor_key] = _score_actor(actor_key, all_articles)
             lvl = actor_results[actor_key]['level']
-            print(f"[Taiwan Rhetoric] {actor_key}: L{lvl} ({ESCALATION_LEVELS[lvl]['label']})")
+            print(f"[China Rhetoric] {actor_key}: L{lvl} ({ESCALATION_LEVELS[lvl]['label']})")
         except Exception as e:
-            print(f"[Taiwan Rhetoric] Score error {actor_key}: {str(e)[:80]}")
+            print(f"[China Rhetoric] Score error {actor_key}: {str(e)[:80]}")
             actor_results[actor_key] = {
                 'actor': actor_key, 'level': 0,
                 'level_label': 'Baseline', 'level_color': '#6b7280',
@@ -1562,23 +1839,26 @@ def run_taiwan_rhetoric_scan():
                    ['name', 'flag', 'icon', 'color', 'dashboard', 'role', 'description']},
             }
 
-    # Compute outbound score
+    # Compute dashboard scores
     outbound_score, outbound_max = _compute_outbound_score(actor_results)
+    inbound_score,  inbound_max  = _compute_inbound_score(actor_results)
 
-    # Compute inbound score (from China fingerprint or fallback)
-    inbound_score, inbound_max, inbound_source = _compute_inbound_score_from_fingerprint(
-        china_fp, actor_results
-    )
-
-    # Overall level = max of outbound and inbound max
-    # (Taiwan's analytical question covers both its own posture AND what China is doing)
-    overall_level = max(outbound_max, inbound_max)
+    # Overall level = outbound max (this tracker answers the outbound question)
+    overall_level = outbound_max
     overall_label = ESCALATION_LEVELS[overall_level]['label']
 
-    # Write Taiwan fingerprint
-    _write_taiwan_fingerprint(
-        outbound_score, outbound_max, inbound_score,
-        inbound_max, overall_level, actor_results
+    # v1.2.0 — compute China-Iran axis sub-scores for fingerprint granularity
+    axis_subscores = _score_china_iran_axis_subscores(all_articles)
+    if axis_subscores.get('max', 0) > 0:
+        print(f"[China Rhetoric] Axis sub-scores — "
+              f"weapons:{axis_subscores['weapons']}, isr:{axis_subscores['isr']}, "
+              f"dualuse:{axis_subscores['dualuse']}, diplomatic:{axis_subscores['diplomatic']}")
+
+    # Write cross-theater fingerprint
+    _write_crosstheater_fingerprint(
+        outbound_score, outbound_max, inbound_max,
+        overall_level, actor_results,
+        axis_subscores=axis_subscores
     )
 
     scan_time = round(time.time() - scan_start, 1)
@@ -1587,34 +1867,31 @@ def run_taiwan_rhetoric_scan():
     red_lines_triggered = []
     historical_matches  = []
     so_what             = {}
+    top_signals         = []
     if _INTERPRETER_AVAILABLE:
         try:
+            # Build scan_data shape that interpreter expects
             interp_scan_data = {
-                'actors':          actor_results,
-                'articles':        all_articles,
-                'mass_emigration': 0,  # placeholder; future: wire from dedicated scanner
+                'actors':            actor_results,
+                'articles':          all_articles,
+                'domestic_fracture': 0,  # placeholder; future: wire from dedicated scanner
             }
             red_lines_triggered = check_red_lines(all_articles, actor_results)
             def _lvl(key):
                 return actor_results.get(key, {}).get('level', 0)
-            _det_strength = max(_lvl('us_partnership'), _lvl('roc_defense'), _lvl('diplomatic_posture'))
-            _inbound      = max(_lvl('pla_pressure'), _lvl('beijing_coercion'), _lvl('economic_pressure'))
-            _resolve      = max(_lvl('lai_presidential'), _lvl('asymmetric_resilience'))
             interp_vectors = {
-                'deterrence_strength': _det_strength,
-                'inbound_pressure':    _inbound,
-                'domestic_resolve':    _resolve,
-                'deterrence_gap':      max(0, _inbound - _det_strength),
-                'mass_emigration':     0,
+                'kinetic_pressure':  max(_lvl('pla_operational'), _lvl('xi_cmc') if _lvl('xi_cmc') >= 3 else 0),
+                'economic_pressure': _lvl('economic_coercion'),
+                'domestic_fracture': 0,
+                'us_commitment':     _lvl('us_commitment'),
             }
             historical_matches = build_historical_matches(actor_results, interp_vectors)
             so_what = build_so_what(interp_scan_data, red_lines_triggered, historical_matches)
-            print(f"[Taiwan Rhetoric] Interpreter: "
+            print(f"[China Rhetoric] Interpreter: "
                   f"{len(red_lines_triggered)} red lines, "
-                  f"deterrence_gap: L{so_what.get('deterrence_gap', 0)}, "
                   f"scenario: {so_what.get('scenario_icon','')} {so_what.get('scenario','')[:40]}")
         except Exception as e:
-            print(f"[Taiwan Rhetoric] Interpreter error: {e}")
+            print(f"[China Rhetoric] Interpreter error: {e}")
 
     result = {
         'success':           True,
@@ -1627,7 +1904,6 @@ def run_taiwan_rhetoric_scan():
         'outbound_max_level': outbound_max,
         'inbound_score':      inbound_score,
         'inbound_max_level':  inbound_max,
-        'inbound_source':     inbound_source,
 
         # Overall
         'overall_level': overall_level,
@@ -1637,20 +1913,15 @@ def run_taiwan_rhetoric_scan():
         # Actor breakdown
         'actors': actor_results,
 
-        # Component levels for frontend dashboard card
-        'lai_level':          actor_results.get('lai_presidential', {}).get('level', 0),
-        'defense_level':      actor_results.get('roc_defense', {}).get('level', 0),
-        'us_level':           actor_results.get('us_partnership', {}).get('level', 0),
-        'diplomatic_level':   actor_results.get('diplomatic_posture', {}).get('level', 0),
-        'asymmetric_level':   actor_results.get('asymmetric_resilience', {}).get('level', 0),
-
-        # Inbound from China fingerprint (pass through for frontend)
-        'china_pla_level':    china_fp.get('pla_level', 0) if china_fp else 0,
-        'china_xi_level':     china_fp.get('xi_level', 0) if china_fp else 0,
-        'china_mfa_level':    china_fp.get('mfa_level', 0) if china_fp else 0,
-        'china_econ_level':   china_fp.get('econ_level', 0) if china_fp else 0,
-        'china_overall_level': china_fp.get('level', 0) if china_fp else 0,
-        'china_fingerprint_age': china_fp.get('updated_at', '') if china_fp else '',
+        # Component levels (for cross-theater + frontend dashboard cards)
+        'xi_level':              actor_results.get('xi_cmc', {}).get('level', 0),
+        'pla_level':             actor_results.get('pla_operational', {}).get('level', 0),
+        'mfa_level':             actor_results.get('mfa_globaltimes', {}).get('level', 0),
+        'tao_level':             actor_results.get('tao', {}).get('level', 0),
+        'econ_level':            actor_results.get('economic_coercion', {}).get('level', 0),
+        'taiwan_defense_level':  actor_results.get('taiwan_defense', {}).get('level', 0),
+        'us_commitment_level':   actor_results.get('us_commitment', {}).get('level', 0),
+        'japan_level':           actor_results.get('japan_regional', {}).get('level', 0),
 
         # Interpreter output
         'red_lines':          red_lines_triggered,
@@ -1658,30 +1929,39 @@ def run_taiwan_rhetoric_scan():
         'so_what':            so_what,
 
         'escalation_levels': ESCALATION_LEVELS,
-        'version':           '1.1.0-taiwan',  # bumped for interpreter wiring
+        'version':           '2.0.0-china',  # v2.0: emits top_signals[]
     }
+
+    # v2.0: Build top_signals AFTER result dict is constructed (needs overall_level + so_what)
+    if _INTERPRETER_AVAILABLE:
+        try:
+            top_signals = build_top_signals(result)
+            print(f"[China Rhetoric] top_signals: {len(top_signals)} emitted")
+        except Exception as e:
+            print(f"[China Rhetoric] build_top_signals error: {e}")
+            top_signals = []
+    result['top_signals'] = top_signals
 
     # Cache to Redis
     _redis_set(RHETORIC_CACHE_KEY, result)
     _redis_set(RHETORIC_CACHE_KEY_LEGACY, result)
 
-    # History snapshot
+    # History snapshot for chart rendering
     _redis_lpush_trim(HISTORY_KEY, {
         'ts':             datetime.now(timezone.utc).isoformat(),
         'outbound_score': outbound_score,
         'inbound_score':  inbound_score,
         'level':          overall_level,
         'label':          overall_label,
-        'lai_level':      actor_results.get('lai_presidential', {}).get('level', 0),
-        'defense_level':  actor_results.get('roc_defense', {}).get('level', 0),
-        'us_level':       actor_results.get('us_partnership', {}).get('level', 0),
-        'china_pla_level': china_fp.get('pla_level', 0) if china_fp else 0,
-        'china_xi_level':  china_fp.get('xi_level', 0) if china_fp else 0,
+        'xi_level':       actor_results.get('xi_cmc', {}).get('level', 0),
+        'pla_level':      actor_results.get('pla_operational', {}).get('level', 0),
+        'japan_level':    actor_results.get('japan_regional', {}).get('level', 0),
+        'us_level':       actor_results.get('us_commitment', {}).get('level', 0),
     })
 
-    print(f"[Taiwan Rhetoric] Scan complete in {scan_time}s | "
+    print(f"[China Rhetoric] Scan complete in {scan_time}s | "
           f"Outbound L{outbound_max} ({outbound_score}/100) | "
-          f"Inbound L{inbound_max} ({inbound_score}/100) [{inbound_source}]")
+          f"Inbound L{inbound_max} ({inbound_score}/100)")
 
     return result
 
@@ -1691,15 +1971,14 @@ def run_taiwan_rhetoric_scan():
 # ============================================
 
 def _background_scan_loop():
-    """Background thread: refresh Taiwan rhetoric every 6 hours."""
-    print("[Taiwan Rhetoric] Background thread started (6h cycle)")
-    # Stagger boot delay so Taiwan starts AFTER China (China writes fingerprint first)
-    time.sleep(180)
+    """Background thread: refresh China rhetoric every 6 hours."""
+    print("[China Rhetoric] Background thread started (6h cycle)")
+    time.sleep(120)  # Boot delay -- let app stabilize first
     while True:
         try:
-            run_taiwan_rhetoric_scan()
+            run_china_rhetoric_scan()
         except Exception as e:
-            print(f"[Taiwan Rhetoric] Background scan error: {str(e)[:200]}")
+            print(f"[China Rhetoric] Background scan error: {str(e)[:200]}")
         time.sleep(SCAN_INTERVAL_HOURS * 3600)
 
 
@@ -1707,16 +1986,15 @@ def _background_scan_loop():
 # FLASK ENDPOINT REGISTRATION
 # ============================================
 
-def register_taiwan_rhetoric_endpoints(app):
-    """Register Taiwan rhetoric endpoints on the Flask app."""
+def register_china_rhetoric_endpoints(app):
+    """Register China rhetoric endpoints on the Flask app."""
 
-    @app.route('/api/rhetoric/taiwan', methods=['GET'])
-    def api_taiwan_rhetoric():
+    @app.route('/api/rhetoric/china', methods=['GET'])
+    def api_china_rhetoric():
         """
-        Taiwan rhetoric tracker -- dual dashboard.
-        Outbound: Is Taiwan hardening its posture / triggering PLA response?
-        Inbound:  What is China (PLA/Xi/MFA) signaling at Taiwan?
-                  (Read from China fingerprint -- runs without re-scanning)
+        China rhetoric tracker -- dual dashboard.
+        Outbound: Is China moving toward coercive action against Taiwan?
+        Inbound:  What is the US/Japan/Taiwan coalition signaling back?
         ?force=true to bypass cache and run fresh scan.
         """
         force = request.args.get('force', 'false').lower() == 'true'
@@ -1739,7 +2017,7 @@ def register_taiwan_rhetoric_endpoints(app):
             _rhetoric_running = True
 
         try:
-            result = run_taiwan_rhetoric_scan()
+            result = run_china_rhetoric_scan()
             return jsonify(result)
         except Exception as e:
             return jsonify({'success': False, 'error': str(e)[:200]}), 500
@@ -1747,14 +2025,14 @@ def register_taiwan_rhetoric_endpoints(app):
             with _rhetoric_lock:
                 _rhetoric_running = False
 
-    @app.route('/api/rhetoric/taiwan/summary', methods=['GET'])
-    def api_taiwan_rhetoric_summary():
-        """Lightweight summary -- scores and levels only."""
+    @app.route('/api/rhetoric/china/summary', methods=['GET'])
+    def api_china_rhetoric_summary():
+        """Lightweight summary -- scores and levels only, no full actor detail."""
         cached = _redis_get(RHETORIC_CACHE_KEY)
         if not cached:
             return jsonify({
                 'success': False,
-                'error': 'No data yet -- run /api/rhetoric/taiwan?force=true'
+                'error': 'No data yet -- run /api/rhetoric/china?force=true'
             }), 404
         return jsonify({
             'success':            True,
@@ -1766,43 +2044,41 @@ def register_taiwan_rhetoric_endpoints(app):
             'outbound_max_level': cached.get('outbound_max_level', 0),
             'inbound_score':      cached.get('inbound_score', 0),
             'inbound_max_level':  cached.get('inbound_max_level', 0),
-            'inbound_source':     cached.get('inbound_source', 'unknown'),
-            'lai_level':          cached.get('lai_level', 0),
-            'defense_level':      cached.get('defense_level', 0),
-            'us_level':           cached.get('us_level', 0),
-            'diplomatic_level':   cached.get('diplomatic_level', 0),
-            'asymmetric_level':   cached.get('asymmetric_level', 0),
-            'china_pla_level':    cached.get('china_pla_level', 0),
-            'china_xi_level':     cached.get('china_xi_level', 0),
-            'china_overall_level': cached.get('china_overall_level', 0),
+            'xi_level':           cached.get('xi_level', 0),
+            'pla_level':          cached.get('pla_level', 0),
+            'mfa_level':          cached.get('mfa_level', 0),
+            'tao_level':          cached.get('tao_level', 0),
+            'econ_level':         cached.get('econ_level', 0),
+            'taiwan_defense_level': cached.get('taiwan_defense_level', 0),
+            'us_commitment_level':  cached.get('us_commitment_level', 0),
+            'japan_level':        cached.get('japan_level', 0),
             'total_articles':     cached.get('total_articles', 0),
             # Interpreter summary (for cross-page BLUF use)
-            'red_lines_count':     len(cached.get('red_lines', [])),
-            'scenario':            (cached.get('so_what') or {}).get('scenario', ''),
-            'scenario_icon':       (cached.get('so_what') or {}).get('scenario_icon', ''),
-            'scenario_color':      (cached.get('so_what') or {}).get('scenario_color', '#6b7280'),
-            'deterrence_strength': (cached.get('so_what') or {}).get('deterrence_strength', 0),
-            'inbound_pressure':    (cached.get('so_what') or {}).get('inbound_pressure', 0),
-            'domestic_resolve':    (cached.get('so_what') or {}).get('domestic_resolve', 0),
-            'deterrence_gap':      (cached.get('so_what') or {}).get('deterrence_gap', 0),
-            'version':             '1.1.0-taiwan',
+            'red_lines_count':    len(cached.get('red_lines', [])),
+            'scenario':           (cached.get('so_what') or {}).get('scenario', ''),
+            'scenario_icon':      (cached.get('so_what') or {}).get('scenario_icon', ''),
+            'scenario_color':     (cached.get('so_what') or {}).get('scenario_color', '#6b7280'),
+            'kinetic_pressure':   (cached.get('so_what') or {}).get('kinetic_pressure', 0),
+            'economic_pressure':  (cached.get('so_what') or {}).get('economic_pressure', 0),
+            'coalition_pushback': (cached.get('so_what') or {}).get('coalition_pushback', 0),
+            'version':            '1.1.0-china',
         })
 
-    @app.route('/api/rhetoric/taiwan/history', methods=['GET'])
-    def api_taiwan_rhetoric_history():
-        """Return rhetoric history for chart rendering."""
+    @app.route('/api/rhetoric/china/history', methods=['GET'])
+    def api_china_rhetoric_history():
+        """Return rhetoric history for chart rendering (last 8 weeks)."""
         history = _redis_get(HISTORY_KEY)
         if not isinstance(history, list):
             history = []
         return jsonify({
             'success': True,
             'count':   len(history),
-            'history': history[:120],
+            'history': history[:120],  # 30 days at 6h intervals
         })
 
-    # Start background refresh thread -- staggered after China (180s delay)
+    # Start background refresh thread
     bg = threading.Thread(target=_background_scan_loop, daemon=True)
     bg.start()
 
-    print("[Taiwan Rhetoric] Endpoints registered: "
-          "/api/rhetoric/taiwan, /api/rhetoric/taiwan/summary, /api/rhetoric/taiwan/history")
+    print("[China Rhetoric] Endpoints registered: "
+          "/api/rhetoric/china, /api/rhetoric/china/summary, /api/rhetoric/china/history")
