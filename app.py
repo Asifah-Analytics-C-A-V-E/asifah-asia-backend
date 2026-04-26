@@ -67,9 +67,15 @@ try:
     from rhetoric_tracker_taiwan import register_taiwan_rhetoric_endpoints
     TAIWAN_RHETORIC_AVAILABLE = True
     print("[Asia Backend] ✅ Taiwan rhetoric tracker loaded")
-except ImportError:
+except Exception as e:
+    # v2.1: catch ALL exceptions (not just ImportError) and print full traceback
+    # so any underlying NameError / SyntaxError / runtime error is visible in Render logs
+    import traceback
     TAIWAN_RHETORIC_AVAILABLE = False
-    print("[Asia Backend] ⚠️ Taiwan rhetoric tracker not available")
+    print(f"[Asia Backend] ⚠️ Taiwan rhetoric tracker not available — {type(e).__name__}: {e}")
+    print(f"[Asia Backend] === FULL TAIWAN IMPORT TRACEBACK ===")
+    traceback.print_exc()
+    print(f"[Asia Backend] === END TAIWAN IMPORT TRACEBACK ===")
 
 try:
     from asia_regional_bluf import register_asia_bluf_routes
@@ -2839,7 +2845,6 @@ def debug_routes():
         'taiwan_routes':      [r for r in routes if 'taiwan' in r['rule']],
         'china_routes':       [r for r in routes if 'china' in r['rule']],
         'rhetoric_routes':    [r for r in routes if 'rhetoric' in r['rule']],
-        'all_routes':         routes,
         'china_loaded_flag':  CHINA_RHETORIC_AVAILABLE,
         'taiwan_loaded_flag': TAIWAN_RHETORIC_AVAILABLE,
         'asia_bluf_flag':     ASIA_BLUF_AVAILABLE,
