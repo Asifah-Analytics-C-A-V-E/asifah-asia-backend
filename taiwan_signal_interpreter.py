@@ -672,3 +672,194 @@ def interpret_signals(scan_data):
         'so_what':            so_what,
         'historical_matches': historical_matches,
     }
+
+
+# ============================================================
+# v2.0+ — TOP SIGNALS (BLUF / GPI consumable)
+# ============================================================
+# Emits a pre-prioritized list of signal dicts that the Asia Regional BLUF
+# (and ultimately the Global Pressure Index) consume directly.
+#
+# Taiwan-specific categories:
+#   red_line_breached, theatre_high, deterrence_gap, coalition_strong,
+#   domestic_resolve, mass_emigration, silence_anomaly
+
+TAIWAN_FLAG = '\U0001f1f9\U0001f1fc'  # 🇹🇼
+
+def build_top_signals(scan_data):
+    """
+    Build Taiwan's top_signals[] for BLUF/GPI consumption.
+    Reads from scan_data (post-interpret_signals output).
+    """
+    signals = []
+
+    actor_results = scan_data.get('actors', {}) or {}
+    so_what       = scan_data.get('so_what', {}) or {}
+    red_lines     = scan_data.get('red_lines', []) or []
+
+    overall_level = scan_data.get('overall_level', 0) or 0
+    overall_score = scan_data.get('theatre_score',
+                    scan_data.get('overall_score', 0)) or 0
+
+    # Vector readouts from so_what
+    deterrence_strength = so_what.get('deterrence_strength', 0) or 0
+    inbound_pressure    = so_what.get('inbound_pressure', 0) or 0
+    domestic_resolve    = so_what.get('domestic_resolve', 0) or 0
+    deterrence_gap      = so_what.get('deterrence_gap', 0) or 0
+
+    # Actor-specific levels
+    us_partnership   = actor_results.get('us_partnership',   {}).get('level', 0) or 0
+    roc_defense      = actor_results.get('roc_defense',      {}).get('level', 0) or 0
+    pla_pressure     = actor_results.get('pla_pressure',     {}).get('level', 0) or 0
+    lai_presidential = actor_results.get('lai_presidential', {}).get('level', 0) or 0
+
+    mass_emigration = scan_data.get('mass_emigration', 0) or 0
+
+    # ============================================
+    # 1. RED LINES BREACHED — BUT distinguish positive vs negative
+    # ============================================
+    for rl in red_lines:
+        if not isinstance(rl, dict): continue
+        status = rl.get('status', '')
+        label  = rl.get('label', 'Red line')
+        is_positive = (rl.get('color') == '#22c55e')
+        if status == 'BREACHED':
+            if is_positive:
+                # Taiwan-specific: deterrence-positive red lines are GOOD news
+                signals.append({
+                    'priority':   9,
+                    'category':   'green_line_active',
+                    'theatre':    'taiwan',
+                    'level':      overall_level,
+                    'icon':       '🟢',
+                    'color':      '#22c55e',
+                    'short_text': f'{TAIWAN_FLAG} TAIWAN: Deterrence-positive — {label[:50]}',
+                    'long_text':  f'TAIWAN deterrence-positive signal: {label} — coalition / domestic resolve breach in favorable direction.',
+                })
+            else:
+                signals.append({
+                    'priority':   12,
+                    'category':   'red_line_breached',
+                    'theatre':    'taiwan',
+                    'level':      overall_level,
+                    'icon':       rl.get('icon', '🚨'),
+                    'color':      '#dc2626',
+                    'short_text': f'{TAIWAN_FLAG} TAIWAN: BREACH — {label[:55]}',
+                    'long_text':  f'TAIWAN red line breached at L{overall_level}: {label}.',
+                })
+        elif status == 'APPROACHING':
+            signals.append({
+                'priority':   8,
+                'category':   'red_line_approaching',
+                'theatre':    'taiwan',
+                'level':      overall_level,
+                'icon':       '🟠',
+                'color':      '#f97316',
+                'short_text': f'{TAIWAN_FLAG} TAIWAN: Approaching — {label[:50]}',
+                'long_text':  f'TAIWAN approaching red line: {label}.',
+            })
+
+    # ============================================
+    # 2. THEATRE-HIGH (overall L4+)
+    # ============================================
+    if overall_level >= 4:
+        signals.append({
+            'priority':   9 + overall_level,
+            'category':   'theatre_high',
+            'theatre':    'taiwan',
+            'level':      overall_level,
+            'icon':       '🔴',
+            'color':      '#dc2626' if overall_level >= 5 else '#ef4444',
+            'short_text': f'{TAIWAN_FLAG} TAIWAN L{overall_level} — Composite pressure',
+            'long_text':  f'TAIWAN at L{overall_level} composite pressure (score {overall_score}/100). Multi-vector activity across PLA pressure, deterrence, and domestic signaling.',
+        })
+
+    # ============================================
+    # 3. DETERRENCE GAP (Taiwan-specific KEY signal)
+    # ============================================
+    if deterrence_gap >= 3:
+        signals.append({
+            'priority':   11,
+            'category':   'deterrence_gap',
+            'theatre':    'taiwan',
+            'level':      deterrence_gap,
+            'icon':       '⚠️',
+            'color':      '#dc2626',
+            'short_text': f'{TAIWAN_FLAG} TAIWAN: Deterrence gap L{deterrence_gap}',
+            'long_text':  f'TAIWAN deterrence gap L{deterrence_gap} — inbound pressure L{inbound_pressure} exceeds coalition response L{deterrence_strength}. Coercion-into-weakness pattern.',
+        })
+    elif deterrence_gap >= 2:
+        signals.append({
+            'priority':   7,
+            'category':   'deterrence_gap',
+            'theatre':    'taiwan',
+            'level':      deterrence_gap,
+            'icon':       '📉',
+            'color':      '#f59e0b',
+            'short_text': f'{TAIWAN_FLAG} TAIWAN: Deterrence gap L{deterrence_gap}',
+            'long_text':  f'TAIWAN deterrence gap L{deterrence_gap} — inbound L{inbound_pressure} > coalition response L{deterrence_strength}. Reinforcement window open.',
+        })
+
+    # ============================================
+    # 4. INBOUND PRESSURE HIGH (PLA pressure on Taiwan)
+    # ============================================
+    if inbound_pressure >= 4:
+        signals.append({
+            'priority':   9,
+            'category':   'inbound_pressure_high',
+            'theatre':    'taiwan',
+            'level':      inbound_pressure,
+            'icon':       '🎯',
+            'color':      '#dc2626',
+            'short_text': f'{TAIWAN_FLAG} TAIWAN: Inbound pressure L{inbound_pressure}',
+            'long_text':  f'TAIWAN inbound pressure L{inbound_pressure} — PLA pressure level L{pla_pressure}; coercion tempo elevated.',
+        })
+
+    # ============================================
+    # 5. COALITION STRENGTH (positive signal)
+    # ============================================
+    if us_partnership >= 3 and roc_defense >= 3 and deterrence_gap < 2:
+        signals.append({
+            'priority':   6,
+            'category':   'coalition_strong',
+            'theatre':    'taiwan',
+            'level':      max(us_partnership, roc_defense),
+            'icon':       '🤝',
+            'color':      '#10b981',
+            'short_text': f'{TAIWAN_FLAG} TAIWAN: Coalition strong (US L{us_partnership}, ROC L{roc_defense})',
+            'long_text':  f'TAIWAN coalition posture strong — US partnership L{us_partnership}, ROC defense L{roc_defense}; deterrence coordinated.',
+        })
+
+    # ============================================
+    # 6. DOMESTIC RESOLVE (Lai presidential + asymmetric)
+    # ============================================
+    if domestic_resolve >= 4:
+        signals.append({
+            'priority':   6,
+            'category':   'domestic_resolve',
+            'theatre':    'taiwan',
+            'level':      domestic_resolve,
+            'icon':       '🏛️',
+            'color':      '#0ea5e9',
+            'short_text': f'{TAIWAN_FLAG} TAIWAN: Domestic resolve L{domestic_resolve}',
+            'long_text':  f'TAIWAN domestic resolve L{domestic_resolve} — Lai presidential signaling L{lai_presidential} aligned with asymmetric resilience posture.',
+        })
+
+    # ============================================
+    # 7. MASS EMIGRATION SIGNAL (escape pattern)
+    # ============================================
+    if mass_emigration >= 3:
+        signals.append({
+            'priority':   8,
+            'category':   'mass_emigration',
+            'theatre':    'taiwan',
+            'level':      mass_emigration,
+            'icon':       '✈️',
+            'color':      '#a855f7',
+            'short_text': f'{TAIWAN_FLAG} TAIWAN: Mass emigration L{mass_emigration}',
+            'long_text':  f'TAIWAN mass emigration signal L{mass_emigration} — flight pattern indicates domestic confidence erosion; forward indicator of coercion success.',
+        })
+
+    # Sort descending; BLUF will dedupe + globally rank
+    signals.sort(key=lambda s: s['priority'], reverse=True)
+    return signals
