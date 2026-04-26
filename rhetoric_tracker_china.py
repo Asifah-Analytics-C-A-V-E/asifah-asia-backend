@@ -100,6 +100,7 @@ try:
         check_red_lines,
         build_so_what,
         build_historical_matches,
+        build_top_signals,
     )
     _INTERPRETER_AVAILABLE = True
     print("[China Rhetoric] Signal interpreter loaded")
@@ -1866,6 +1867,7 @@ def run_china_rhetoric_scan():
     red_lines_triggered = []
     historical_matches  = []
     so_what             = {}
+    top_signals         = []
     if _INTERPRETER_AVAILABLE:
         try:
             # Build scan_data shape that interpreter expects
@@ -1927,8 +1929,18 @@ def run_china_rhetoric_scan():
         'so_what':            so_what,
 
         'escalation_levels': ESCALATION_LEVELS,
-        'version':           '1.1.0-china',  # bumped for interpreter wiring
+        'version':           '2.0.0-china',  # v2.0: emits top_signals[]
     }
+
+    # v2.0: Build top_signals AFTER result dict is constructed (needs overall_level + so_what)
+    if _INTERPRETER_AVAILABLE:
+        try:
+            top_signals = build_top_signals(result)
+            print(f"[China Rhetoric] top_signals: {len(top_signals)} emitted")
+        except Exception as e:
+            print(f"[China Rhetoric] build_top_signals error: {e}")
+            top_signals = []
+    result['top_signals'] = top_signals
 
     # Cache to Redis
     _redis_set(RHETORIC_CACHE_KEY, result)
