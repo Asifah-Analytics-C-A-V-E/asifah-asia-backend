@@ -683,3 +683,214 @@ def interpret_signals(scan_data):
         'so_what':            so_what,
         'historical_matches': historical_matches,
     }
+
+
+# ============================================================
+# v2.0+ — TOP SIGNALS (BLUF / GPI consumable)
+# ============================================================
+# Emits a pre-prioritized list of signal dicts that the Asia Regional BLUF
+# (and ultimately the Global Pressure Index) consume directly.
+#
+# Canonical signal shape:
+# {
+#     'priority':   int (0-15, higher = more important),
+#     'category':   str,        # red_line_breached | theatre_high | kinetic_pressure |
+#                               # economic_pressure | domestic_fracture | coalition_pushback |
+#                               # silence_anomaly | influence_high
+#     'theatre':    'china',
+#     'level':      0-5,
+#     'icon':       str (emoji),
+#     'color':      str (hex),
+#     'short_text': str (≤80 chars),
+#     'long_text':  str (≤200 chars),
+# }
+
+CHINA_FLAG = '\U0001f1e8\U0001f1f3'  # 🇨🇳
+
+def build_top_signals(scan_data):
+    """
+    Build China's top_signals[] for BLUF/GPI consumption.
+    Reads from scan_data dict (post-interpret_signals output).
+    Returns sorted list (descending priority).
+    """
+    signals = []
+
+    actor_results = scan_data.get('actors', {}) or {}
+    so_what       = scan_data.get('so_what', {}) or {}
+    red_lines     = scan_data.get('red_lines', []) or []
+
+    overall_level = scan_data.get('overall_level', 0) or 0
+    overall_score = scan_data.get('theatre_score',
+                    scan_data.get('overall_score', 0)) or 0
+
+    # Vector readouts from so_what
+    kinetic_pressure   = so_what.get('kinetic_pressure', 0) or 0
+    economic_pressure  = so_what.get('economic_pressure', 0) or 0
+    domestic_fracture  = so_what.get('domestic_fracture', 0) or 0
+    coalition_pushback = so_what.get('coalition_pushback', 0) or 0
+
+    # Actor-specific levels
+    pla_level = actor_results.get('pla_operational', {}).get('level', 0) or 0
+    xi_level  = actor_results.get('xi_cmc',           {}).get('level', 0) or 0
+    econ_level = actor_results.get('economic_coercion', {}).get('level', 0) or 0
+
+    # ============================================
+    # 1. RED LINES BREACHED (highest priority)
+    # ============================================
+    for rl in red_lines:
+        if not isinstance(rl, dict): continue
+        status = rl.get('status', '')
+        label  = rl.get('label', 'Red line')
+        if status == 'BREACHED':
+            signals.append({
+                'priority':   12,
+                'category':   'red_line_breached',
+                'theatre':    'china',
+                'level':      overall_level,
+                'icon':       rl.get('icon', '🚨'),
+                'color':      '#dc2626',
+                'short_text': f'{CHINA_FLAG} CHINA: BREACH — {label[:55]}',
+                'long_text':  f'CHINA red line breached at L{overall_level}: {label}.',
+            })
+        elif status == 'APPROACHING':
+            signals.append({
+                'priority':   8,
+                'category':   'red_line_approaching',
+                'theatre':    'china',
+                'level':      overall_level,
+                'icon':       '🟠',
+                'color':      '#f97316',
+                'short_text': f'{CHINA_FLAG} CHINA: Approaching — {label[:50]}',
+                'long_text':  f'CHINA approaching red line: {label}.',
+            })
+
+    # ============================================
+    # 2. THEATRE-HIGH (overall L4+)
+    # ============================================
+    if overall_level >= 4:
+        signals.append({
+            'priority':   9 + overall_level,
+            'category':   'theatre_high',
+            'theatre':    'china',
+            'level':      overall_level,
+            'icon':       '🔴',
+            'color':      '#dc2626' if overall_level >= 5 else '#ef4444',
+            'short_text': f'{CHINA_FLAG} CHINA L{overall_level} — Coercion posture',
+            'long_text':  f'CHINA at L{overall_level} — composite coercion posture (score {overall_score}/100). Multi-vector pressure across kinetic, economic, and political channels.',
+        })
+
+    # ============================================
+    # 3. KINETIC PRESSURE (PLA operational)
+    # ============================================
+    if kinetic_pressure >= 4:
+        signals.append({
+            'priority':   10,
+            'category':   'kinetic_pressure',
+            'theatre':    'china',
+            'level':      kinetic_pressure,
+            'icon':       '⚔️',
+            'color':      '#dc2626',
+            'short_text': f'{CHINA_FLAG} CHINA: Kinetic L{kinetic_pressure} (PLA L{pla_level})',
+            'long_text':  f'CHINA kinetic pressure L{kinetic_pressure} — PLA operational level L{pla_level}; cross-strait coercion at incident-level tempo.',
+        })
+    elif kinetic_pressure >= 3:
+        signals.append({
+            'priority':   8,
+            'category':   'kinetic_pressure',
+            'theatre':    'china',
+            'level':      kinetic_pressure,
+            'icon':       '⚔️',
+            'color':      '#ef4444',
+            'short_text': f'{CHINA_FLAG} CHINA: Kinetic L{kinetic_pressure} (PLA L{pla_level})',
+            'long_text':  f'CHINA kinetic pressure L{kinetic_pressure} — PLA operational L{pla_level}; cross-strait coercion active.',
+        })
+    elif kinetic_pressure >= 2:
+        signals.append({
+            'priority':   5,
+            'category':   'kinetic_pressure',
+            'theatre':    'china',
+            'level':      kinetic_pressure,
+            'icon':       '🔶',
+            'color':      '#f59e0b',
+            'short_text': f'{CHINA_FLAG} CHINA: Kinetic signaling L{kinetic_pressure}',
+            'long_text':  f'CHINA kinetic signaling L{kinetic_pressure} — below operational threshold.',
+        })
+
+    # ============================================
+    # 4. ECONOMIC PRESSURE
+    # ============================================
+    if economic_pressure >= 3:
+        signals.append({
+            'priority':   7 + economic_pressure,
+            'category':   'economic_pressure',
+            'theatre':    'china',
+            'level':      economic_pressure,
+            'icon':       '💰',
+            'color':      '#f97316',
+            'short_text': f'{CHINA_FLAG} CHINA: Economic coercion L{economic_pressure}',
+            'long_text':  f'CHINA economic coercion L{economic_pressure} — trade/investment pressure tools active (level {econ_level}).',
+        })
+
+    # ============================================
+    # 5. KINETIC + ECONOMIC CONVERGENCE (special signal)
+    # ============================================
+    if kinetic_pressure >= 3 and economic_pressure >= 3:
+        signals.append({
+            'priority':   11,
+            'category':   'kinetic_economic_convergence',
+            'theatre':    'china',
+            'level':      max(kinetic_pressure, economic_pressure),
+            'icon':       '🌀',
+            'color':      '#dc2626',
+            'short_text': f'{CHINA_FLAG} CHINA: Kinetic+Economic convergence',
+            'long_text':  f'CHINA dual-vector pressure — kinetic L{kinetic_pressure} converging with economic L{economic_pressure}; coercion campaign coordinated across channels.',
+        })
+
+    # ============================================
+    # 6. DOMESTIC FRACTURE
+    # ============================================
+    if domestic_fracture >= 3:
+        signals.append({
+            'priority':   6 + domestic_fracture,
+            'category':   'domestic_fracture',
+            'theatre':    'china',
+            'level':      domestic_fracture,
+            'icon':       '🏚️',
+            'color':      '#a855f7',
+            'short_text': f'{CHINA_FLAG} CHINA: Domestic fracture L{domestic_fracture}',
+            'long_text':  f'CHINA domestic fracture indicators L{domestic_fracture} — internal stress (economic, demographic, political) accelerating; external posturing risk elevated.',
+        })
+
+    # ============================================
+    # 7. XI/CMC POLITICAL SIGNALING (high)
+    # ============================================
+    if xi_level >= 4:
+        signals.append({
+            'priority':   8,
+            'category':   'xi_cmc_signaling',
+            'theatre':    'china',
+            'level':      xi_level,
+            'icon':       '🏛️',
+            'color':      '#dc2626',
+            'short_text': f'{CHINA_FLAG} CHINA: Xi/CMC L{xi_level} signaling',
+            'long_text':  f'CHINA Xi Jinping / Central Military Commission political signaling L{xi_level} — top-level direction language detected.',
+        })
+
+    # ============================================
+    # 8. COALITION PUSHBACK (positive signal — de-escalating)
+    # ============================================
+    if coalition_pushback >= 3:
+        signals.append({
+            'priority':   5 + coalition_pushback,
+            'category':   'coalition_pushback',
+            'theatre':    'china',
+            'level':      coalition_pushback,
+            'icon':       '🛡️',
+            'color':      '#10b981',
+            'short_text': f'{CHINA_FLAG} CHINA: Coalition pushback L{coalition_pushback}',
+            'long_text':  f'CHINA-facing coalition response L{coalition_pushback} — US/Japan/Australia/EU coordinated signaling detected; deterrence posture firming.',
+        })
+
+    # Sort descending; BLUF will dedupe + globally rank
+    signals.sort(key=lambda s: s['priority'], reverse=True)
+    return signals
