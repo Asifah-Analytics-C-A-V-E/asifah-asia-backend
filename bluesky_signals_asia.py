@@ -82,6 +82,23 @@ BLUESKY_ACCOUNTS_ASIA = [
         'Trump (X mirror) — Iran/China/DPRK/Pakistan statements'),
     ('wartranslated.bsky.social',      0.85, ['*'],
         'WarTranslated — Russia/DPRK/global military translation'),
+
+    # ── v1.1 — PAKISTAN-RELEVANT ASPIRATIONAL (Apr 2026) ──
+    # NOTE: All entries below require manual verification before deploy.
+    # Visit https://bsky.app/profile/{handle} to confirm 200 OK.
+    # Failure cache will skip dead handles after first attempt — safe to
+    # leave commented-in but they'll log "HTTP 400 — caching for 1h" first time.
+    #
+    # ('mofa-pakistan.bsky.social',    1.1,  ['pakistan'],
+    #     'Pakistan Ministry of Foreign Affairs (verify exists)'),
+    # ('ispr.govmirrors.com',          1.0,  ['pakistan'],
+    #     'ISPR (Pakistan Army) X mirror (verify exists)'),
+    # ('dawn-com.bsky.social',         0.95, ['pakistan'],
+    #     'Dawn — Pakistan paper of record (verify exists)'),
+    # ('mea-india.govmirrors.com',     1.0,  ['pakistan', 'india'],
+    #     'India MEA X mirror — Kashmir/Pakistan rhetoric (verify exists)'),
+    # ('michaelkugelman.bsky.social',  1.0,  ['pakistan', 'india', 'afghanistan'],
+    #     'Michael Kugelman — South Asia analyst (verify exists)'),
 ]
 
 # v1.0.1 — Aspirational handles to verify manually before adding:

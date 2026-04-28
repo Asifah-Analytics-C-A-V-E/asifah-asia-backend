@@ -63,6 +63,9 @@ ASIA_CHANNELS = [
 
     # Pakistan
     'GeoNews',                 # Geo News Pakistan
+    'dawn_official',           # Dawn — Pakistan's paper of record
+    'thenews_intl',            # The News International
+    'ARYNEWSOfficial',         # ARY News — Pakistan
 
     # Japan
     'NHKWorldNews',            # NHK World — Japan public broadcaster
@@ -86,6 +89,14 @@ EXTENDED_ASIA_CHANNELS = [
 
     # India / Pakistan / Afghanistan
     'thenewsinternational',    # The News International — Pakistan
+
+    # ── v1.1 — Pakistan-specific extended (Apr 2026) ──
+    'ISPR_Official',           # Inter-Services Public Relations (Army)
+    'PakistanArmy',            # Pakistan Army channel
+    'KashmirOSINT',            # Kashmir OSINT — LoC / militant tracking
+    'BalochOSINT',             # Baloch OSINT — BLA / Gwadar tracking
+    'TTPMonitor',              # TTP attack tracker (best-guess; verify)
+    'PakistanDefence',          # Pakistan Defence forum signals
 
     # Myanmar
 
