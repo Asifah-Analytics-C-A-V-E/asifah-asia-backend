@@ -78,6 +78,16 @@ except Exception as e:
     print(f"[Asia Backend] === END TAIWAN IMPORT TRACEBACK ===")
 
 try:
+    from rhetoric_tracker_pakistan import register_pakistan_rhetoric_endpoints
+    PAKISTAN_RHETORIC_AVAILABLE = True
+    print("[Asia Backend] ✅ Pakistan rhetoric tracker loaded")
+except Exception as e:
+    import traceback
+    PAKISTAN_RHETORIC_AVAILABLE = False
+    print(f"[Asia Backend] ⚠️ Pakistan rhetoric tracker not available — {type(e).__name__}: {e}")
+    traceback.print_exc()
+
+try:
     from asia_regional_bluf import register_asia_bluf_routes
     ASIA_BLUF_AVAILABLE = True
     print("[Asia Backend] ✅ Asia regional BLUF loaded")
@@ -92,6 +102,16 @@ try:
 except ImportError:
     CHINA_STABILITY_AVAILABLE = False
     print("[Asia Backend] ⚠️ China stability module not available")
+
+try:
+    from pakistan_stability import register_pakistan_stability_endpoints
+    PAKISTAN_STABILITY_AVAILABLE = True
+    print("[Asia Backend] ✅ Pakistan stability module loaded")
+except Exception as e:
+    import traceback
+    PAKISTAN_STABILITY_AVAILABLE = False
+    print(f"[Asia Backend] ⚠️ Pakistan stability module not available — {type(e).__name__}: {e}")
+    traceback.print_exc()
 
 try:
     from china_humanitarian import register_china_humanitarian_endpoints
@@ -2860,11 +2880,17 @@ if CHINA_RHETORIC_AVAILABLE:
 if TAIWAN_RHETORIC_AVAILABLE:
     register_taiwan_rhetoric_endpoints(app)
 
+if PAKISTAN_RHETORIC_AVAILABLE:
+    register_pakistan_rhetoric_endpoints(app)
+
 if ASIA_BLUF_AVAILABLE:
     register_asia_bluf_routes(app)
 
 if CHINA_STABILITY_AVAILABLE:
     register_china_stability_endpoints(app)
+
+if PAKISTAN_STABILITY_AVAILABLE:
+    register_pakistan_stability_endpoints(app)
 
 if CHINA_HUMANITARIAN_AVAILABLE:
     register_china_humanitarian_endpoints(app)
