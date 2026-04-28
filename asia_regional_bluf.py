@@ -48,8 +48,9 @@ UPSTASH_REDIS_TOKEN = os.environ.get('UPSTASH_REDIS_TOKEN', '')
 
 # Source caches (written by respective trackers)
 TRACKER_KEYS = {
-    'china':  'rhetoric:china:latest',
-    'taiwan': 'rhetoric:taiwan:latest',
+    'china':    'rhetoric:china:latest',
+    'taiwan':   'rhetoric:taiwan:latest',
+    'pakistan': 'rhetoric:pakistan:latest',
     # Future Asia trackers slot in here:
     # 'japan':       'rhetoric:japan:latest',
     # 'korea_north': 'rhetoric:dprk:latest',
@@ -58,13 +59,15 @@ TRACKER_KEYS = {
 }
 
 THEATRE_FLAGS = {
-    'china':  '\U0001f1e8\U0001f1f3',  # 🇨🇳
-    'taiwan': '\U0001f1f9\U0001f1fc',  # 🇹🇼
+    'china':    '\U0001f1e8\U0001f1f3',  # 🇨🇳
+    'taiwan':   '\U0001f1f9\U0001f1fc',  # 🇹🇼
+    'pakistan': '\U0001f1f5\U0001f1f0',  # 🇵🇰
 }
 
 THEATRE_DISPLAY = {
-    'china':  'CHINA',
-    'taiwan': 'TAIWAN',
+    'china':    'CHINA',
+    'taiwan':   'TAIWAN',
+    'pakistan': 'PAKISTAN',
 }
 
 # Top-N signals emitted to GPI (matches ME pattern)
@@ -223,9 +226,10 @@ def _normalize_tracker_data(theatre, raw_data):
     # ---- THREAT LEVEL extraction (China + Taiwan use 'overall_level') ----
     threat = _safe_int(raw_data.get('overall_level'))
     if not threat:
-        # Fallbacks for any other Asia tracker
-        threat = _safe_int(raw_data.get('theatre_escalation_level',
-                          raw_data.get('threat_level', 0)))
+        # Fallbacks for any other Asia tracker (Pakistan + future use 'theatre_level' — ME canonical)
+        threat = _safe_int(raw_data.get('theatre_level',
+                          raw_data.get('theatre_escalation_level',
+                          raw_data.get('threat_level', 0))))
 
     # ---- SCORE extraction ----
     score = _safe_int(raw_data.get('theatre_score',
