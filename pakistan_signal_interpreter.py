@@ -189,7 +189,21 @@ def _match_historical(scan_data):
 def _build_so_what(scan_data, red_lines_triggered, historical_matches):
     """
     Analyst-level "So What" interpretation. Pulls from vectors,
-    cross-theater fingerprints, and historical pattern matches.
+    cross-theater fingerprints, silence anomalies, and historical
+    pattern matches.
+
+    v2.1.0 (Apr 28 2026) — REWRITTEN for analytical depth.
+    Previous version only fired implications when vectors hit level 3-4
+    (basically crisis events), leaving "Routine baseline — monitor for
+    cross-theater spillover" as the dominant readout on quiet days.
+
+    The new version always says something analytically useful by combining:
+      • Dominant vector commentary (even at level 2)
+      • Cross-theater warming-up signals (even sub-fingerprint)
+      • Silence anomaly readouts (analytically meaningful when present)
+      • Watch points — closest-to-firing red lines
+      • Historical echo if any precedent is >25% similar
+      • Always-on baseline observations for whichever vector is highest
     """
     theatre_level   = int(scan_data.get('theatre_level', 0) or 0)
     theatre_score   = int(scan_data.get('theatre_score', 0) or 0)
@@ -205,10 +219,28 @@ def _build_so_what(scan_data, red_lines_triggered, historical_matches):
     china_active    = bool(scan_data.get('pakistan_china_active', False))
     india_active    = bool(scan_data.get('pakistan_india_active', False))
     mediating       = bool(scan_data.get('pakistan_mediating_iran_us', False))
+    nuclear_signal  = bool(scan_data.get('pakistan_nuclear_signaling', False))
+
+    silence_anomalies = scan_data.get('silence_anomalies', []) or []
 
     breach_count = sum(1 for rl in red_lines_triggered if rl.get('status') == 'BREACHED')
+    approaching_count = sum(1 for rl in red_lines_triggered if rl.get('status') == 'APPROACHING')
 
-    # Assemble narrative summary based on dominant vector
+    # Vector ordering — used to identify dominant + secondary
+    vector_levels = [
+        ('Kashmir / LoC',         kashmir,   'india_active'),
+        ('Afghan / TTP',          afghan,    None),
+        ('Nuclear doctrine',      nuclear,   None),
+        ('Diplomatic mediation',  mediation, 'mediating'),
+        ('Balochistan / CPEC',    baloch,    'china_active'),
+        ('Civil-military',        civmil,    None),
+        ('Economic stress',       economic,  None),
+    ]
+    sorted_vectors = sorted(vector_levels, key=lambda v: v[1], reverse=True)
+    top_vec_name, top_vec_level, _ = sorted_vectors[0]
+    second_vec_name, second_vec_level, _ = sorted_vectors[1]
+
+    # ───── SCENARIO HEADLINE (unchanged logic) ─────
     if breach_count >= 2:
         scenario = 'Multi-vector crisis'
     elif kashmir >= 4 or afghan >= 4:
@@ -223,34 +255,123 @@ def _build_so_what(scan_data, red_lines_triggered, historical_matches):
         scenario = 'Active mediation role'
     elif theatre_level >= 3:
         scenario = 'Elevated tempo'
+    elif theatre_level >= 2:
+        scenario = 'Watching baseline'    # v2.1.0 — better label than "Routine"
     else:
         scenario = 'Routine baseline'
 
-    # Strategic implications
+    # ───── IMPLICATIONS — much richer set ─────
     implications = []
+
+    # ── BAND A: high-bar crisis triggers (existing logic, lowered slightly) ──
     if india_active and kashmir >= 3:
         implications.append('Kashmir LoC tempo elevated — watch for ceasefire violation cascade.')
+    elif kashmir >= 2:
+        implications.append(f'Kashmir/LoC at level {kashmir} — sub-crisis but worth watching for India-axis crossover.')
+
     if afghan >= 4:
         implications.append('TTP / cross-border activity at strike-precedent threshold.')
+    elif afghan >= 2:
+        implications.append(f'Afghan border at level {afghan} — TTP / Durand Line activity warmer than baseline.')
+
     if nuclear >= 3:
         implications.append('Pakistan nuclear signaling will trigger GPI nuclear_signaling_global narrative.')
+    elif nuclear >= 1:
+        implications.append(f'Nuclear doctrine vector at {nuclear} — any movement here is high-significance even at low intensity.')
+
     if mediating:
         implications.append('Pakistan active in Iran-US mediation — feeds ME mediation_substitution narrative.')
+    elif mediation >= 2:
+        implications.append(f'Mediation vector at {mediation} — Pakistan diplomatic offices being invoked but not yet primary channel.')
+
     if china_active and baloch >= 4:
         implications.append('CPEC stress activates China-Pakistan strategic anxiety; Beijing pressure on Islamabad rises.')
+    elif baloch >= 2:
+        implications.append(f'Balochistan / CPEC at level {baloch} — BLA tempo or Gwadar friction worth watching.')
+
     if civmil >= 4:
         implications.append('Civilian government legitimacy crisis — military actor may reassert.')
+    elif civmil >= 2:
+        implications.append(f'Civil-military friction at {civmil} — PTI / judicial / coup-rumor tempo elevated below crisis.')
+
     if economic >= 4:
         implications.append('Economic distress feeds civil-military friction AND reduces Pakistan diplomatic bandwidth.')
+    elif economic >= 2:
+        implications.append(f'Economic stress at {economic} — IMF / rupee / reserves friction warm but managed.')
 
+    # ── BAND B: cross-theater warming-up signals ──
+    cross_active_count = sum([iran_active, china_active, india_active, mediating, nuclear_signal])
+    if cross_active_count >= 2:
+        implications.append(f'{cross_active_count} cross-theater fingerprints active simultaneously — Pakistan acting as multi-axis pressure node.')
+
+    # ── BAND C: silence anomaly readouts (silence is itself analytical) ──
+    if silence_anomalies:
+        actor_ids = [s.get('actor_id', '?') for s in silence_anomalies[:3]]
+        implications.append(
+            f'Silence anomaly: {", ".join(actor_ids)} unusually quiet given current tempo — '
+            f'silence from these actors is itself a signal worth flagging.'
+        )
+
+    # ── BAND D: red line watch points ──
+    if approaching_count >= 1:
+        approaching_names = [
+            rl.get('label', rl.get('name', '?')) for rl in red_lines_triggered
+            if rl.get('status') == 'APPROACHING'
+        ][:2]
+        if approaching_names:
+            implications.append(
+                f'Watch point: {" / ".join(approaching_names)} approaching threshold — '
+                f'monitor for breach indicators in next 48-72h scan window.'
+            )
+
+    # ── BAND E: historical echo at low intensity ──
+    top_match = historical_matches[0] if historical_matches else None
+    if top_match:
+        sim_pct = int(top_match.get('similarity', 0) * 100)
+        if sim_pct >= 25:
+            implications.append(
+                f'Historical echo: pattern resembles {top_match.get("name", "prior precedent")} '
+                f'({sim_pct}% match) — track for off-ramp / escalation parallels.'
+            )
+
+    # ── BAND F: dominant-vector context (always fires when nothing else does) ──
     if not implications:
-        implications.append('Pakistan currently at routine baseline — monitor for cross-theater spillover.')
+        # Still routine — but say WHICH vector is dominant and what the gap is
+        if top_vec_level >= 1:
+            implications.append(
+                f'Dominant vector: {top_vec_name} at level {top_vec_level} '
+                f'(secondary: {second_vec_name} at {second_vec_level}). '
+                f'Below crisis bar but provides Pakistan-side context for regional reads.'
+            )
+        else:
+            implications.append(
+                'All vectors at level 0 — exceptionally quiet scan window. '
+                'Notable absence of Kashmir / Afghan / nuclear / civmil chatter is itself baseline-of-baseline.'
+            )
+
+    # ── BAND G: always-on closing observation if list is short ──
+    # If fewer than 3 implications, add a reading on the dominant vector + next-most-active
+    if len(implications) < 3 and top_vec_level >= 1 and top_vec_level < 3:
+        # Avoid duplicating an existing band-A line
+        already_mentioned = any(top_vec_name.split(' /')[0].split(' ')[0].lower() in im.lower()
+                                for im in implications)
+        if not already_mentioned:
+            implications.append(
+                f'Tempo concentration: {top_vec_name} (L{top_vec_level}) carrying most of theatre signal; '
+                f'{second_vec_name} (L{second_vec_level}) is the next-most-active vector to watch.'
+            )
+
+    # Cap at 7 to avoid information overload — analyst gets the top signals
+    implications = implications[:7]
 
     return {
         'scenario':              scenario,
         'theatre_level':         theatre_level,
         'theatre_score':         theatre_score,
         'breach_count':          breach_count,
+        'approaching_count':     approaching_count,
+        'dominant_vector':       top_vec_name,
+        'dominant_vector_level': top_vec_level,
         'implications':          implications,
         'top_historical_match':  historical_matches[0] if historical_matches else None,
         # Boolean flags (consumed by build_top_signals)
