@@ -712,7 +712,7 @@ RED_LINES = [
 # RSS FEEDS (Asia-tier sources, Pakistan-focused)
 # ============================================
 RHETORIC_RSS_FEEDS = [
-    # Pakistani press
+    # Pakistani press (English)
     ("https://www.dawn.com/feeds/home", 1.0),
     ("https://www.thenews.com.pk/rss/1/1", 0.95),
     ("https://tribune.com.pk/feed/home", 0.9),
@@ -737,8 +737,23 @@ RHETORIC_RSS_FEEDS = [
     ("https://news.google.com/rss/search?q=Pakistan+mediates+Iran+US+OR+Witkoff+Pakistan+2026&hl=en&gl=US&ceid=US:en", 1.05),
     # CPEC + China-Pakistan
     ("https://news.google.com/rss/search?q=CPEC+China+Pakistan+OR+Gwadar+attack+2026&hl=en&gl=US&ceid=US:en", 1.0),
-    # Urdu / Hindi / Pashto
+
+    # ── Native Urdu RSS feeds (v2.1.0 — Apr 28 2026) ──
+    # Direct RSS from Pakistani Urdu publications. URLs taken from Feedspot's
+    # Urdu News RSS list. Source-name mapping below classifies these as 'Urdu'
+    # so the frontend Urdu tab will populate.
+    ("https://www.express.pk/feed/", 0.9),                  # Express News Urdu (largest by reach)
+    ("https://urdu.arynews.tv/feed/", 0.9),                 # ARY News Urdu
+    ("https://www.bolnews.com/urdu/feed/", 0.85),           # Bol News Urdu
+    ("https://www.independenturdu.com/rss.xml", 0.85),      # Independent Urdu (BBC-style analytical)
+
+    # Expanded Google News Urdu queries (was: only پاکستان+فوج)
     ("https://news.google.com/rss/search?q=پاکستان+فوج+2026&hl=ur&gl=PK&ceid=PK:ur", 0.9),
+    ("https://news.google.com/rss/search?q=کشمیر+پاکستان+بھارت&hl=ur&gl=PK&ceid=PK:ur", 0.85),
+    ("https://news.google.com/rss/search?q=آئی+ایس+پی+آر+بیان&hl=ur&gl=PK&ceid=PK:ur", 0.85),    # ISPR statement
+    ("https://news.google.com/rss/search?q=بلوچستان+حملہ&hl=ur&gl=PK&ceid=PK:ur", 0.85),         # Balochistan attack
+
+    # Hindi (for Indian-side perspective, bucketed as 'Regional')
     ("https://news.google.com/rss/search?q=कश्मीर+पाकिस्तान+2026&hl=hi&gl=IN&ceid=IN:hi", 0.85),
 ]
 
@@ -809,10 +824,13 @@ def _parse_pub_date(pub_str):
     return None
 
 
-def _fetch_rss(url, source_name, weight=0.85, max_items=20):
+def _fetch_rss(url, source_name, weight=0.85, max_items=20, language='en'):
     """Fetch and parse an RSS feed using xml.etree.
     Robust to malformed feeds (logs & returns []). Includes 8/15s split timeout
     pattern lesson from project memory.
+
+    v2.1.0: Added `language` parameter (default 'en' preserves existing behavior)
+    so native-Urdu feeds tag articles with lang='ur' for the frontend Urdu tab.
     """
     import xml.etree.ElementTree as ET
     articles = []
@@ -841,7 +859,7 @@ def _fetch_rss(url, source_name, weight=0.85, max_items=20):
                 'source':      {'name': source_name},
                 'content':     (title_el.text or '').strip()[:600],
                 'source_weight_override': weight,
-                'language':    'en',
+                'language':    language,
             })
         print(f'[Pakistan RSS] {source_name}: {len(articles)} articles')
     except ET.ParseError as e:
@@ -1344,19 +1362,39 @@ def run_pakistan_rhetoric_scan():
     # ================================================================
     for feed_url, weight in RHETORIC_RSS_FEEDS:
         try:
+            # v2.1.0 — detect feed language from URL so frontend tabs bucket correctly
+            feed_lang = 'en'  # default
+            if 'hl=ur' in feed_url or 'urdu' in feed_url.lower() or \
+               'express.pk' in feed_url or 'arynews.tv' in feed_url or \
+               'bolnews.com/urdu' in feed_url or 'independenturdu' in feed_url:
+                feed_lang = 'ur'
+            elif 'hl=hi' in feed_url:
+                feed_lang = 'hi'
+            elif 'thehindu.com' in feed_url or 'hindustantimes' in feed_url:
+                feed_lang = 'en'  # English-language Indian press → still 'en' but source name buckets to Regional
+
             # Derive a friendly source name from URL
-            if 'dawn.com' in feed_url:           sn = 'Dawn'
-            elif 'thenews.com.pk' in feed_url:   sn = 'The News International'
-            elif 'tribune.com.pk' in feed_url:   sn = 'Express Tribune'
-            elif 'geo.tv' in feed_url:           sn = 'Geo News'
-            elif 'thehindu.com' in feed_url:     sn = 'The Hindu'
-            elif 'hindustantimes' in feed_url:   sn = 'Hindustan Times'
-            elif 'al-monitor' in feed_url:       sn = 'Al-Monitor'
-            elif 'ft.com' in feed_url:           sn = 'Financial Times'
-            elif 'reuters.com' in feed_url:      sn = 'Reuters'
-            elif 'news.google.com' in feed_url:  sn = 'Google News (PK query)'
-            else:                                sn = 'RSS'
-            articles = _fetch_rss(feed_url, sn, weight=weight, max_items=20)
+            if 'dawn.com' in feed_url:                  sn = 'Dawn'
+            elif 'thenews.com.pk' in feed_url:          sn = 'The News International'
+            elif 'tribune.com.pk' in feed_url:          sn = 'Express Tribune'
+            elif 'geo.tv' in feed_url:                  sn = 'Geo News'
+            elif 'thehindu.com' in feed_url:            sn = 'The Hindu'
+            elif 'hindustantimes' in feed_url:          sn = 'Hindustan Times'
+            elif 'al-monitor' in feed_url:              sn = 'Al-Monitor'
+            elif 'ft.com' in feed_url:                  sn = 'Financial Times'
+            elif 'reuters.com' in feed_url:             sn = 'Reuters'
+            # ── New Urdu feed source-names (v2.1.0) ──
+            elif 'express.pk' in feed_url:              sn = 'Express News Urdu'
+            elif 'urdu.arynews.tv' in feed_url:         sn = 'ARY News Urdu'
+            elif 'bolnews.com/urdu' in feed_url:        sn = 'Bol News Urdu'
+            elif 'independenturdu' in feed_url:         sn = 'Independent Urdu'
+            elif 'news.google.com' in feed_url and 'hl=ur' in feed_url:
+                                                         sn = 'Google News Urdu (PK)'
+            elif 'news.google.com' in feed_url and 'hl=hi' in feed_url:
+                                                         sn = 'Google News Hindi (IN)'
+            elif 'news.google.com' in feed_url:         sn = 'Google News (PK query)'
+            else:                                       sn = 'RSS'
+            articles = _fetch_rss(feed_url, sn, weight=weight, max_items=20, language=feed_lang)
             all_articles.extend(articles)
             time.sleep(0.3)
         except Exception as e:
@@ -1374,8 +1412,11 @@ def run_pakistan_rhetoric_scan():
         ('Pakistan Imran Khan OR PTI OR judicial', 'eng'),
         ('Pakistan nuclear OR Nasr OR missile test', 'eng'),
         ('Pakistan mediates Iran OR Witkoff Pakistan', 'eng'),
-        # Urdu
-        ('پاکستان فوج', 'urd'),
+        # Urdu (v2.1.0 — expanded from 1 → 4 queries to match English depth)
+        ('پاکستان فوج', 'urd'),                    # Pakistan army
+        ('کشمیر بھارت پاکستان', 'urd'),            # Kashmir India Pakistan
+        ('آئی ایس پی آر بیان', 'urd'),             # ISPR statement
+        ('بلوچستان حملہ یا دہشت گردی', 'urd'),     # Balochistan attack OR terrorism
         # Hindi
         ('कश्मीर पाकिस्तान', 'hin'),
         # Arabic (GCC coverage)
