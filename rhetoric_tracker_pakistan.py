@@ -614,13 +614,23 @@ ECONOMIC_STRESS_TRIGGERS = {
         'pakistan imf talks', 'pakistan reserves low',
         'pakistan economic crisis', 'rupee falls',
         'pakistan inflation crisis',
+        # Iran transit corridor — economic relief via sanctions circumvention
+        # (WSJ Apr 28 2026 — 6 corridors, rice/meat imports, unrestricted goods)
+        'pakistan iran transit corridor', 'pakistan iran goods transit',
+        'pakistan opens corridors iran', 'pakistan iran trade corridor',
+        'iran goods unrestricted pakistan', 'pakistan rice meat iran',
     ],
     2: [
         'pakistan economy struggling', 'pakistan imf review',
+        # Lower-specificity transit signals
+        'pakistan iran border crossings', 'pakistan iran trade open',
+        'pakistan iran rice imports', 'pakistan iran meat imports',
+        'six corridors iran pakistan',
     ],
     1: [
         'pakistan imf', 'pakistan economy',
         'pakistan reserves',
+        'pakistan iran trade',
     ],
 }
 
