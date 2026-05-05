@@ -247,11 +247,22 @@ def _normalize_tracker_data(theatre, raw_data):
 
     # ---- TOP SIGNALS (v2.0+ if self-emitted; else synthesize from raw) ----
     if 'top_signals' in raw_data and isinstance(raw_data['top_signals'], list):
-        top_signals = raw_data['top_signals']
+        top_signals = list(raw_data['top_signals'])
     else:
         top_signals = _synthesize_top_signals_legacy(
             theatre, raw_data, threat_int, score, so_what, red_lines
         )
+
+    # ALWAYS augment with BLUF-level diplomatic signals (v3.2.0 — mirrors ME pattern).
+    # Forward-compatible: today's Asia trackers (China/Taiwan) don't emit diplomatic_track
+    # data, so this is a no-op now. When future trackers (Korea peace talks, ASEAN
+    # mediation, etc.) emit diplomatic_track in their interpretation block, signals
+    # automatically surface to GPI's diplomatic axis with zero additional code.
+    diplomatic_sigs = _extract_diplomatic_signals(theatre, raw_data, threat_int)
+    existing_categories = {s.get('category') for s in top_signals}
+    for ds in diplomatic_sigs:
+        if ds.get('category') not in existing_categories:
+            top_signals.append(ds)
 
     return {
         'theatre':      theatre,
@@ -270,6 +281,73 @@ def _normalize_tracker_data(theatre, raw_data):
         'scanned_at':   _safe_str(raw_data.get('scanned_at') or raw_data.get('timestamp', '')),
         'raw':          raw_data,
     }
+
+
+def _extract_diplomatic_signals(theatre, raw_data, threat_int):
+    """
+    BLUF-level diplomatic signal extractor (v3.2.0 — mirrors ME pattern).
+
+    Reads diplomatic_track + green_lines from a tracker's interpretation block.
+    Forward-compatible no-op when trackers don't emit diplomatic data.
+
+    Returns list of signal dicts (possibly empty).
+    """
+    flag    = THEATRE_FLAGS.get(theatre, '')
+    display = THEATRE_DISPLAY.get(theatre, theatre.upper())
+    interp  = (raw_data.get('interpretation') or {}) if isinstance(raw_data.get('interpretation'), dict) else {}
+    signals = []
+
+    # Green lines / diplomatic de-escalation (UNGATED + dual-schema).
+    green_lines = interp.get('green_lines') if interp else None
+    if green_lines and isinstance(green_lines, dict):
+        if 'count' in green_lines:
+            gl_count = green_lines.get('count', 0)
+        else:
+            gl_count = green_lines.get('active_count', 0) + green_lines.get('signaled_count', 0)
+        if gl_count >= 1:
+            gl_priority = 6 + min(threat_int, 4)
+            signals.append({
+                'priority':       gl_priority,
+                'category':       'green_line_active',
+                'theatre':        theatre,
+                'level':          min(threat_int, 4),
+                'icon':           '✅',
+                'color':          '#10b981',
+                'pressure_type':  'diplomatic',
+                'short_text':     f'{flag} {display}: De-escalation signals ({gl_count})',
+                'long_text':      f'{flag} {display}: {gl_count} green-line de-escalation '
+                                  f'trigger{"s" if gl_count != 1 else ""} active.',
+            })
+
+    # Diplomatic track — mediation, talks, peace overtures.
+    diplomatic_track = interp.get('diplomatic_track') if interp else None
+    if diplomatic_track and isinstance(diplomatic_track, dict):
+        active_count   = diplomatic_track.get('active_count', 0)
+        signaled_count = diplomatic_track.get('signaled_count', 0)
+        scenario       = diplomatic_track.get('scenario', '')
+        score          = diplomatic_track.get('score', 0)
+        if active_count + signaled_count > 0:
+            dt_priority = 7 + min(threat_int, 4)
+            short_status = 'ACTIVE' if active_count > 0 else 'SIGNALED'
+            signals.append({
+                'priority':       dt_priority,
+                'category':       'diplomatic_track_active',
+                'theatre':        theatre,
+                'level':          min(threat_int, 4),
+                'icon':           '🕊️',
+                'color':          '#0ea5e9',
+                'pressure_type':  'diplomatic',
+                'short_text':     f'{flag} {display}: Diplomatic track {short_status} ({scenario[:40]})',
+                'long_text':      f'{flag} {display} diplomatic track: {active_count} active + '
+                                  f'{signaled_count} signaled off-ramp triggers (score {score}/100). '
+                                  f'Scenario: {scenario}.',
+                'diplomatic_active_count':   active_count,
+                'diplomatic_signaled_count': signaled_count,
+                'diplomatic_score':          score,
+                'diplomatic_scenario':       scenario,
+            })
+
+    return signals
 
 
 def _synthesize_top_signals_legacy(theatre, raw_data, threat_int, score, so_what, red_lines):
@@ -691,7 +769,7 @@ def _build_signals(posture, trackers):
             'long_text':  'All Asia-Pacific theaters at baseline — monitoring for coercion escalation.',
         })
 
-    return deduped[:TOP_SIGNALS_COUNT]
+    return deduped     # v2.3.0: full deduped pool (caller caps for display)
 
 
 # ============================================================
@@ -739,8 +817,9 @@ def build_regional_bluf(force=False):
 
         posture = _determine_regional_posture(china, taiwan)
         bluf    = _build_bluf_prose(posture, china, taiwan)
-        # v2.1: signals collector now reads from ALL trackers' top_signals[]
-        top_signals = _build_signals(posture, trackers)
+        # v2.3.0: signals collector returns full pool; cap separately for display
+        all_signals = _build_signals(posture, trackers)            # full pool — for GPI axis aggregation
+        top_signals = all_signals[:TOP_SIGNALS_COUNT]                # capped for display
 
         trackers_live = len(trackers)
 
@@ -781,8 +860,8 @@ def build_regional_bluf(force=False):
             'success':            True,
             'from_cache':         False,
             'bluf':               bluf,
-            'signals':            top_signals,           # legacy alias
-            'top_signals':        top_signals,           # canonical (GPI reads this)
+            'signals':            all_signals,           # v2.3.0: FULL signal pool — for GPI axis aggregation
+            'top_signals':        top_signals,           # v2.3.0: capped — for display + prose synthesis
             'posture_label':      posture['label'],
             'posture_color':      posture['color'],
             'peak_level':         posture['peak_level'], # legacy alias
