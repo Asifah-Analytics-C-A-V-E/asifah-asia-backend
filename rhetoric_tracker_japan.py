@@ -1309,12 +1309,28 @@ def _start_background_refresh():
 def register_japan_rhetoric_endpoints(app):
     """Register Japan rhetoric tracker endpoints with the Flask app."""
 
+    # Optional interpreter — non-fatal if missing
+    try:
+        from japan_signal_interpreter import interpret_japan_signals
+        _INTERPRETER_AVAILABLE = True
+    except ImportError:
+        _INTERPRETER_AVAILABLE = False
+        print("[Japan Rhetoric] ⚠️ japan_signal_interpreter not available (frontend will synthesize)")
+
     @app.route('/api/rhetoric/japan', methods=['GET'])
     def api_rhetoric_japan():
         from flask import request
         force = request.args.get('force', '').lower() in ('true', '1', 'yes')
         try:
             data = scan_japan_rhetoric(force=force)
+            # Inject So What card if interpreter is available
+            if _INTERPRETER_AVAILABLE and data and not data.get('so_what'):
+                try:
+                    so_what = interpret_japan_signals(data)
+                    if so_what:
+                        data['so_what'] = so_what
+                except Exception as ie:
+                    print(f"[Japan Rhetoric] Interpreter error (non-fatal): {str(ie)[:150]}")
             return jsonify(data)
         except Exception as e:
             print(f"[Japan Rhetoric] /api/rhetoric/japan error: {str(e)[:200]}")
