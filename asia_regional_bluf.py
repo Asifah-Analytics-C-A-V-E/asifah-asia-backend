@@ -51,8 +51,8 @@ TRACKER_KEYS = {
     'china':    'rhetoric:china:latest',
     'taiwan':   'rhetoric:taiwan:latest',
     'pakistan': 'rhetoric:pakistan:latest',
+    'japan':    'rhetoric:japan:latest',
     # Future Asia trackers slot in here:
-    # 'japan':       'rhetoric:japan:latest',
     # 'korea_north': 'rhetoric:dprk:latest',
     # 'india':       'rhetoric:india:latest',
     # 'philippines': 'rhetoric:philippines:latest',
@@ -62,12 +62,14 @@ THEATRE_FLAGS = {
     'china':    '\U0001f1e8\U0001f1f3',  # 🇨🇳
     'taiwan':   '\U0001f1f9\U0001f1fc',  # 🇹🇼
     'pakistan': '\U0001f1f5\U0001f1f0',  # 🇵🇰
+    'japan':    '\U0001f1ef\U0001f1f5',  # 🇯🇵
 }
 
 THEATRE_DISPLAY = {
     'china':    'CHINA',
     'taiwan':   'TAIWAN',
     'pakistan': 'PAKISTAN',
+    'japan':    'JAPAN',
 }
 
 # Top-N signals emitted to GPI (matches ME pattern)
