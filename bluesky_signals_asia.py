@@ -99,6 +99,43 @@ BLUESKY_ACCOUNTS_ASIA = [
     #     'India MEA X mirror — Kashmir/Pakistan rhetoric (verify exists)'),
     # ('michaelkugelman.bsky.social',  1.0,  ['pakistan', 'india', 'afghanistan'],
     #     'Michael Kugelman — South Asia analyst (verify exists)'),
+
+    # ── v1.2 — JAPAN-RELEVANT ASPIRATIONAL (May 2026) ──
+    # Added during Japan rhetoric tracker build. Verify each via
+    # https://bsky.app/profile/{handle} before uncommenting.
+    # The failure cache will skip dead handles after first attempt.
+    #
+    # Japanese government / institutional:
+    # ('mofa-japan.govmirrors.com',     1.1,  ['japan', 'china', 'taiwan', 'north_korea'],
+    #     'Japan MOFA (X mirror) — bluebook, East China Sea, Taiwan (verify exists)'),
+    # ('kantei.govmirrors.com',         1.2,  ['japan'],
+    #     'Japan Cabinet Secretariat / PMO (X mirror) — Takaichi statements (verify exists)'),
+    # ('mod-jpn.govmirrors.com',        1.1,  ['japan', 'china', 'north_korea'],
+    #     'Japan MOD (X mirror) — JSDF deployments, scrambles (verify exists)'),
+    # ('japantimes.bsky.social',        0.9,  ['japan', 'china', 'taiwan', 'north_korea'],
+    #     'Japan Times (English) — paper of record (verify exists)'),
+    # ('mainichi-en.bsky.social',       0.85, ['japan'],
+    #     'Mainichi English — daily Japan coverage (verify exists)'),
+    # ('nhk-world.bsky.social',         0.85, ['japan', 'china', 'north_korea'],
+    #     'NHK World — Japanese state broadcaster English (verify exists)'),
+    # ('kyodonews.bsky.social',         0.85, ['japan', 'china', 'taiwan'],
+    #     'Kyodo News English — Japanese newswire (verify exists)'),
+    # ('nikkeiasia.bsky.social',        0.9,  ['japan', 'china', 'taiwan'],
+    #     'Nikkei Asia — Japan business + regional security (verify exists)'),
+    #
+    # Japan-watcher analysts:
+    # ('tobiasharris.bsky.social',      0.9,  ['japan'],
+    #     'Tobias Harris — Japan politics analyst (verify exists)'),
+    # ('jeffrey-hornung.bsky.social',   0.9,  ['japan'],
+    #     'Jeffrey Hornung (RAND) — Japan defense (verify exists)'),
+    # ('mireyasolis.bsky.social',       0.85, ['japan'],
+    #     'Mireya Solis (Brookings) — Japan foreign policy (verify exists)'),
+    #
+    # China–Japan flashpoint coverage:
+    # ('osintdefender.bsky.social',     0.9,  ['*'],
+    #     'OSINT Defender — Senkaku, ECS incidents (verify exists)'),
+    # ('plaprimer.bsky.social',         0.9,  ['china', 'taiwan', 'japan'],
+    #     'PLA Primer — Eastern Theater Command activity (verify exists)'),
 ]
 
 # v1.0.1 — Aspirational handles to verify manually before adding:
