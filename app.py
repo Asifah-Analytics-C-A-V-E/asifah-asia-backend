@@ -88,6 +88,16 @@ except Exception as e:
     traceback.print_exc()
 
 try:
+    from rhetoric_tracker_japan import register_japan_rhetoric_endpoints
+    JAPAN_RHETORIC_AVAILABLE = True
+    print("[Asia Backend] ✅ Japan rhetoric tracker loaded")
+except Exception as e:
+    import traceback
+    JAPAN_RHETORIC_AVAILABLE = False
+    print(f"[Asia Backend] ⚠️ Japan rhetoric tracker not available — {type(e).__name__}: {e}")
+    traceback.print_exc()
+
+try:
     from asia_regional_bluf import register_asia_bluf_routes
     ASIA_BLUF_AVAILABLE = True
     print("[Asia Backend] ✅ Asia regional BLUF loaded")
@@ -2882,6 +2892,9 @@ if TAIWAN_RHETORIC_AVAILABLE:
 
 if PAKISTAN_RHETORIC_AVAILABLE:
     register_pakistan_rhetoric_endpoints(app)
+
+if JAPAN_RHETORIC_AVAILABLE:
+    register_japan_rhetoric_endpoints(app)
 
 if ASIA_BLUF_AVAILABLE:
     register_asia_bluf_routes(app)
