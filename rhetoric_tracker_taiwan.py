@@ -1791,6 +1791,30 @@ def run_taiwan_rhetoric_scan():
         'china_fingerprint_age': china_fp.get('updated_at', '') if china_fp else '',
 
         # Interpreter output
+        'red_lines':          red_lines_triggered,
+        'historical_matches': historical_matches,
+        'so_what':            so_what,
+
+        'escalation_levels': ESCALATION_LEVELS,
+
+        # ── Cross-theater amplifiers (v2.1 — May 7 2026) ──
+        # Exposed in result so build_top_signals can read for commodity + alliance
+        # convergence injection (hormuz_taiwan_oil_dependency when Iran/Hormuz
+        # pressure intersects Taiwan's ~99% oil import dependency; trilateral
+        # taiwan_alliance_convergence when Japan defense + outbound L3+).
+        'crosstheater_amplifiers': {
+            'iran_hormuz_pressure':  iran_data.get('hormuz_pressure_active', False),
+            'iran_theatre_score':    iran_data.get('theatre_score', 0),
+            'iran_irgc_level':       iran_data.get('irgc_level', 0),
+            'iran_proxy_active':     iran_data.get('proxy_active', False),
+            'japan_taiwan_defense':  bool(japan_fp.get('taiwan_defense_active', False)) if japan_fp else False,
+            'japan_outbound_max':    int(japan_fp.get('outbound_max_level', 0) or 0) if japan_fp else 0,
+            'japan_article9_active': bool(japan_fp.get('article9_active', False)) if japan_fp else False,
+            'amplifier_actor_deltas': japan_amplifiers if japan_amplifiers else {},
+        },
+
+        'version':           '2.1.0-taiwan',  # v2.1: commodity + alliance convergence injection
+    }
 
     # v2.0: Build top_signals AFTER result dict (needs overall_level + so_what)
     top_signals = []
