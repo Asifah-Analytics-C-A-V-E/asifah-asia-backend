@@ -2449,7 +2449,14 @@ def run_china_rhetoric_scan():
         'regime_signals':              regime_signals,
         'regime_signals_active_count': regime_signals.get('active_count', 0),
         'regime_signals_max_level':    regime_signals.get('max', 0),
-        'version':           '2.1.0-china',  # v2.1: regime signals
+
+        # ── Cross-theater amplifiers (v2.2 — May 7 2026) ──
+        # Exposed in result so build_top_signals can read for commodity convergence
+        # injection (e.g. hormuz_china_oil_dependency when Iran pressure on Hormuz
+        # intersects China's ~50% oil import dependency).
+        'crosstheater_amplifiers': crosstheater_amplifiers,
+
+        'version':           '2.2.0-china',  # v2.2: commodity convergence injection
     }
 
     # v2.0: Build top_signals AFTER result dict is constructed (needs overall_level + so_what)
