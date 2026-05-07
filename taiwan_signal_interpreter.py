@@ -686,6 +686,118 @@ def interpret_signals(scan_data):
 
 TAIWAN_FLAG = '\U0001f1f9\U0001f1fc'  # 🇹🇼
 
+
+# ============================================================
+# v2.1+ — COMMODITY CONVERGENCE INJECTION (May 7 2026)
+# ============================================================
+# Reads commodity context from scan_data (populated by rhetoric_tracker_taiwan
+# via japan_amplifiers + iran_amplifiers). When structural commodity exposure
+# intersects with active geopolitical pressure from another theater, emit
+# high-priority convergence signals into Taiwan's BLUF.
+#
+# Taiwan-specific convergences:
+#
+#   1. HORMUZ-TAIWAN OIL CONVERGENCE — Taiwan's ~99% oil import dependency
+#      (vs. China's ~50%) creates compound blockade vulnerability when Iran
+#      pressures Hormuz. Even more acute than China's exposure because
+#      Taiwan's strategic petroleum reserve is ~140 days, vs. China's
+#      strategic reserve scale.
+#
+#   2. SEMICONDUCTOR-CONCENTRATION CONVERGENCE — Taiwan's TSMC dominance
+#      (~90% leading-edge chips) makes it a commodity chokepoint in itself.
+#      When Japan + US trilateral signaling activates AND PLA pressure rises,
+#      the semiconductor concentration becomes an acute geopolitical risk
+#      multiplier. Captured here as part of the trilateral-alliance frame.
+
+def build_commodity_convergence_signals(scan_data):
+    """
+    Inject commodity-derived convergence signals into Taiwan's top_signals.
+    Reads cross-theater amplifiers from scan_data and emits signals when
+    structural commodity dependencies intersect with active geopolitical pressure.
+
+    Returns list of signal dicts (same canonical shape as build_top_signals).
+    Empty list if no convergence is currently active.
+    """
+    signals = []
+
+    # crosstheater_amplifiers is written by rhetoric_tracker_taiwan into result dict
+    amps = scan_data.get('crosstheater_amplifiers', {}) or {}
+    iran_hormuz_active   = amps.get('iran_hormuz_pressure', False)
+    iran_score           = amps.get('iran_theatre_score', 0) or 0
+    iran_irgc            = amps.get('iran_irgc_level', 0) or 0
+    japan_taiwan_defense = amps.get('japan_taiwan_defense', False)
+    japan_outbound_max   = amps.get('japan_outbound_max', 0) or 0
+
+    # ── HORMUZ-TAIWAN OIL CONVERGENCE ──
+    # Even more acute than China's: Taiwan imports ~99% of crude oil, mostly
+    # from the Middle East. Hormuz disruption + cross-strait pressure
+    # = compressed strategic timeline, especially given Taiwan's ~140-day
+    # strategic petroleum reserve and ~10-14 day LNG reserve.
+    if iran_hormuz_active:
+        signals.append({
+            'priority':   13,
+            'category':   'hormuz_taiwan_oil_dependency',
+            'theatre':    'taiwan',
+            'level':      max(3, min(5, int(iran_score / 20))),
+            'icon':       '🛢️',
+            'color':      '#f59e0b',
+            'short_text': f'{TAIWAN_FLAG} TAIWAN: Hormuz oil convergence — ~99% oil import dep',
+            'long_text':  (
+                f'TAIWAN oil supply convergence — Iran posture (score {iran_score}, '
+                f'IRGC L{iran_irgc}) compounds Taiwan\'s ~99% crude oil import dependency. '
+                f'~140-day strategic petroleum reserve, ~10-14 day LNG reserve = compressed '
+                f'energy security timeline. Compound blockade vulnerability if cross-strait '
+                f'pressure rises simultaneously. Watch CPC Corp + Formosa Petrochemical '
+                f'reserve drawdowns, LNG terminal status, MOEA energy briefings.'
+            ),
+            'hormuz_taiwan_oil_dependency_active': True,
+            'convergence_states': {
+                'hormuz_taiwan_oil_dependency': {
+                    'active':       True,
+                    'iran_score':   iran_score,
+                    'iran_irgc':    iran_irgc,
+                    'alert_level':  'elevated' if iran_score < 70 else ('high' if iran_score < 85 else 'surge'),
+                },
+            },
+        })
+
+    # ── TRILATERAL TAIWAN DEFENSE CONVERGENCE ──
+    # When Japan publicly commits to Taiwan defense AND Japan's outbound posture
+    # is at L3+, the historically-ambiguous US-Taiwan posture converts into an
+    # explicit trilateral commitment. This raises the threshold for any PRC
+    # kinetic action and increases the probability of structured PLA escalation.
+    if japan_taiwan_defense and japan_outbound_max >= 3:
+        signals.append({
+            'priority':   14,
+            'category':   'taiwan_alliance_convergence',
+            'theatre':    'taiwan',
+            'level':      max(3, japan_outbound_max),
+            'icon':       '🤝',
+            'color':      '#0ea5e9',
+            'short_text': f'{TAIWAN_FLAG} TAIWAN: Trilateral defense convergence — Japan + US active',
+            'long_text':  (
+                f'TAIWAN alliance convergence — Japan committing to Taiwan defense '
+                f'(outbound L{japan_outbound_max}) converts strategic ambiguity into '
+                f'explicit trilateral commitment. Historical analog: 2021 Suga-Biden '
+                f'joint statement (Taiwan named for first time since 1969). Raises '
+                f'threshold for PRC kinetic action; increases probability of structured '
+                f'PLA escalation in response. Watch PLA Eastern Theater activity spikes, '
+                f'MFA condemnation cadence, TAO statements on "external interference."'
+            ),
+            'taiwan_alliance_convergence_active': True,
+            'convergence_states': {
+                'taiwan_alliance_convergence': {
+                    'active':              True,
+                    'japan_outbound_max':  japan_outbound_max,
+                    'japan_taiwan_defense': True,
+                    'alert_level':         'high' if japan_outbound_max >= 4 else 'elevated',
+                },
+            },
+        })
+
+    return signals
+
+
 def build_top_signals(scan_data):
     """
     Build Taiwan's top_signals[] for BLUF/GPI consumption.
@@ -859,6 +971,20 @@ def build_top_signals(scan_data):
             'short_text': f'{TAIWAN_FLAG} TAIWAN: Mass emigration L{mass_emigration}',
             'long_text':  f'TAIWAN mass emigration signal L{mass_emigration} — flight pattern indicates domestic confidence erosion; forward indicator of coercion success.',
         })
+
+    # ============================================
+    # COMMODITY + ALLIANCE CONVERGENCES (cross-regional)
+    # ============================================
+    # Hormuz-Taiwan oil dependency + trilateral defense convergence —
+    # fires when structural commodity/alliance exposures intersect with
+    # active geopolitical pressure from other theaters.
+    try:
+        convergence_signals = build_commodity_convergence_signals(scan_data)
+        if convergence_signals:
+            signals.extend(convergence_signals)
+            print(f"[Taiwan Interpreter] Convergence: {len(convergence_signals)} signal(s) emitted")
+    except Exception as e:
+        print(f"[Taiwan Interpreter] Convergence error: {e}")
 
     # Sort descending; BLUF will dedupe + globally rank
     signals.sort(key=lambda s: s['priority'], reverse=True)
