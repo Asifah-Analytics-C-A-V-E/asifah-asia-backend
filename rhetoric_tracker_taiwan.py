@@ -947,24 +947,102 @@ def _read_china_fingerprint():
     return None
 
 
+def _read_japan_fingerprint():
+    """
+    Read Japan rhetoric tracker fingerprint from shared Redis key.
+    v1.3.0 — Japan committing to Taiwan defense is a major Taiwan strategic input.
+
+    Returns japan_data dict or None.
+    """
+    try:
+        fingerprints = _redis_get(CROSSTHEATER_KEY)
+        if fingerprints and 'japan' in fingerprints:
+            japan = fingerprints['japan']
+            taiwan_def = japan.get('taiwan_defense_active', False)
+            article9 = japan.get('article9_active', False)
+            outbound = japan.get('outbound_max_level', 0)
+            print(f"[Taiwan Rhetoric] Japan fingerprint: outbound L{outbound}, "
+                  f"taiwan_defense={taiwan_def}, article9={article9}")
+            return japan
+    except Exception as e:
+        print(f"[Taiwan Rhetoric] Japan fingerprint read error: {str(e)[:80]}")
+    return None
+
+
+def _apply_japan_amplifier(actor_results, japan_fp):
+    """
+    v1.3.0 — Apply Japan-alliance amplifier to Taiwan's actor scores.
+
+    When Japan signals Taiwan defense commitments, Taiwan's us_partnership
+    and roc_defense actors gain confidence/level.
+
+    Returns dict of {actor_key: amplifier_delta} applied for downstream
+    fingerprint context.
+    """
+    deltas = {}
+    if not japan_fp:
+        return deltas
+
+    taiwan_def = bool(japan_fp.get('taiwan_defense_active', False))
+    article9 = bool(japan_fp.get('article9_active', False))
+    outbound = int(japan_fp.get('outbound_max_level', 0) or 0)
+
+    # When Japan publicly commits to Taiwan defense, Taiwan's US-alliance vector
+    # gets +1 (because the alliance is now visibly trilateral, not just bilateral)
+    if taiwan_def and 'us_partnership' in actor_results:
+        current = actor_results['us_partnership'].get('level', 0) or 0
+        new_level = min(5, current + 1)
+        if new_level > current:
+            actor_results['us_partnership']['level'] = new_level
+            deltas['us_partnership'] = +1
+            print(f"[Taiwan Rhetoric] Japan amplifier: us_partnership L{current} → L{new_level} "
+                  f"(Japan Taiwan defense active)")
+
+    # When Japan Article 9 is in active legislative motion at L3+ outbound,
+    # Taiwan's defense rhetoric gets +1 (regional pivot, Taiwan reads it as supportive context)
+    if article9 and outbound >= 3 and 'roc_defense' in actor_results:
+        current = actor_results['roc_defense'].get('level', 0) or 0
+        new_level = min(5, current + 1)
+        if new_level > current:
+            actor_results['roc_defense']['level'] = new_level
+            deltas['roc_defense'] = +1
+            print(f"[Taiwan Rhetoric] Japan amplifier: roc_defense L{current} → L{new_level} "
+                  f"(Japan Article 9 active + outbound L{outbound})")
+
+    return deltas
+
+
 def _write_taiwan_fingerprint(outbound_score, outbound_max, inbound_score,
-                               inbound_max, overall_level, actor_results):
-    """Write Taiwan fingerprint back to shared cross-theater key."""
+                               inbound_max, overall_level, actor_results,
+                               japan_amplifiers=None):
+    """Write Taiwan fingerprint back to shared cross-theater key.
+    v1.3.0: also emits outbound_max_level, inbound_max_level, us_alliance_level
+    aliases for consistency with other Asia trackers, plus Japan amplifier flags.
+    """
     fingerprints = _redis_get(CROSSTHEATER_KEY) or {}
+    japan_amplifiers = japan_amplifiers or {}
 
     fingerprints['taiwan'] = {
-        'level':           overall_level,
-        'outbound_score':  outbound_score,
-        'outbound_max':    outbound_max,
-        'inbound_score':   inbound_score,
-        'inbound_max':     inbound_max,
-        'lai_level':       actor_results.get('lai_presidential', {}).get('level', 0),
-        'defense_level':   actor_results.get('roc_defense', {}).get('level', 0),
-        'us_level':        actor_results.get('us_partnership', {}).get('level', 0),
-        'diplomatic_level': actor_results.get('diplomatic_posture', {}).get('level', 0),
-        'asymmetric_level': actor_results.get('asymmetric_resilience', {}).get('level', 0),
-        'label':           ESCALATION_LEVELS[overall_level]['label'],
-        'updated_at':      datetime.now(timezone.utc).isoformat(),
+        'level':                overall_level,
+        'outbound_score':       outbound_score,
+        'outbound_max':         outbound_max,
+        # v1.3.0 — canonical naming aliases used by other trackers/proxies
+        'outbound_max_level':   outbound_max,
+        'inbound_max_level':    inbound_max,
+        'inbound_score':        inbound_score,
+        'inbound_max':          inbound_max,
+        'lai_level':            actor_results.get('lai_presidential', {}).get('level', 0),
+        'defense_level':        actor_results.get('roc_defense', {}).get('level', 0),
+        'us_level':             actor_results.get('us_partnership', {}).get('level', 0),
+        # Alias consistent with Japan tracker's us_alliance_level naming
+        'us_alliance_level':    actor_results.get('us_partnership', {}).get('level', 0),
+        'diplomatic_level':     actor_results.get('diplomatic_posture', {}).get('level', 0),
+        'asymmetric_level':     actor_results.get('asymmetric_resilience', {}).get('level', 0),
+        # v1.3.0 — Japan amplifier transparency
+        'japan_amplifier_active': bool(japan_amplifiers),
+        'japan_amplifier_deltas': japan_amplifiers,
+        'label':                ESCALATION_LEVELS[overall_level]['label'],
+        'updated_at':           datetime.now(timezone.utc).isoformat(),
     }
 
     _redis_set(CROSSTHEATER_KEY, fingerprints)
@@ -1439,6 +1517,8 @@ def run_taiwan_rhetoric_scan():
 
     # Read China fingerprint FIRST -- before any article fetching
     china_fp = _read_china_fingerprint()
+    # v1.3.0 — Read Japan fingerprint for trilateral Taiwan-defense amplifier
+    japan_fp = _read_japan_fingerprint()
 
     all_articles = []
 
@@ -1571,15 +1651,30 @@ def run_taiwan_rhetoric_scan():
         china_fp, actor_results
     )
 
+    # ── v1.3.0 — Apply Japan-alliance amplifier ──
+    # Japan committing to Taiwan defense or Article 9 reinterpretation amplifies
+    # Taiwan's us_partnership and roc_defense actors. This makes Taiwan tracker
+    # reflect trilateral alliance reality, not just bilateral US-Taiwan.
+    japan_amplifiers = _apply_japan_amplifier(actor_results, japan_fp)
+
+    # Recompute outbound_max if Japan amplifier changed any outbound actor levels
+    if japan_amplifiers:
+        outbound_max = max(
+            (actor_results[a].get('level', 0) for a in actor_results
+             if a in OUTBOUND_ACTOR_KEYS),
+            default=outbound_max
+        ) if 'OUTBOUND_ACTOR_KEYS' in dir() else outbound_max
+
     # Overall level = max of outbound and inbound max
     # (Taiwan's analytical question covers both its own posture AND what China is doing)
     overall_level = max(outbound_max, inbound_max)
     overall_label = ESCALATION_LEVELS[overall_level]['label']
 
-    # Write Taiwan fingerprint
+    # Write Taiwan fingerprint (v1.3.0 — includes Japan amplifier context)
     _write_taiwan_fingerprint(
         outbound_score, outbound_max, inbound_score,
-        inbound_max, overall_level, actor_results
+        inbound_max, overall_level, actor_results,
+        japan_amplifiers=japan_amplifiers
     )
 
     scan_time = round(time.time() - scan_start, 1)
