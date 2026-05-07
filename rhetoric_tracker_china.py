@@ -835,6 +835,221 @@ ECONOMIC_TRIGGERS = {
 
 
 # ============================================
+# REGIME SIGNALS (May 7 2026)
+# Five sub-detection ladders for China's contribution to structural shifts
+# in the international system. China's role is distinct from Iran/Russia:
+#   - Iran   = densest sanctions evasion behavior (gold-for-oil)
+#   - Russia = densest arms supplier + dedollarization rhetoric + shadow fleet
+#   - China  = ARCHITECT of the alternative system: yuan internationalization,
+#              BRICS Pay backbone, mBridge CBDC, MFA dedollarization voice,
+#              SOE bank facilitation of sanctioned-state trade
+# Each fires from China-origin content and writes to the cross-theater
+# fingerprint for the convergence registry to consume.
+# Note: China is NOT a sanctioned state — these signals measure China as
+# the architect/anchor, not as an evader.
+# ============================================
+
+# Sub-signal 1: Yuan Internationalization (CIPS, mBridge, petroyuan)
+# Feeds: financial_system_fragmentation, dedollarization_drumbeat
+# THE primary China signal — yuan as alternative reserve/settlement currency
+CHINA_YUAN_INTERNATIONALIZATION_TRIGGERS = {
+    5: [
+        'yuan replaces dollar reserves', 'cips overtakes swift',
+        'petroyuan dominates oil pricing', 'yuan world reserve currency',
+        '人民币取代美元', '人民币世界储备货币',
+    ],
+    4: [
+        'yuan internationalization', 'cips expansion',
+        'cross-border interbank payment system', 'mbridge cbdc',
+        'yuan settlement oil', 'petroyuan oil contracts',
+        'yuan denominated trade', 'yuan reserve currency',
+        'china yuan global', 'rmb internationalization',
+        'digital yuan cbdc', 'e-cny cross border',
+        'yuan oil pricing', 'china yuan saudi oil',
+        '人民币国际化', '跨境支付系统',
+        'CIPS', '数字人民币', '石油人民币',
+    ],
+    3: [
+        'cips transactions', 'yuan cross-border trade',
+        'yuan settlement growth', 'china yuan trade share',
+        'rmb global payment', 'yuan offshore market',
+        'china currency swap', 'yuan bilateral trade',
+        'yuan trade settlement', 'cnh offshore yuan',
+        '人民币跨境', '人民币结算',
+        '货币互换', '离岸人民币',
+    ],
+    2: [
+        'yuan global trade', 'yuan trade growth',
+        'china yuan policy', 'yuan exchange rate',
+        'rmb yuan', 'china currency',
+        '人民币', '中国货币',
+    ],
+    1: [
+        'yuan', 'rmb', 'chinese currency',
+        '人民币', '元',
+    ],
+}
+
+# Sub-signal 2: MFA Dedollarization Rhetoric (Wang Yi / Lin Jian / Mao Ning)
+# Feeds: dedollarization_drumbeat
+# China MFA explicit public-stage rhetoric on dollar/SWIFT alternatives
+CHINA_MFA_DEDOLLARIZATION_TRIGGERS = {
+    5: [
+        'wang yi announces dollar replacement', 'china foreign minister exits dollar',
+        'mfa announces swift alternative complete', 'china declares dollar end',
+        '王毅宣布替代美元', '中国外交部宣布脱钩美元',
+    ],
+    4: [
+        'wang yi dedollarization', 'wang yi dollar weaponization',
+        'wang yi multipolar economy', 'lin jian dedollarization',
+        'mao ning dedollarization', 'china mfa dollar',
+        'china foreign ministry dollar', 'wang yi financial sovereignty',
+        'china criticizes dollar dominance', 'china dollar weaponization',
+        'mfa briefing dedollarization', 'china mfa swift',
+        'china foreign minister yuan', 'beijing dedollarization',
+        '王毅 美元', '王毅 多极化',
+        '林剑 美元', '毛宁 美元',
+        '外交部 去美元化',
+    ],
+    3: [
+        'china criticizes us dollar', 'china dollar hegemony',
+        'china financial sovereignty', 'china multipolar finance',
+        'china non-western financial', 'china global south finance',
+        'china criticizes swift', 'china unilateral sanctions',
+        'china us financial decoupling', 'china dollar trap',
+        '中国批评美元霸权', '美元霸权',
+        '金融多极化', '金融主权',
+    ],
+    2: [
+        'china dollar criticism', 'china us trade',
+        'china financial system', 'china dollar policy',
+        '美元政策', '中美金融',
+    ],
+    1: [
+        'china us dollar', 'china financial', 'china currency policy',
+        '中国美元', '中国金融',
+    ],
+}
+
+# Sub-signal 3: BRICS Architect Role (China as backbone of BRICS financial system)
+# Feeds: financial_system_fragmentation, dedollarization_drumbeat
+# China's leadership role in BRICS Pay, NDB, BRICS+ expansion
+CHINA_BRICS_ARCHITECT_TRIGGERS = {
+    5: [
+        'brics pay launches china backbone', 'china brics common currency',
+        'ndb sanctions tool china', 'brics replaces imf china',
+        '中国主导金砖支付', '金砖货币',
+    ],
+    4: [
+        'china brics summit', 'china brics expansion',
+        'china brics pay', 'xi brics summit',
+        'china hosts brics', 'china brics+ expansion',
+        'china new development bank', 'china ndb expansion',
+        'china brics technology', 'china brics financial architecture',
+        'beijing brics summit', 'china leads brics',
+        'brics chairmanship china', 'china brics common currency',
+        '金砖国家峰会', '金砖+扩容',
+        '金砖支付', '新开发银行',
+    ],
+    3: [
+        'china brics partnership', 'china brics cooperation',
+        'china multipolar order', 'china shanghai cooperation',
+        'china sco brics', 'china global south',
+        'china emerging economies leadership', 'china brics infrastructure',
+        'china asian infrastructure', 'china aiib expansion',
+        '金砖合作', '上海合作组织',
+        '亚投行', '一带一路',
+    ],
+    2: [
+        'china brics', 'china sco',
+        'china emerging markets', 'china global south',
+        '金砖', '上合',
+    ],
+    1: [
+        'brics china', 'shanghai cooperation', 'sco china',
+        '金砖国家', '上合组织',
+    ],
+}
+
+# Sub-signal 4: Sanctions Facilitator (Chinese SOE banks facilitating sanctioned trade)
+# Feeds: sanctions_evasion_cluster, financial_system_fragmentation
+# China as the financial intermediary enabling Iran/Russia/DPRK trade
+CHINA_SANCTIONS_FACILITATOR_TRIGGERS = {
+    5: [
+        'china soe bank sanctioned russia', 'us sanctions chinese major bank',
+        'china bank cuts off swift sanctions', 'treasury 311 china bank',
+        '中国银行被制裁',
+    ],
+    4: [
+        'chinese bank iran trade', 'chinese bank russia trade',
+        'china soe bank sanctions', 'china bank dprk facilitation',
+        'china bank ofac sanction', 'us sanctions chinese bank',
+        'china bank correspondent banking', 'china bank sdn list',
+        'china dprk sanctions evasion', 'china iran oil financing',
+        'china russia oil financing', 'chinese bank facilitates iran',
+        'hong kong gold transit iran', 'macau financial intermediary',
+        'icbc iran sanctions', 'bank of china russia',
+        '中国银行 伊朗', '中国银行 制裁',
+    ],
+    3: [
+        'china intermediary trade russia', 'china intermediary trade iran',
+        'china third country trade evasion', 'china reflagged ships',
+        'china bank correspondent', 'china financial intermediary',
+        'china us treasury warning', 'china secondary sanctions',
+        'china dprk financial', 'china iran financial',
+        '中国金融中介', '中国转运伊朗',
+    ],
+    2: [
+        'china secondary sanctions', 'china us treasury',
+        'china financial cooperation iran', 'china bank scrutiny',
+        '中国制裁', '美国财政部 中国',
+    ],
+    1: [
+        'china sanctions', 'china financial',
+        '中国制裁', '中国金融',
+    ],
+}
+
+# Sub-signal 5: Oil-Yuan Settlement (China-Saudi/Russia/Iran oil yuan deals)
+# Feeds: financial_system_fragmentation, energy_bloc_consolidation
+# China is the COUNTERPARTY to all major oil-yuan settlement
+CHINA_OIL_YUAN_SETTLEMENT_TRIGGERS = {
+    5: [
+        'china saudi oil yuan settled', 'china russia oil 100 percent yuan',
+        'china iran oil yuan exclusively', 'opec oil yuan pricing major',
+        '中沙石油人民币', '中俄石油人民币',
+    ],
+    4: [
+        'china saudi yuan oil', 'china russia yuan oil',
+        'china iran yuan oil', 'shanghai oil futures yuan',
+        'china yuan oil pricing', 'china yuan crude settlement',
+        'china oil yuan benchmark', 'sse yuan crude',
+        'china uae yuan trade', 'china saudi currency swap',
+        'china oil import yuan', 'petroyuan oil china',
+        '上海原油期货', '人民币原油',
+        '中沙货币互换', '中俄能源人民币',
+    ],
+    3: [
+        'china oil non-dollar', 'china crude yuan trade',
+        'china saudi yuan deal', 'china qatar yuan',
+        'china oil settlement local currency', 'china lng yuan',
+        'china natural gas yuan', 'china energy yuan',
+        'china brazil yuan trade', 'china oil currency diversification',
+        '人民币能源贸易', '能源人民币结算',
+    ],
+    2: [
+        'china oil deal', 'china oil pricing',
+        'china oil import', 'china saudi trade',
+        '中国石油贸易', '中沙贸易',
+    ],
+    1: [
+        'china oil', 'china saudi', 'china crude',
+        '中国石油', '中沙',
+    ],
+}
+
+
+# ============================================
 # THREAT VECTORS -- INBOUND
 # ============================================
 
@@ -1590,11 +1805,76 @@ def _score_china_iran_axis_subscores(articles):
 
 
 # ============================================
+# REGIME SIGNAL SUB-SCORER (May 7 2026)
+# Mirrors iran/russia tracker's regime signal scoring pattern.
+# Runs all five regime-signal ladders against the article corpus and
+# returns per-dimension max levels. Output flows to (a) the
+# cross-theater fingerprint write, and (b) the outbound score modifier.
+# Note: only affects outbound_score, not inbound_score — regime
+# fragmentation is something China is DOING, not RECEIVING.
+# ============================================
+def _score_china_regime_signals(articles):
+    """
+    Score each China regime-signal dimension separately.
+    Returns dict: {
+        'yuan_internationalization': 0-5,
+        'mfa_dedollarization':       0-5,
+        'brics_architect':           0-5,
+        'sanctions_facilitator':     0-5,
+        'oil_yuan_settlement':       0-5,
+        'max':                       0-5,  # highest across all dimensions
+        'active_count':              int,  # count of dimensions at L3+
+    }
+    Active count is what feeds the score modifier (capped at +5 in
+    _compute_outbound_score). Per-dimension levels are written to the
+    cross-theater fingerprint so the convergence registry can read them.
+    """
+    dimensions = {
+        'yuan_internationalization': CHINA_YUAN_INTERNATIONALIZATION_TRIGGERS,
+        'mfa_dedollarization':       CHINA_MFA_DEDOLLARIZATION_TRIGGERS,
+        'brics_architect':           CHINA_BRICS_ARCHITECT_TRIGGERS,
+        'sanctions_facilitator':     CHINA_SANCTIONS_FACILITATOR_TRIGGERS,
+        'oil_yuan_settlement':       CHINA_OIL_YUAN_SETTLEMENT_TRIGGERS,
+    }
+    scores = {dim: 0 for dim in dimensions}
+
+    for article in articles:
+        title = (article.get('title', '') or '').lower()
+        desc  = (article.get('description', '') or '').lower()
+        text  = f"{title} {desc}"
+
+        for dim, ladder in dimensions.items():
+            # Find highest level matched in this article for this dimension
+            for level in range(5, 0, -1):
+                phrases = ladder.get(level, [])
+                if any(phrase.lower() in text for phrase in phrases):
+                    if level > scores[dim]:
+                        scores[dim] = level
+                    break
+
+    scores['max'] = max(scores.values()) if scores else 0
+    scores['active_count'] = sum(1 for dim in dimensions if scores[dim] >= 3)
+    return scores
+
+
+# ============================================
 # COMPOSITE SCORING
 # ============================================
 
-def _compute_outbound_score(actor_results):
-    """Compute composite outbound score (0-100)."""
+def _compute_outbound_score(actor_results, regime_signals=None):
+    """
+    Compute composite outbound score (0-100).
+
+    v1.2.0 (April 2026) — added china_iran_axis actor weight (2.5).
+    v1.4 (May 7 2026) — added optional regime_signals parameter. When 3+ regime
+    signals fire at L3+, applies a capped +5 modifier reflecting that China is
+    contributing to structural-system fragmentation (yuan internationalization,
+    BRICS Pay backbone, MFA dedollarization rhetoric, sanctions facilitator,
+    oil-yuan settlement). The cap prevents rhetoric noise from dominating;
+    only L3+ (Confrontation level) signals count toward the modifier.
+    Note: only affects OUTBOUND score, not inbound — regime fragmentation
+    is something China is DOING, not RECEIVING.
+    """
     weights = {
         'xi_cmc':            3.5,
         'pla_operational':   3.0,
@@ -1626,6 +1906,20 @@ def _compute_outbound_score(actor_results):
     if elevated >= 3:
         score = min(100, score + 10)
         print(f"[China Rhetoric] Convergence bonus: {elevated} outbound actors at L3+")
+
+    # ── v1.4 (May 7 2026): Regime Signal Modifier (capped +5, outbound only) ──
+    # When China is contributing to structural-system fragmentation
+    # (yuan internationalization, MFA dedollarization, BRICS architect,
+    # sanctions facilitator, oil-yuan settlement), bump the OUTBOUND score
+    # modestly. Capped so rhetoric noise can't dominate. Inbound unaffected.
+    if regime_signals:
+        active_count = regime_signals.get('active_count', 0)
+        # +1 per active dimension (L3+), capped at +5
+        regime_modifier = min(active_count, 5)
+        if regime_modifier > 0:
+            score = min(100, score + regime_modifier)
+            print(f"[China Rhetoric] 🌐 Regime signal modifier: +{regime_modifier} "
+                  f"({active_count} dimensions at L3+) → outbound only")
 
     return score, max_level
 
@@ -1788,7 +2082,8 @@ def _read_crosstheater_amplifiers():
 def _write_crosstheater_fingerprint(outbound_score, outbound_max, inbound_max,
                                     overall_level, actor_results,
                                     axis_subscores=None,
-                                    crosstheater_amplifiers=None):
+                                    crosstheater_amplifiers=None,
+                                    regime_signals=None):
     """
     Write China fingerprint to shared Redis cross-theater key.
     v1.2.0: includes china_iran_axis sub-scores so downstream consumers
@@ -1797,12 +2092,18 @@ def _write_crosstheater_fingerprint(outbound_score, outbound_max, inbound_max,
     v1.3.0: includes cross-theater READ context (Iran/Japan/Taiwan amplifiers
     that influenced this scan) so downstream consumers see what China is
     REACTING to, not just what China is doing.
+    v1.4 (May 7 2026): adds optional regime_signals parameter. When passed,
+    writes 5 per-dimension levels + 5 active flags + 2 aggregates to the
+    fingerprint so the convergence registry can detect dedollarization_drumbeat,
+    financial_system_fragmentation, and sanctions_evasion_cluster convergences.
     """
     fingerprints = _redis_get(CROSSTHEATER_KEY) or {}
 
     # v1.2.0 — Safe defaults if caller didn't pass axis_subscores
     axis_subscores = axis_subscores or {}
     crosstheater_amplifiers = crosstheater_amplifiers or {}
+    # v1.4 — Safe default for regime_signals
+    regime_signals = regime_signals or {}
     axis_level     = actor_results.get('china_iran_axis', {}).get('level', 0)
 
     fingerprints['china'] = {
@@ -1838,13 +2139,38 @@ def _write_crosstheater_fingerprint(outbound_score, outbound_max, inbound_max,
         'japan_outbound_max':     crosstheater_amplifiers.get('japan_outbound_max', 0),
         'taiwan_outbound_max':    crosstheater_amplifiers.get('taiwan_outbound_max', 0),
         'crosstheater_context':   crosstheater_amplifiers.get('context_notes', []),
+
+        # ── Regime Signals (May 7 2026) — Convergence Registry Consumer Surface ──
+        # Per-dimension max levels for the 5 regime-signal sub-detection ladders.
+        # China is the ARCHITECT of the alternative system — yuan internationalization,
+        # BRICS Pay backbone, MFA dedollarization rhetoric, sanctions facilitator.
+        # Read by convergence_registry entries: dedollarization_drumbeat (China is
+        # PRIMARY trigger), financial_system_fragmentation, sanctions_evasion_cluster
+        # (via sanctions facilitator), energy_bloc_consolidation (via oil-yuan).
+        # Active flag = level >= 3 (Confrontation or above on China scale).
+        'china_yuan_internationalization_level':  regime_signals.get('yuan_internationalization', 0),
+        'china_yuan_internationalization_active': regime_signals.get('yuan_internationalization', 0) >= 3,
+        'china_mfa_dedollarization_level':        regime_signals.get('mfa_dedollarization', 0),
+        'china_mfa_dedollarization_active':       regime_signals.get('mfa_dedollarization', 0) >= 3,
+        'china_brics_architect_level':            regime_signals.get('brics_architect', 0),
+        'china_brics_architect_active':           regime_signals.get('brics_architect', 0) >= 3,
+        'china_sanctions_facilitator_level':      regime_signals.get('sanctions_facilitator', 0),
+        'china_sanctions_facilitator_active':     regime_signals.get('sanctions_facilitator', 0) >= 3,
+        'china_oil_yuan_settlement_level':        regime_signals.get('oil_yuan_settlement', 0),
+        'china_oil_yuan_settlement_active':       regime_signals.get('oil_yuan_settlement', 0) >= 3,
+        # Aggregate flags for convergence registry simple-AND logic
+        'china_regime_signals_max':               regime_signals.get('max', 0),
+        'china_regime_signals_active':            regime_signals.get('active_count', 0),
+
         'label':          ESCALATION_LEVELS[overall_level]['label'],
         'updated_at':     datetime.now(timezone.utc).isoformat(),
     }
 
     _redis_set(CROSSTHEATER_KEY, fingerprints)
     n_amps = len(crosstheater_amplifiers.get('amplifier_actor_deltas', {}) or {})
-    print(f"[China Rhetoric] Cross-theater fingerprint written (L{overall_level}, axis L{axis_level}, {n_amps} amplifiers applied)")
+    n_regime = regime_signals.get('active_count', 0)
+    print(f"[China Rhetoric] Cross-theater fingerprint written "
+          f"(L{overall_level}, axis L{axis_level}, {n_amps} amplifiers, {n_regime} regime signals)")
 
 
 # ============================================
@@ -1980,8 +2306,24 @@ def run_china_rhetoric_scan():
                    ['name', 'flag', 'icon', 'color', 'dashboard', 'role', 'description']},
             }
 
+    # ── Regime Signals (May 7 2026) ──
+    # Five sub-detection ladders for China's contribution to structural shifts
+    # in the international system (yuan internationalization, MFA dedollarization,
+    # BRICS architect role, sanctions facilitator, oil-yuan settlement).
+    # Output feeds (a) cross-theater fingerprint, (b) outbound score modifier.
+    regime_signals = _score_china_regime_signals(all_articles)
+    if regime_signals.get('active_count', 0) > 0:
+        active_dims = [d for d in
+                       ['yuan_internationalization', 'mfa_dedollarization',
+                        'brics_architect', 'sanctions_facilitator',
+                        'oil_yuan_settlement']
+                       if regime_signals.get(d, 0) >= 3]
+        print(f"[China Rhetoric] 🌐 Regime signals: {regime_signals['active_count']} active "
+              f"({', '.join(active_dims)}) — max L{regime_signals['max']}")
+
     # Compute dashboard scores
-    outbound_score, outbound_max = _compute_outbound_score(actor_results)
+    outbound_score, outbound_max = _compute_outbound_score(actor_results,
+                                                            regime_signals=regime_signals)
     inbound_score,  inbound_max  = _compute_inbound_score(actor_results)
 
     # Overall level = outbound max (this tracker answers the outbound question)
@@ -2024,12 +2366,13 @@ def run_china_rhetoric_scan():
     overall_level = outbound_max
     overall_label = ESCALATION_LEVELS[overall_level]['label']
 
-    # Write cross-theater fingerprint (now with amplifier context)
+    # Write cross-theater fingerprint (now with amplifier context + regime signals)
     _write_crosstheater_fingerprint(
         outbound_score, outbound_max, inbound_max,
         overall_level, actor_results,
         axis_subscores=axis_subscores,
-        crosstheater_amplifiers=crosstheater_amplifiers
+        crosstheater_amplifiers=crosstheater_amplifiers,
+        regime_signals=regime_signals
     )
 
     scan_time = round(time.time() - scan_start, 1)
@@ -2100,7 +2443,13 @@ def run_china_rhetoric_scan():
         'so_what':            so_what,
 
         'escalation_levels': ESCALATION_LEVELS,
-        'version':           '2.0.0-china',  # v2.0: emits top_signals[]
+
+        # ── Regime Signals (May 7 2026) ──
+        # Per-dimension max levels for cross-theater fingerprint + GPI consumption.
+        'regime_signals':              regime_signals,
+        'regime_signals_active_count': regime_signals.get('active_count', 0),
+        'regime_signals_max_level':    regime_signals.get('max', 0),
+        'version':           '2.1.0-china',  # v2.1: regime signals
     }
 
     # v2.0: Build top_signals AFTER result dict is constructed (needs overall_level + so_what)
@@ -2130,9 +2479,11 @@ def run_china_rhetoric_scan():
         'us_level':       actor_results.get('us_commitment', {}).get('level', 0),
     })
 
+    regime_active = regime_signals.get('active_count', 0)
+    regime_str = f" | Regime: {regime_active} active" if regime_active > 0 else ""
     print(f"[China Rhetoric] Scan complete in {scan_time}s | "
           f"Outbound L{outbound_max} ({outbound_score}/100) | "
-          f"Inbound L{inbound_max} ({inbound_score}/100)")
+          f"Inbound L{inbound_max} ({inbound_score}/100){regime_str}")
 
     return result
 
