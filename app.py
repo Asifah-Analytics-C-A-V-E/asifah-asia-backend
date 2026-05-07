@@ -131,6 +131,18 @@ except ImportError:
     CHINA_HUMANITARIAN_AVAILABLE = False
     print("[Asia Backend] ⚠️ China humanitarian module not available")
 
+# Convergence Proxy — pulls cross-regional convergence stacks from ME backend
+# (mirrors commodity_proxy_europe.py pattern: 12hr Redis cache + passthrough endpoints)
+try:
+    from convergence_proxy_asia import register_convergence_proxy
+    CONVERGENCE_PROXY_AVAILABLE = True
+    print("[Asia Backend] ✅ Convergence proxy module loaded")
+except Exception as e:
+    import traceback
+    CONVERGENCE_PROXY_AVAILABLE = False
+    print(f"[Asia Backend] ⚠️ Convergence proxy not available — {type(e).__name__}: {e}")
+    traceback.print_exc()
+
 # In-memory Telegram cache — fetched ONCE per refresh cycle, shared across all country scans
 _telegram_cache = {'messages': [], 'fetched_at': None, 'ttl_seconds': 4 * 3600}  # v1.1.0 — 4h TTL (was 1h)
 
@@ -2907,6 +2919,9 @@ if PAKISTAN_STABILITY_AVAILABLE:
 
 if CHINA_HUMANITARIAN_AVAILABLE:
     register_china_humanitarian_endpoints(app)
+
+if CONVERGENCE_PROXY_AVAILABLE:
+    register_convergence_proxy(app)
 
 # On Render with gunicorn, this runs once per worker.
 start_background_refresh()
