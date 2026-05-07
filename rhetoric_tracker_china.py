@@ -1661,19 +1661,148 @@ def _compute_inbound_score(actor_results):
 # CROSS-THEATER FINGERPRINT
 # ============================================
 
+def _read_crosstheater_amplifiers():
+    """
+    Read fingerprints from Iran (oil/Hormuz pressure), Japan (alliance hardening),
+    and Taiwan (defense rhetoric) to amplify China's outbound and contextualize
+    its strategic environment.
+
+    Returns dict of:
+      {
+        'iran_hormuz_pressure': bool,   # Iran threatening or active in Hormuz
+        'iran_theatre_score':   int,    # 0-100, Iran's overall pressure level
+        'iran_irgc_level':      int,    # 0-5, IRGC operational posture
+        'iran_proxy_active':    bool,   # Iran proxy network elevated
+        'japan_article9_active': bool,  # Constitutional reinterpretation in motion
+        'japan_taiwan_defense':  bool,  # Japan committing to Taiwan defense
+        'japan_outbound_max':    int,   # 0-5, Japan posture max
+        'taiwan_outbound_max':   int,   # 0-5, Taiwan defense rhetoric max
+        'taiwan_us_alliance':    int,   # 0-5, Taiwan-US alliance signaling
+        'amplifier_actor_deltas': {},   # actor_key -> level delta to apply
+        'context_notes':         [],    # human-readable notes for fingerprint
+      }
+    """
+    amplifiers = {
+        'iran_hormuz_pressure':  False,
+        'iran_theatre_score':    0,
+        'iran_irgc_level':       0,
+        'iran_proxy_active':     False,
+        'japan_article9_active': False,
+        'japan_taiwan_defense':  False,
+        'japan_outbound_max':    0,
+        'taiwan_outbound_max':   0,
+        'taiwan_us_alliance':    0,
+        'amplifier_actor_deltas': {},
+        'context_notes':         [],
+    }
+
+    fingerprints = _redis_get(CROSSTHEATER_KEY) or {}
+
+    # ── IRAN READ — China's oil/Hormuz dependency vector ──
+    iran_fp = fingerprints.get('iran', {}) or {}
+    iran_score = int(iran_fp.get('theatre_score', 0) or 0)
+    iran_irgc = int(iran_fp.get('irgc_level', 0) or 0)
+    iran_proxy = int(iran_fp.get('proxy_activation_level', 0) or 0)
+    iran_targets = iran_fp.get('named_targets', []) or []
+
+    amplifiers['iran_theatre_score'] = iran_score
+    amplifiers['iran_irgc_level'] = iran_irgc
+    amplifiers['iran_proxy_active'] = iran_proxy >= 3
+
+    # Hormuz check — China imports ~50% of oil through Hormuz
+    hormuz_signaled = any(t in iran_targets for t in ['hormuz', 'strait of hormuz', 'persian gulf'])
+    if hormuz_signaled or (iran_score >= 60 and iran_irgc >= 3):
+        amplifiers['iran_hormuz_pressure'] = True
+        amplifiers['context_notes'].append(
+            f"Iran posture L-equiv (score {iran_score}, IRGC L{iran_irgc}) — "
+            f"China oil supply chain pressure "
+            f"({'Hormuz signals active' if hormuz_signaled else 'IRGC operational'})"
+        )
+        # Amplify China's economic_coercion actor — China likely to push
+        # de-escalation rhetoric to protect oil supply
+        if 'economic_coercion' in ACTOR_KEYWORDS:
+            amplifiers['amplifier_actor_deltas']['economic_coercion'] = +1
+        # Amplify mfa_diplomatic — China typically pushes "stability" framing
+        if 'mfa_diplomatic' in ACTOR_KEYWORDS:
+            amplifiers['amplifier_actor_deltas']['mfa_diplomatic'] = +1
+        print(f"[China Rhetoric] Iran-Hormuz amplifier active: score={iran_score}, irgc=L{iran_irgc}, hormuz={hormuz_signaled}")
+
+    if amplifiers['iran_proxy_active']:
+        amplifiers['context_notes'].append(
+            f"Iran proxy network at L{iran_proxy} — regional instability "
+            f"affects China BRI and energy routes"
+        )
+
+    # ── JAPAN READ — Alliance hardening pressure on China ──
+    japan_fp = fingerprints.get('japan', {}) or {}
+    japan_outbound = int(japan_fp.get('outbound_max_level', 0) or 0)
+    japan_article9 = bool(japan_fp.get('article9_active', False))
+    japan_taiwan_def = bool(japan_fp.get('taiwan_defense_active', False))
+
+    amplifiers['japan_outbound_max'] = japan_outbound
+    amplifiers['japan_article9_active'] = japan_article9
+    amplifiers['japan_taiwan_defense'] = japan_taiwan_def
+
+    if japan_article9:
+        amplifiers['context_notes'].append(
+            "Japan Article 9 reinterpretation active — "
+            "China likely to amplify militarism warnings"
+        )
+        # Amplify China outbound on Japan-relevant actors
+        for ak in ('mfa_diplomatic', 'pla_operational', 'global_times'):
+            if ak in ACTOR_KEYWORDS:
+                amplifiers['amplifier_actor_deltas'][ak] = (
+                    amplifiers['amplifier_actor_deltas'].get(ak, 0) + 1
+                )
+
+    if japan_taiwan_def and japan_outbound >= 3:
+        amplifiers['context_notes'].append(
+            "Japan committing to Taiwan defense — "
+            "trilateral pressure on China's Taiwan calculus"
+        )
+        # Amplify TAO (Taiwan Affairs Office) and PLA Taiwan-relevant
+        for ak in ('tao', 'pla_taiwan'):
+            if ak in ACTOR_KEYWORDS:
+                amplifiers['amplifier_actor_deltas'][ak] = (
+                    amplifiers['amplifier_actor_deltas'].get(ak, 0) + 1
+                )
+
+    # ── TAIWAN READ — Strong ROC defense rhetoric amplifies China posture ──
+    taiwan_fp = fingerprints.get('taiwan', {}) or {}
+    taiwan_outbound = int(taiwan_fp.get('outbound_max_level', 0) or
+                          taiwan_fp.get('inbound_max_level', 0) or 0)
+    taiwan_us = int(taiwan_fp.get('us_alliance_level', 0) or 0)
+
+    amplifiers['taiwan_outbound_max'] = taiwan_outbound
+    amplifiers['taiwan_us_alliance'] = taiwan_us
+
+    if taiwan_outbound >= 3 or taiwan_us >= 3:
+        amplifiers['context_notes'].append(
+            f"Taiwan defense signaling (L{taiwan_outbound}) + "
+            f"US alliance (L{taiwan_us}) — China outbound likely to escalate"
+        )
+
+    return amplifiers
+
+
 def _write_crosstheater_fingerprint(outbound_score, outbound_max, inbound_max,
                                     overall_level, actor_results,
-                                    axis_subscores=None):
+                                    axis_subscores=None,
+                                    crosstheater_amplifiers=None):
     """
     Write China fingerprint to shared Redis cross-theater key.
     v1.2.0: includes china_iran_axis sub-scores so downstream consumers
     (Iran tracker, Global Pressure Index) can see WHICH dimension of
     China support is elevated — ISR is more consequential than diplomatic.
+    v1.3.0: includes cross-theater READ context (Iran/Japan/Taiwan amplifiers
+    that influenced this scan) so downstream consumers see what China is
+    REACTING to, not just what China is doing.
     """
     fingerprints = _redis_get(CROSSTHEATER_KEY) or {}
 
     # v1.2.0 — Safe defaults if caller didn't pass axis_subscores
     axis_subscores = axis_subscores or {}
+    crosstheater_amplifiers = crosstheater_amplifiers or {}
     axis_level     = actor_results.get('china_iran_axis', {}).get('level', 0)
 
     fingerprints['china'] = {
@@ -1698,12 +1827,24 @@ def _write_crosstheater_fingerprint(outbound_score, outbound_max, inbound_max,
         'china_iran_diplomatic_level':  axis_subscores.get('diplomatic', 0),
         # Binary flag for map-overlay / frontend consumers:
         'china_iran_active':            axis_level >= 2,
+        # ── v1.3.0 Cross-theater READ context (May 2026) ──
+        # What China is REACTING to from Iran/Japan/Taiwan fingerprints.
+        'iran_hormuz_pressure':   crosstheater_amplifiers.get('iran_hormuz_pressure', False),
+        'iran_theatre_score':     crosstheater_amplifiers.get('iran_theatre_score', 0),
+        'iran_irgc_level':        crosstheater_amplifiers.get('iran_irgc_level', 0),
+        'iran_proxy_active':      crosstheater_amplifiers.get('iran_proxy_active', False),
+        'japan_article9_active':  crosstheater_amplifiers.get('japan_article9_active', False),
+        'japan_taiwan_defense':   crosstheater_amplifiers.get('japan_taiwan_defense', False),
+        'japan_outbound_max':     crosstheater_amplifiers.get('japan_outbound_max', 0),
+        'taiwan_outbound_max':    crosstheater_amplifiers.get('taiwan_outbound_max', 0),
+        'crosstheater_context':   crosstheater_amplifiers.get('context_notes', []),
         'label':          ESCALATION_LEVELS[overall_level]['label'],
         'updated_at':     datetime.now(timezone.utc).isoformat(),
     }
 
     _redis_set(CROSSTHEATER_KEY, fingerprints)
-    print(f"[China Rhetoric] Cross-theater fingerprint written (L{overall_level}, axis L{axis_level})")
+    n_amps = len(crosstheater_amplifiers.get('amplifier_actor_deltas', {}) or {})
+    print(f"[China Rhetoric] Cross-theater fingerprint written (L{overall_level}, axis L{axis_level}, {n_amps} amplifiers applied)")
 
 
 # ============================================
@@ -1854,11 +1995,41 @@ def run_china_rhetoric_scan():
               f"weapons:{axis_subscores['weapons']}, isr:{axis_subscores['isr']}, "
               f"dualuse:{axis_subscores['dualuse']}, diplomatic:{axis_subscores['diplomatic']}")
 
-    # Write cross-theater fingerprint
+    # ── v1.3.0 — READ cross-theater fingerprints (Iran/Japan/Taiwan) ──
+    crosstheater_amplifiers = _read_crosstheater_amplifiers()
+
+    # Apply actor level deltas from cross-theater amplifiers
+    for actor_key, delta in crosstheater_amplifiers.get('amplifier_actor_deltas', {}).items():
+        if actor_key in actor_results:
+            current_level = actor_results[actor_key].get('level', 0) or 0
+            new_level = min(5, current_level + delta)
+            if new_level > current_level:
+                print(f"[China Rhetoric] Cross-theater amplifier: "
+                      f"{actor_key} L{current_level} → L{new_level}")
+                actor_results[actor_key]['level'] = new_level
+                # Recalculate label/color if those fields exist
+                if 'label' in actor_results[actor_key]:
+                    actor_results[actor_key]['label'] = ESCALATION_LEVELS[new_level]['label']
+                if 'color' in actor_results[actor_key]:
+                    actor_results[actor_key]['color'] = ESCALATION_LEVELS[new_level]['color']
+
+    # Recompute outbound_max after amplification
+    outbound_max = max(
+        (actor_results[a].get('level', 0) for a in actor_results if a in OUTBOUND_ACTORS),
+        default=outbound_max
+    ) if 'OUTBOUND_ACTORS' in dir() else max(
+        (a.get('level', 0) for a in actor_results.values()),
+        default=outbound_max
+    )
+    overall_level = outbound_max
+    overall_label = ESCALATION_LEVELS[overall_level]['label']
+
+    # Write cross-theater fingerprint (now with amplifier context)
     _write_crosstheater_fingerprint(
         outbound_score, outbound_max, inbound_max,
         overall_level, actor_results,
-        axis_subscores=axis_subscores
+        axis_subscores=axis_subscores,
+        crosstheater_amplifiers=crosstheater_amplifiers
     )
 
     scan_time = round(time.time() - scan_start, 1)
