@@ -969,6 +969,45 @@ def _read_japan_fingerprint():
     return None
 
 
+def _read_iran_fingerprint():
+    """
+    Read Iran rhetoric tracker fingerprint from shared Redis key.
+    v2.1 (May 7 2026) — Taiwan reads Iran/Hormuz pressure because Taiwan's
+    ~99% oil import dependency creates compound blockade vulnerability.
+
+    Returns dict with hormuz_pressure_active, theatre_score, irgc_level, named_targets.
+    """
+    iran_data = {
+        'hormuz_pressure_active': False,
+        'theatre_score':          0,
+        'irgc_level':             0,
+        'proxy_active':           False,
+    }
+    try:
+        fingerprints = _redis_get(CROSSTHEATER_KEY)
+        if fingerprints and 'iran' in fingerprints:
+            iran_fp = fingerprints['iran']
+            iran_score = int(iran_fp.get('theatre_score', 0) or 0)
+            iran_irgc = int(iran_fp.get('irgc_level', 0) or 0)
+            iran_proxy = int(iran_fp.get('proxy_activation_level', 0) or 0)
+            iran_targets = iran_fp.get('named_targets', []) or []
+
+            iran_data['theatre_score'] = iran_score
+            iran_data['irgc_level'] = iran_irgc
+            iran_data['proxy_active'] = iran_proxy >= 3
+
+            # Hormuz check — Taiwan imports ~99% of oil, mostly from Middle East
+            hormuz_signaled = any(t in iran_targets for t in ['hormuz', 'strait of hormuz', 'persian gulf'])
+            if hormuz_signaled or (iran_score >= 60 and iran_irgc >= 3):
+                iran_data['hormuz_pressure_active'] = True
+                print(f"[Taiwan Rhetoric] Iran-Hormuz read: score={iran_score}, irgc=L{iran_irgc}, hormuz={hormuz_signaled}")
+            else:
+                print(f"[Taiwan Rhetoric] Iran fingerprint quiet (score={iran_score}, irgc=L{iran_irgc})")
+    except Exception as e:
+        print(f"[Taiwan Rhetoric] Iran fingerprint read error: {str(e)[:80]}")
+    return iran_data
+
+
 def _apply_japan_amplifier(actor_results, japan_fp):
     """
     v1.3.0 — Apply Japan-alliance amplifier to Taiwan's actor scores.
@@ -1519,6 +1558,9 @@ def run_taiwan_rhetoric_scan():
     china_fp = _read_china_fingerprint()
     # v1.3.0 — Read Japan fingerprint for trilateral Taiwan-defense amplifier
     japan_fp = _read_japan_fingerprint()
+    # v2.1 (May 7 2026) — Read Iran fingerprint for Hormuz-oil convergence
+    # (Taiwan's ~99% oil import dependency creates compound blockade vulnerability)
+    iran_data = _read_iran_fingerprint()
 
     all_articles = []
 
@@ -1749,13 +1791,6 @@ def run_taiwan_rhetoric_scan():
         'china_fingerprint_age': china_fp.get('updated_at', '') if china_fp else '',
 
         # Interpreter output
-        'red_lines':          red_lines_triggered,
-        'historical_matches': historical_matches,
-        'so_what':            so_what,
-
-        'escalation_levels': ESCALATION_LEVELS,
-        'version':           '2.0.0-taiwan',  # v2.0: emits top_signals[]
-    }
 
     # v2.0: Build top_signals AFTER result dict (needs overall_level + so_what)
     top_signals = []
