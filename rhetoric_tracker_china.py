@@ -2014,11 +2014,11 @@ def _read_crosstheater_amplifiers():
         )
         # Amplify China's economic_coercion actor — China likely to push
         # de-escalation rhetoric to protect oil supply
-        if 'economic_coercion' in ACTOR_KEYWORDS:
+        if 'economic_coercion' in ACTORS:
             amplifiers['amplifier_actor_deltas']['economic_coercion'] = +1
-        # Amplify mfa_diplomatic — China typically pushes "stability" framing
-        if 'mfa_diplomatic' in ACTOR_KEYWORDS:
-            amplifiers['amplifier_actor_deltas']['mfa_diplomatic'] = +1
+        # Amplify mfa_globaltimes — China typically pushes "stability" framing
+        if 'mfa_globaltimes' in ACTORS:
+            amplifiers['amplifier_actor_deltas']['mfa_globaltimes'] = +1
         print(f"[China Rhetoric] Iran-Hormuz amplifier active: score={iran_score}, irgc=L{iran_irgc}, hormuz={hormuz_signaled}")
 
     if amplifiers['iran_proxy_active']:
@@ -2043,8 +2043,8 @@ def _read_crosstheater_amplifiers():
             "China likely to amplify militarism warnings"
         )
         # Amplify China outbound on Japan-relevant actors
-        for ak in ('mfa_diplomatic', 'pla_operational', 'global_times'):
-            if ak in ACTOR_KEYWORDS:
+        for ak in ('mfa_globaltimes', 'pla_operational'):
+            if ak in ACTORS:
                 amplifiers['amplifier_actor_deltas'][ak] = (
                     amplifiers['amplifier_actor_deltas'].get(ak, 0) + 1
                 )
@@ -2054,9 +2054,9 @@ def _read_crosstheater_amplifiers():
             "Japan committing to Taiwan defense — "
             "trilateral pressure on China's Taiwan calculus"
         )
-        # Amplify TAO (Taiwan Affairs Office) and PLA Taiwan-relevant
-        for ak in ('tao', 'pla_taiwan'):
-            if ak in ACTOR_KEYWORDS:
+        # Amplify TAO (Taiwan Affairs Office) and PLA operational
+        for ak in ('tao', 'pla_operational'):
+            if ak in ACTORS:
                 amplifiers['amplifier_actor_deltas'][ak] = (
                     amplifiers['amplifier_actor_deltas'].get(ak, 0) + 1
                 )
