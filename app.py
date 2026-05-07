@@ -143,6 +143,19 @@ except Exception as e:
     print(f"[Asia Backend] ⚠️ Convergence proxy not available — {type(e).__name__}: {e}")
     traceback.print_exc()
 
+# Commodity Proxy — fetches per-country commodity exposure from ME backend
+# (commodity_tracker.py lives there with COUNTRY_COMMODITY_EXPOSURE for china/japan/taiwan).
+# 12hr Redis cache; stability pages call /api/asia/commodity/<target>.
+try:
+    from commodity_proxy_asia import register_commodity_proxy
+    COMMODITY_PROXY_AVAILABLE = True
+    print("[Asia Backend] ✅ Commodity proxy module loaded")
+except Exception as e:
+    import traceback
+    COMMODITY_PROXY_AVAILABLE = False
+    print(f"[Asia Backend] ⚠️ Commodity proxy not available — {type(e).__name__}: {e}")
+    traceback.print_exc()
+
 # In-memory Telegram cache — fetched ONCE per refresh cycle, shared across all country scans
 _telegram_cache = {'messages': [], 'fetched_at': None, 'ttl_seconds': 4 * 3600}  # v1.1.0 — 4h TTL (was 1h)
 
@@ -2922,6 +2935,9 @@ if CHINA_HUMANITARIAN_AVAILABLE:
 
 if CONVERGENCE_PROXY_AVAILABLE:
     register_convergence_proxy(app)
+
+if COMMODITY_PROXY_AVAILABLE:
+    register_commodity_proxy(app)
 
 # On Render with gunicorn, this runs once per worker.
 start_background_refresh()
