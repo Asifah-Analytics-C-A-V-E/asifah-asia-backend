@@ -707,6 +707,95 @@ def interpret_signals(scan_data):
 
 CHINA_FLAG = '\U0001f1e8\U0001f1f3'  # 🇨🇳
 
+
+# ============================================================
+# v2.2+ — COMMODITY CONVERGENCE INJECTION
+# ============================================================
+# Reads commodity context from scan_data (populated by rhetoric_tracker_china
+# via _read_crosstheater_amplifiers). When Iran/Hormuz pressure is active AND
+# China's oil import dependency creates compound risk, emit a high-priority
+# convergence signal that flows into BLUF prose and up to GPI.
+#
+# This is THE structural reason China cares about Iran — encoded as analysis,
+# not as a static fact. The rhetoric reads as: "Iran/Hormuz pressure compounded
+# by China's ~50% oil import dependency through the Strait."
+#
+# Mirrors the wheat-Lebanon convergence pattern (humanitarian crisis × commodity
+# pressure × import dependency = compound risk).
+
+def build_commodity_convergence_signals(scan_data):
+    """
+    Inject commodity-derived convergence signals into China's top_signals.
+    Reads cross-theater amplifiers from scan_data and emits signals when
+    structural commodity dependencies intersect with active geopolitical pressure.
+
+    Returns list of signal dicts (same canonical shape as build_top_signals).
+    Empty list if no convergence is currently active.
+    """
+    signals = []
+
+    # crosstheater_amplifiers is written by rhetoric_tracker_china into result dict
+    amps = scan_data.get('crosstheater_amplifiers', {}) or {}
+    iran_hormuz_active = amps.get('iran_hormuz_pressure', False)
+    iran_score         = amps.get('iran_theatre_score', 0) or 0
+    iran_irgc          = amps.get('iran_irgc_level', 0) or 0
+
+    # ── HORMUZ-CHINA OIL CONVERGENCE ──
+    # Fires when Iran posture is at operational levels AND China's structural
+    # ~50% oil import dependency through Hormuz is therefore stressed.
+    # Priority 13 — sits ABOVE most country-internal signals because this is
+    # a compound, cross-regional risk that GPI should surface.
+    if iran_hormuz_active:
+        signals.append({
+            'priority':   13,
+            'category':   'hormuz_china_oil_dependency',
+            'theatre':    'china',
+            'level':      max(3, min(5, int(iran_score / 20))),  # rough mapping: score 60→L3, 80→L4, 100→L5
+            'icon':       '🛢️',
+            'color':      '#f59e0b',
+            'short_text': f'{CHINA_FLAG} CHINA: Hormuz oil convergence — Iran pressure × import dep',
+            'long_text':  (
+                f'CHINA oil supply convergence — Iran posture (score {iran_score}, '
+                f'IRGC L{iran_irgc}) compounds China\'s ~50% crude import dependency '
+                f'through Strait of Hormuz. Watch China MFA "stability" framing, '
+                f'BRI/CPEC investment cadence, RU/Central Asia substitution moves, '
+                f'yuan settlement deal news. Cross-regional pressure on energy security.'
+            ),
+            # Convergence flags for downstream consumers (regional BLUF, GPI, frontend)
+            'hormuz_china_oil_dependency_active': True,
+            'convergence_states': {
+                'hormuz_china_oil_dependency': {
+                    'active':       True,
+                    'iran_score':   iran_score,
+                    'iran_irgc':    iran_irgc,
+                    'alert_level':  'elevated' if iran_score < 70 else ('high' if iran_score < 85 else 'surge'),
+                },
+            },
+        })
+
+    return signals
+
+
+# ============================================================
+# v2.0+ — TOP SIGNALS (BLUF / GPI consumable)
+# ============================================================
+# Emits a pre-prioritized list of signal dicts that the Asia Regional BLUF
+# (and ultimately the Global Pressure Index) consume directly.
+#
+# Canonical signal shape:
+# {
+#     'priority':   int (0-15, higher = more important),
+#     'category':   str,        # red_line_breached | theatre_high | kinetic_pressure |
+#                               # economic_pressure | domestic_fracture | coalition_pushback |
+#                               # silence_anomaly | influence_high | hormuz_china_oil_dependency
+#     'theatre':    'china',
+#     'level':      0-5,
+#     'icon':       str (emoji),
+#     'color':      str (hex),
+#     'short_text': str (≤80 chars),
+#     'long_text':  str (≤200 chars),
+# }
+
 def build_top_signals(scan_data):
     """
     Build China's top_signals[] for BLUF/GPI consumption.
@@ -890,6 +979,22 @@ def build_top_signals(scan_data):
             'short_text': f'{CHINA_FLAG} CHINA: Coalition pushback L{coalition_pushback}',
             'long_text':  f'CHINA-facing coalition response L{coalition_pushback} — US/Japan/Australia/EU coordinated signaling detected; deterrence posture firming.',
         })
+
+    # ============================================
+    # 9. COMMODITY CONVERGENCE (cross-regional)
+    # ============================================
+    # Hormuz-China oil dependency, etc. — fires when structural commodity
+    # exposure intersects with active geopolitical pressure from another
+    # theater. These are HIGH priority because they're cross-regional
+    # compound risks that would otherwise be invisible from a China-only
+    # view of the world.
+    try:
+        convergence_signals = build_commodity_convergence_signals(scan_data)
+        if convergence_signals:
+            signals.extend(convergence_signals)
+            print(f"[China Interpreter] Commodity convergence: {len(convergence_signals)} signal(s) emitted")
+    except Exception as e:
+        print(f"[China Interpreter] Commodity convergence error: {e}")
 
     # Sort descending; BLUF will dedupe + globally rank
     signals.sort(key=lambda s: s['priority'], reverse=True)
