@@ -352,3 +352,397 @@ def interpret_japan_signals(scan_data):
     except Exception as e:
         print(f"[Japan Interpreter] Error: {str(e)[:200]}")
         return None
+
+
+# ============================================================
+# v2.1+ — TOP SIGNALS (BLUF / GPI consumable) + CONVERGENCES
+# ============================================================
+# May 7 2026 — Japan upgraded to canonical signal architecture.
+# Previously Japan only emitted scenario+situation+assessment ("So What"),
+# which was rich but not consumable by Asia Regional BLUF or GPI.
+# This module brings Japan to parity with China and Taiwan.
+#
+# Canonical signal shape (matches china/taiwan):
+# {
+#     'priority':   int (0-15, higher = more important),
+#     'category':   str,        # see Japan-specific categories below
+#     'theatre':    'japan',
+#     'level':      0-5,
+#     'icon':       str (emoji),
+#     'color':      str (hex),
+#     'short_text': str (≤80 chars),
+#     'long_text':  str (≤200 chars),
+# }
+#
+# Japan-specific signal categories:
+#   article9_active             — constitutional reinterpretation in motion
+#   taiwan_defense_committed    — PM publicly committing to Taiwan defense
+#   strike_capability_milestone — counterstrike doctrine hardening
+#   senkaku_intrusion           — CCG incursions in disputed waters
+#   okinawa_pressure            — PLA proximity to US bases
+#   dprk_missile_threat         — DPRK launch / nuclear signaling
+#   inbound_pressure_high       — composite inbound L4+
+#   outbound_posture_high       — composite outbound L3+
+#   theatre_high                — overall L4+
+#   us_alliance_strong          — trilateral coordination signaling
+#   hormuz_japan_oil_dependency — commodity convergence (Hormuz × ~99% oil import)
+#   senkaku_ree_convergence     — commodity convergence (China REE × Senkaku tension)
+
+JAPAN_FLAG = '\U0001f1ef\U0001f1f5'  # 🇯🇵
+
+
+def build_commodity_convergence_signals(scan_data):
+    """
+    Inject commodity-derived convergence signals into Japan's top_signals.
+    Reads cross-theater amplifiers from scan_data and emits signals when
+    structural commodity dependencies intersect with active geopolitical pressure.
+
+    Japan-specific convergences:
+
+      1. HORMUZ-JAPAN OIL CONVERGENCE — Japan's ~99% oil import dependency
+         (mostly from Middle East via Hormuz) creates compound energy security
+         risk when Iran pressures Hormuz. Strategic petroleum reserve ~240 days
+         (largest IEA stockpile) provides better cushion than Taiwan's ~140 days,
+         but still meaningful exposure.
+
+      2. SENKAKU-REE CONVERGENCE — When China outbound is at L3+ AND Senkaku
+         CCG intrusions are active, Japan's REE import dependency (~60% China-
+         sourced for heavy rare earths) becomes acute. Historical analog:
+         2010 Senkaku dispute → China REE export embargo. JOGMEC stockpile +
+         Lynas Australia partnership are mitigation but not full insurance.
+
+    Returns list of signal dicts. Empty list if no convergence is currently active.
+    """
+    signals = []
+
+    amps = scan_data.get('crosstheater_amplifiers', {}) or {}
+    iran_hormuz_active = amps.get('iran_hormuz_pressure', False)
+    iran_score         = amps.get('iran_theatre_score', 0) or 0
+    iran_irgc          = amps.get('iran_irgc_level', 0) or 0
+    china_outbound_max = amps.get('china_outbound_max', 0) or 0
+    senkaku_active     = amps.get('senkaku_active', False)
+
+    # ── HORMUZ-JAPAN OIL CONVERGENCE ──
+    if iran_hormuz_active:
+        signals.append({
+            'priority':   13,
+            'category':   'hormuz_japan_oil_dependency',
+            'theatre':    'japan',
+            'level':      max(3, min(5, int(iran_score / 20))),
+            'icon':       '🛢️',
+            'color':      '#f59e0b',
+            'short_text': f'{JAPAN_FLAG} JAPAN: Hormuz oil convergence — ~99% oil import dep',
+            'long_text':  (
+                f'JAPAN oil supply convergence — Iran posture (score {iran_score}, '
+                f'IRGC L{iran_irgc}) compounds Japan\'s ~99% crude oil import dependency '
+                f'(~90% from Middle East). ~240-day strategic petroleum reserve provides '
+                f'cushion but Hormuz disruption stresses energy security framing of '
+                f'US-Japan alliance. Watch ENEOS/Idemitsu reserve announcements, METI '
+                f'energy security briefings, alliance coordination on alternative routing.'
+            ),
+            'hormuz_japan_oil_dependency_active': True,
+            'convergence_states': {
+                'hormuz_japan_oil_dependency': {
+                    'active':       True,
+                    'iran_score':   iran_score,
+                    'iran_irgc':    iran_irgc,
+                    'alert_level':  'elevated' if iran_score < 70 else ('high' if iran_score < 85 else 'surge'),
+                },
+            },
+        })
+
+    # ── SENKAKU-REE CONVERGENCE ──
+    # Fires when China outbound is hardening AND Senkaku tensions are active.
+    # Historical analog: 2010 Senkaku boat collision → China REE embargo.
+    if china_outbound_max >= 3 and senkaku_active:
+        signals.append({
+            'priority':   12,
+            'category':   'senkaku_ree_convergence',
+            'theatre':    'japan',
+            'level':      max(3, china_outbound_max),
+            'icon':       '⚗️',
+            'color':      '#f97316',
+            'short_text': f'{JAPAN_FLAG} JAPAN: Senkaku × China REE leverage convergence',
+            'long_text':  (
+                f'JAPAN supply chain convergence — China outbound at L{china_outbound_max} '
+                f'+ active Senkaku CCG intrusions creates classic 2010-pattern leverage '
+                f'risk. Japan ~60% China-dependent for heavy rare earths despite Lynas '
+                f'Australia partnership and JOGMEC stockpile. Historical analog: 2010 '
+                f'Senkaku boat collision triggered de facto China REE export embargo. '
+                f'Watch METI export-control statements, JOGMEC stockpile announcements, '
+                f'Lynas/REE alternative-supply news.'
+            ),
+            'senkaku_ree_convergence_active': True,
+            'convergence_states': {
+                'senkaku_ree_convergence': {
+                    'active':              True,
+                    'china_outbound_max':  china_outbound_max,
+                    'senkaku_active':      True,
+                    'alert_level':         'high' if china_outbound_max >= 4 else 'elevated',
+                },
+            },
+        })
+
+    return signals
+
+
+def build_top_signals(scan_data):
+    """
+    Build Japan's top_signals[] for BLUF/GPI consumption.
+    Reads from scan_data (post-interpret_japan_signals output + crosstheater_amplifiers).
+    Returns sorted list (descending priority).
+    """
+    signals = []
+
+    overall_level = int(scan_data.get('overall_level', 0) or 0)
+    inbound_max   = int(scan_data.get('inbound_max_level', 0) or 0)
+    outbound_max  = int(scan_data.get('outbound_max_level', 0) or 0)
+    theatre_score = int(scan_data.get('theatre_score', 0) or 0)
+
+    # Per-actor levels
+    china_lv          = _actor_level(scan_data, 'china_threat')
+    dprk_lv           = _actor_level(scan_data, 'dprk_threat')
+    russia_lv         = _actor_level(scan_data, 'russia_threat')
+    senkaku_lv        = _actor_level(scan_data, 'senkaku_intrusion')
+    okinawa_lv        = _actor_level(scan_data, 'okinawa_pressure')
+    taiwan_prox_lv    = _actor_level(scan_data, 'taiwan_strait_proximity')
+    pm_lv             = _actor_level(scan_data, 'pm_cabinet')
+    mod_lv            = _actor_level(scan_data, 'mod_jsdf')
+    diet_lv           = _actor_level(scan_data, 'ldp_diet')
+    us_lv             = _actor_level(scan_data, 'us_alliance')
+
+    article9_state    = _check_article9_state(scan_data)
+    taiwan_def_state  = _check_taiwan_defense_state(scan_data)
+
+    # ============================================
+    # 1. ARTICLE 9 STATE (Japan-unique constitutional watch)
+    # ============================================
+    if article9_state == 'kinetic':
+        signals.append({
+            'priority':   14,
+            'category':   'article9_active',
+            'theatre':    'japan',
+            'level':      5,
+            'icon':       '🚨',
+            'color':      '#dc2626',
+            'short_text': f'{JAPAN_FLAG} JAPAN: Article 9 kinetic invocation L5',
+            'long_text':  f'JAPAN Article 9 reinterpretation at kinetic-invocation level — collective self-defense activated for active conflict scenario. Constitutional threshold breached.',
+        })
+    elif article9_state == 'diet_vote':
+        signals.append({
+            'priority':   13,
+            'category':   'article9_active',
+            'theatre':    'japan',
+            'level':      4,
+            'icon':       '🏛️',
+            'color':      '#dc2626',
+            'short_text': f'{JAPAN_FLAG} JAPAN: Article 9 Diet vote — L4 constitutional motion',
+            'long_text':  f'JAPAN Article 9 reinterpretation at Diet-vote stage — legislative ratification of cabinet decision in active motion. Major postwar constitutional shift in progress.',
+        })
+    elif article9_state == 'cabinet_decision':
+        signals.append({
+            'priority':   11,
+            'category':   'article9_active',
+            'theatre':    'japan',
+            'level':      3,
+            'icon':       '🏛️',
+            'color':      '#f97316',
+            'short_text': f'{JAPAN_FLAG} JAPAN: Article 9 cabinet decision L3',
+            'long_text':  f'JAPAN Article 9 cabinet-decision level — formal reinterpretation language; Diet ratification likely next step. 2015 collective self-defense analog.',
+        })
+    elif article9_state == 'rhetoric':
+        signals.append({
+            'priority':   6,
+            'category':   'article9_active',
+            'theatre':    'japan',
+            'level':      2,
+            'icon':       '📜',
+            'color':      '#f59e0b',
+            'short_text': f'{JAPAN_FLAG} JAPAN: Article 9 reinterpretation rhetoric L2',
+            'long_text':  f'JAPAN Article 9 reinterpretation rhetoric L2 — political language signaling potential constitutional motion; below cabinet-decision threshold.',
+        })
+
+    # ============================================
+    # 2. TAIWAN DEFENSE COMMITMENT (trilateral signal)
+    # ============================================
+    if taiwan_def_state == 'invoked':
+        signals.append({
+            'priority':   13,
+            'category':   'taiwan_defense_committed',
+            'theatre':    'japan',
+            'level':      4,
+            'icon':       '🤝',
+            'color':      '#dc2626',
+            'short_text': f'{JAPAN_FLAG} JAPAN: Taiwan defense L4 — collective self-defense invoked',
+            'long_text':  f'JAPAN Taiwan defense at L4 — collective self-defense framework invoked for Taiwan contingency; trilateral US-Japan-Taiwan coordination signaling explicit. Major shift from strategic ambiguity.',
+        })
+    elif taiwan_def_state == 'committed':
+        signals.append({
+            'priority':   11,
+            'category':   'taiwan_defense_committed',
+            'theatre':    'japan',
+            'level':      3,
+            'icon':       '🤝',
+            'color':      '#f97316',
+            'short_text': f'{JAPAN_FLAG} JAPAN: Taiwan defense commitment L3',
+            'long_text':  f'JAPAN Taiwan defense commitment at L3 — PM-level public commitment to Taiwan contingency. 2021 Suga-Biden statement analog. Historic threshold change vs prior governments.',
+        })
+
+    # ============================================
+    # 3. THEATRE-HIGH (overall L4+)
+    # ============================================
+    if overall_level >= 4:
+        signals.append({
+            'priority':   9 + overall_level,
+            'category':   'theatre_high',
+            'theatre':    'japan',
+            'level':      overall_level,
+            'icon':       '🔴',
+            'color':      '#dc2626' if overall_level >= 5 else '#ef4444',
+            'short_text': f'{JAPAN_FLAG} JAPAN L{overall_level} — composite posture',
+            'long_text':  f'JAPAN at L{overall_level} — composite posture (theatre score {theatre_score}/100). Inbound L{inbound_max} × outbound L{outbound_max}; multi-vector activation.',
+        })
+
+    # ============================================
+    # 4. STRIKE CAPABILITY MILESTONE
+    # ============================================
+    mod_tw = _actor_tripwires(scan_data, 'mod_jsdf')
+    pm_tw  = _actor_tripwires(scan_data, 'pm_cabinet')
+    if mod_tw.get('strike_capability') or pm_tw.get('strike_capability'):
+        signals.append({
+            'priority':   10,
+            'category':   'strike_capability_milestone',
+            'theatre':    'japan',
+            'level':      max(3, mod_lv, pm_lv),
+            'icon':       '⚔️',
+            'color':      '#f97316',
+            'short_text': f'{JAPAN_FLAG} JAPAN: Counterstrike capability milestone',
+            'long_text':  f'JAPAN counterstrike capability milestone — MoD/PM language indicating standoff/counterstrike doctrine hardening. Tomahawk procurement, hypersonic R&D, base-strike authorization signals.',
+        })
+
+    # ============================================
+    # 5. SENKAKU INTRUSION (Japan-specific actor)
+    # ============================================
+    if senkaku_lv >= 4:
+        signals.append({
+            'priority':   10,
+            'category':   'senkaku_intrusion',
+            'theatre':    'japan',
+            'level':      senkaku_lv,
+            'icon':       '🌊',
+            'color':      '#dc2626',
+            'short_text': f'{JAPAN_FLAG} JAPAN: Senkaku CCG intrusion L{senkaku_lv}',
+            'long_text':  f'JAPAN Senkaku Islands CCG intrusion at L{senkaku_lv} — sustained gray-zone presence in disputed waters; coast guard friction at operational tempo.',
+        })
+    elif senkaku_lv >= 3:
+        signals.append({
+            'priority':   7,
+            'category':   'senkaku_intrusion',
+            'theatre':    'japan',
+            'level':      senkaku_lv,
+            'icon':       '🌊',
+            'color':      '#f97316',
+            'short_text': f'{JAPAN_FLAG} JAPAN: Senkaku CCG intrusion L{senkaku_lv}',
+            'long_text':  f'JAPAN Senkaku gray-zone activity L{senkaku_lv} — China Coast Guard presence above baseline; legal/political messaging vector.',
+        })
+
+    # ============================================
+    # 6. OKINAWA PRESSURE (PLA proximity to US bases)
+    # ============================================
+    if okinawa_lv >= 3:
+        signals.append({
+            'priority':   8,
+            'category':   'okinawa_pressure',
+            'theatre':    'japan',
+            'level':      okinawa_lv,
+            'icon':       '🛡️',
+            'color':      '#f97316',
+            'short_text': f'{JAPAN_FLAG} JAPAN: Okinawa PLA pressure L{okinawa_lv}',
+            'long_text':  f'JAPAN Okinawa pressure L{okinawa_lv} — PLA proximity to US Marine Corps bases; first-island-chain operational stress on alliance posture.',
+        })
+
+    # ============================================
+    # 7. DPRK MISSILE THREAT
+    # ============================================
+    if dprk_lv >= 4:
+        signals.append({
+            'priority':   9,
+            'category':   'dprk_missile_threat',
+            'theatre':    'japan',
+            'level':      dprk_lv,
+            'icon':       '🚀',
+            'color':      '#dc2626',
+            'short_text': f'{JAPAN_FLAG} JAPAN: DPRK threat L{dprk_lv}',
+            'long_text':  f'JAPAN DPRK threat at L{dprk_lv} — missile launch / nuclear signaling above warning threshold; J-Alert posture relevant.',
+        })
+    elif dprk_lv >= 3:
+        signals.append({
+            'priority':   6,
+            'category':   'dprk_missile_threat',
+            'theatre':    'japan',
+            'level':      dprk_lv,
+            'icon':       '🚀',
+            'color':      '#f97316',
+            'short_text': f'{JAPAN_FLAG} JAPAN: DPRK threat L{dprk_lv}',
+            'long_text':  f'JAPAN DPRK threat L{dprk_lv} — missile launch cycle or nuclear rhetoric; Japan-specific exposure given trans-Sea-of-Japan range geometry.',
+        })
+
+    # ============================================
+    # 8. INBOUND PRESSURE COMPOSITE (L4+)
+    # ============================================
+    if inbound_max >= 4:
+        signals.append({
+            'priority':   8,
+            'category':   'inbound_pressure_high',
+            'theatre':    'japan',
+            'level':      inbound_max,
+            'icon':       '⬇️',
+            'color':      '#ef4444',
+            'short_text': f'{JAPAN_FLAG} JAPAN: Inbound pressure L{inbound_max}',
+            'long_text':  f'JAPAN inbound composite L{inbound_max} — multi-actor external pressure (China/DPRK/Russia/Senkaku/Okinawa); incident-level tempo.',
+        })
+
+    # ============================================
+    # 9. OUTBOUND POSTURE COMPOSITE (L3+)
+    # ============================================
+    if outbound_max >= 3:
+        signals.append({
+            'priority':   7 + outbound_max,
+            'category':   'outbound_posture_high',
+            'theatre':    'japan',
+            'level':      outbound_max,
+            'icon':       '⬆️',
+            'color':      '#f97316' if outbound_max < 4 else '#dc2626',
+            'short_text': f'{JAPAN_FLAG} JAPAN: Outbound posture L{outbound_max}',
+            'long_text':  f'JAPAN outbound posture L{outbound_max} — PM/MoD/Diet hardening across constitutional, military, and alliance vectors.',
+        })
+
+    # ============================================
+    # 10. US ALLIANCE SIGNALING (positive trilateral indicator)
+    # ============================================
+    if us_lv >= 4:
+        signals.append({
+            'priority':   8,
+            'category':   'us_alliance_strong',
+            'theatre':    'japan',
+            'level':      us_lv,
+            'icon':       '🇺🇸',
+            'color':      '#10b981',
+            'short_text': f'{JAPAN_FLAG} JAPAN: US alliance signaling L{us_lv}',
+            'long_text':  f'JAPAN-US alliance signaling at L{us_lv} — joint statements, base agreements, RAA updates, AUKUS Pillar 2 expansion. Trilateral coordination firming.',
+        })
+
+    # ============================================
+    # 11. COMMODITY + ALLIANCE CONVERGENCES (cross-regional)
+    # ============================================
+    try:
+        convergence_signals = build_commodity_convergence_signals(scan_data)
+        if convergence_signals:
+            signals.extend(convergence_signals)
+            print(f"[Japan Interpreter] Convergence: {len(convergence_signals)} signal(s) emitted")
+    except Exception as e:
+        print(f"[Japan Interpreter] Convergence error: {e}")
+
+    # Sort descending; BLUF will dedupe + globally rank
+    signals.sort(key=lambda s: s['priority'], reverse=True)
+    return signals
