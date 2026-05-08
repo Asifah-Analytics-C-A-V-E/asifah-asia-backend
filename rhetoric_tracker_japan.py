@@ -1035,6 +1035,49 @@ def _score_actor_articles(articles_for_actor, is_reporting=False):
 # ============================================
 # CROSS-THEATER FINGERPRINT READS
 # ============================================
+def _read_iran_fingerprint():
+    """
+    Read Iran rhetoric tracker fingerprint from shared Redis key.
+    v2.1 (May 7 2026) — Japan reads Iran/Hormuz pressure because Japan's
+    ~99% oil import dependency (mostly from Middle East via Hormuz) creates
+    structural energy security exposure that compounds with cross-strait or
+    DPRK pressure scenarios. Japan's ~240-day strategic petroleum reserve
+    is the largest IEA stockpile but Hormuz disruption still stresses
+    alliance energy security framing.
+
+    Returns dict with hormuz_pressure_active, theatre_score, irgc_level.
+    """
+    iran_data = {
+        'hormuz_pressure_active': False,
+        'theatre_score':          0,
+        'irgc_level':             0,
+        'proxy_active':           False,
+    }
+    try:
+        fingerprints = _redis_get(CROSSTHEATER_KEY) or {}
+        if 'iran' in fingerprints:
+            iran_fp = fingerprints['iran']
+            iran_score = int(iran_fp.get('theatre_score', 0) or 0)
+            iran_irgc = int(iran_fp.get('irgc_level', 0) or 0)
+            iran_proxy = int(iran_fp.get('proxy_activation_level', 0) or 0)
+            iran_targets = iran_fp.get('named_targets', []) or []
+
+            iran_data['theatre_score'] = iran_score
+            iran_data['irgc_level'] = iran_irgc
+            iran_data['proxy_active'] = iran_proxy >= 3
+
+            # Hormuz check — Japan imports ~99% oil, ~95% LNG, mostly via Middle East
+            hormuz_signaled = any(t in iran_targets for t in ['hormuz', 'strait of hormuz', 'persian gulf'])
+            if hormuz_signaled or (iran_score >= 60 and iran_irgc >= 3):
+                iran_data['hormuz_pressure_active'] = True
+                print(f"[Japan Rhetoric] Iran-Hormuz read: score={iran_score}, irgc=L{iran_irgc}, hormuz={hormuz_signaled}")
+            else:
+                print(f"[Japan Rhetoric] Iran fingerprint quiet (score={iran_score}, irgc=L{iran_irgc})")
+    except Exception as e:
+        print(f"[Japan Rhetoric] Iran fingerprint read error: {str(e)[:80]}")
+    return iran_data
+
+
 def _read_crosstheater_amplifiers():
     """Read fingerprints from China + Taiwan trackers to amplify Japan inbound.
     Returns dict of amplifier modifiers (additive to actor levels)."""
@@ -1170,6 +1213,13 @@ def scan_japan_rhetoric(force=False, days=7):
             print(f"[Japan Rhetoric] Cross-theater amplifier: {actor_key} L{actor_levels[actor_key]} → L{new_level}")
             actor_levels[actor_key] = new_level
 
+    # ── v2.1 (May 7 2026) — Read Iran fingerprint for Hormuz oil convergence ──
+    # Japan ~99% oil import dependency (mostly Middle East) creates compound
+    # energy security risk; ~240-day SPR helps but Hormuz disruption still
+    # stresses alliance framing. China-outbound + Senkaku also tracked for
+    # REE-leverage convergence (2010 historical analog).
+    iran_data = _read_iran_fingerprint()
+
     # ── Compute inbound + outbound max levels ──
     inbound_max = max((actor_levels[a] for a in INBOUND_ACTORS if a in actor_levels), default=0)
     outbound_max = max((actor_levels[a] for a in OUTBOUND_ACTORS if a in actor_levels), default=0)
@@ -1260,9 +1310,40 @@ def scan_japan_rhetoric(force=False, days=7):
             'bluesky':   len(bluesky_articles),
         },
         'cross_theater_amplifiers': amplifiers,
+
+        # ── Cross-theater amplifiers (v2.1 — May 7 2026, canonical schema) ──
+        # Exposed in payload so build_top_signals can read for commodity + alliance
+        # convergence injection (hormuz_japan_oil_dependency when Iran/Hormuz
+        # pressure intersects Japan's ~99% oil import dep; senkaku_ree_convergence
+        # when China outbound L3+ AND Senkaku tensions active — 2010 analog).
+        'crosstheater_amplifiers': {
+            'iran_hormuz_pressure':   iran_data.get('hormuz_pressure_active', False),
+            'iran_theatre_score':     iran_data.get('theatre_score', 0),
+            'iran_irgc_level':        iran_data.get('irgc_level', 0),
+            'iran_proxy_active':      iran_data.get('proxy_active', False),
+            'china_outbound_max':     int((_redis_get(CROSSTHEATER_KEY) or {}).get('china', {}).get('outbound_max_level', 0) or 0),
+            'senkaku_active':         actor_levels.get('senkaku_intrusion', 0) >= 3,
+            'taiwan_pressure':        int((_redis_get(CROSSTHEATER_KEY) or {}).get('taiwan', {}).get('outbound_max_level', 0) or 0),
+            'amplifier_actor_deltas': amplifiers if amplifiers else {},
+        },
+
         'updated_at':           datetime.now(timezone.utc).isoformat(),
-        'version':              '1.0.0',
+        'version':              '2.1.0',  # v2.1: canonical top_signals[] + commodity convergences
     }
+
+    # ── v2.1 — Build top_signals AFTER payload (BLUF/GPI consumable) ──
+    # Japan now emits canonical top_signals[] schema matching China/Taiwan,
+    # which means Japan signals will flow into Asia Regional BLUF and GPI
+    # for the first time. Includes commodity convergence injections.
+    top_signals = []
+    try:
+        from japan_signal_interpreter import build_top_signals
+        top_signals = build_top_signals(payload)
+        print(f"[Japan Rhetoric] top_signals: {len(top_signals)} emitted")
+    except Exception as e:
+        print(f"[Japan Rhetoric] build_top_signals error: {str(e)[:200]}")
+        top_signals = []
+    payload['top_signals'] = top_signals
 
     # ── Cache result ──
     _redis_set(CACHE_KEY, payload, ttl_hours=CACHE_TTL_HOURS)
