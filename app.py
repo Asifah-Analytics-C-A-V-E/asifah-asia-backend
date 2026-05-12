@@ -156,6 +156,19 @@ except Exception as e:
     print(f"[Asia Backend] ⚠️ Commodity proxy not available — {type(e).__name__}: {e}")
     traceback.print_exc()
 
+# Absorption proxy — forwards detection requests to ME backend's /api/absorption/detect.
+# Used by rhetoric_tracker_india.py (and future absorber-class trackers) to fire
+# absorption signatures via the shared ME-hosted absorption_detector + catalog.
+try:
+    from absorption_proxy_asia import register_absorption_proxy
+    ABSORPTION_PROXY_AVAILABLE = True
+    print("[Asia Backend] ✅ Absorption proxy module loaded")
+except Exception as e:
+    import traceback
+    ABSORPTION_PROXY_AVAILABLE = False
+    print(f"[Asia Backend] ⚠️ Absorption proxy not available — {type(e).__name__}: {e}")
+    traceback.print_exc()
+
 # In-memory Telegram cache — fetched ONCE per refresh cycle, shared across all country scans
 _telegram_cache = {'messages': [], 'fetched_at': None, 'ttl_seconds': 4 * 3600}  # v1.1.0 — 4h TTL (was 1h)
 
@@ -2938,6 +2951,9 @@ if CONVERGENCE_PROXY_AVAILABLE:
 
 if COMMODITY_PROXY_AVAILABLE:
     register_commodity_proxy(app)
+
+if ABSORPTION_PROXY_AVAILABLE:
+    register_absorption_proxy(app)
 
 # On Render with gunicorn, this runs once per worker.
 start_background_refresh()
