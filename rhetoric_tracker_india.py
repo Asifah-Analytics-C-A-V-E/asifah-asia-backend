@@ -2019,16 +2019,118 @@ def _write_india_fingerprint(fingerprint):
 
     return results
 
+# ============================================================================
+# ABSORPTION INTEGRATION (PATCH 7) — call the Butterfly Build
+# ============================================================================
+# This is the patch that makes the Butterfly Build's wings actually flap
+# every scan. After Patch 4 has scored actors, Patch 5 has applied upstream
+# amplifiers, and we know which upstream fingerprints + own_signals to send,
+# this function calls the Asia proxy → ME backend → absorption_detector and
+# returns the structured results.
+#
+# CRITICAL DESIGN POINT — what the absorption proxy expects:
+#
+#     detect_and_persist_via_proxy(
+#         country='india',
+#         upstream_fingerprints={'iran': {...}, 'china': {...},
+#                                'pakistan': {...}, 'us': {...}},
+#         own_signals={'modi_gold_jawboning': True, 'rbi_fx_defense': False, ...},
+#     ) → list[dict]
+#
+# Each returned dict has shape:
+#     {
+#         'signature_id':        'india_gold_suppress_demand',
+#         'rule_id':             'india_gold_modi_2026_05',
+#         'confidence':          0.85,
+#         'upstream_stressors':  ['iran_hormuz_oil', ...],
+#         'cohesion_stress_level': 1,
+#         'upstream_evidence':   [...],
+#         'persisted':           True/False,
+#     }
+#
+# The 'persisted' flag tells us whether the ME backend successfully wrote
+# the dynamic signature to Redis (which absorption_signatures.py's
+# read_absorption_signature endpoint can then serve back).
+#
+# WHAT WE DO WITH THE RESULTS:
+#   1. Pass them to _build_india_fingerprint() so the next fingerprint write
+#      includes absorption_active: True + absorption_count + signature_ids
+#   2. Log a clear "🦋 N absorption signature(s) fired" line so deploy logs
+#      surface the moment
+#   3. Return them so the caller can include them in the scan result
+#      payload (Patch 8 will surface them on /api/rhetoric/india)
+#
+# FAILURE HANDLING:
+#   The proxy already has graceful failure built in — if ME backend is
+#   unreachable, it returns [] and logs a warning. We propagate that:
+#   absorption_active becomes False, scan continues, fingerprint still
+#   writes (just without absorption fields populated).
+
+
+def _run_absorption_detection(upstream_fingerprints, own_signals):
+    """
+    Call the Asia absorption proxy to detect + persist absorption signatures.
+
+    Returns:
+        list[dict] — one entry per fired rule, possibly empty.
+        Empty list does NOT signal failure; it signals "no absorption rules
+        fire under current conditions" which is the normal case most of
+        the time.
+
+    The proxy itself routes the call to ME backend's /api/absorption/detect.
+    All detection rules + the static catalog + Redis persistence live on
+    ME. This function is the Asia-side bridge.
+    """
+    if not ABSORPTION_DETECTOR_AVAILABLE:
+        print("[India Rhetoric] ⚠️ Absorption proxy unavailable — "
+              "skipping Butterfly write this scan")
+        return []
+
+    if not own_signals:
+        # Defensive — if Patch 4's own_signals builder somehow returned empty
+        return []
+
+    try:
+        results = detect_absorption_and_persist(
+            country='india',
+            upstream_fingerprints=upstream_fingerprints or {},
+            own_signals=own_signals or {},
+        )
+    except Exception as e:
+        print(f"[India Rhetoric] ❌ Absorption proxy call failed: {str(e)[:200]}")
+        return []
+
+    results = results or []
+
+    # Log the moment — this is the line that appears in Render deploy logs
+    # when the Butterfly fires
+    if results:
+        signature_summary = ', '.join(
+            f"{r.get('signature_id', '?')}@{r.get('confidence', 0):.2f}"
+            for r in results
+        )
+        persisted_count = sum(1 for r in results if r.get('persisted'))
+        print(f"[India Rhetoric] 🦋 {len(results)} absorption signature(s) fired: "
+              f"{signature_summary}  "
+              f"({persisted_count}/{len(results)} persisted to ME Redis)")
+    else:
+        print("[India Rhetoric] 🦋 No absorption signatures fired this scan "
+              "(no rule had both upstream + own conditions satisfied)")
+
+    return results
+
 
 # ============================================================================
-# END OF PATCH 6
+# END OF PATCH 7
 # ============================================================================
-# The functions above assemble India's full cross-theater fingerprint and
-# persist it under BOTH key conventions so all downstream readers see it.
+# The function above completes the Butterfly Build's automatic firing path:
+#
+#   Patch 4 scoring → Patch 5 read → Patch 6 fingerprint shape →
+#   Patch 7 absorption call → Patch 6 fingerprint write (now with absorption)
 #
 # Patches that follow will add:
-#   Patch 7 — Absorption integration (call detect_and_persist via Asia proxy)
 #   Patch 8 — Main scan orchestration + endpoints + registration
+#               (this is where _run_absorption_detection actually gets called)
 #   Patch 9 — US tracker patch (add 'india' to outbound keyword dict)
 #   Patch 10 — Asia app.py registration of the india tracker
 #   Patch 11 — rhetoric-india.html (full dedicated frontend page)
