@@ -1408,16 +1408,417 @@ def _aggregate_named_targets(actor_results, limit=12):
 
 
 # ============================================================================
-# END OF PATCH 4
+# REDIS HELPERS — minimal Upstash REST shim used by the read function
 # ============================================================================
-# The functions above turn raw articles into structured per-actor results,
-# dashboard maxes, theatre score, own_signals (for absorption), and the
-# aggregate phrase/target lists used by the cross-theater fingerprint write.
+# Mirrors the helpers in China/Iran/Pakistan trackers. Lazy-defined here so
+# Patch 5 stands alone; Patch 8 (main scan) will use these same helpers.
+
+def _redis_get(key):
+    """GET a JSON value from Upstash. Returns parsed object or None."""
+    if not UPSTASH_REDIS_URL or not UPSTASH_REDIS_TOKEN:
+        return None
+    try:
+        url = f"{UPSTASH_REDIS_URL}/get/{urllib.parse.quote(key, safe='')}"
+        r = requests.get(
+            url,
+            headers={"Authorization": f"Bearer {UPSTASH_REDIS_TOKEN}"},
+            timeout=5,
+        )
+        if r.status_code != 200:
+            return None
+        payload = r.json()
+        raw = payload.get('result')
+        if raw in (None, '', 'null'):
+            return None
+        try:
+            return json.loads(raw)
+        except (json.JSONDecodeError, TypeError):
+            return raw
+    except Exception as e:
+        print(f"[India Rhetoric] Redis GET error ({key}): {str(e)[:160]}")
+        return None
+
+
+def _redis_set(key, value, ttl=RHETORIC_CACHE_TTL):
+    """SET a JSON value to Upstash with optional TTL. Returns True/False."""
+    if not UPSTASH_REDIS_URL or not UPSTASH_REDIS_TOKEN:
+        return False
+    try:
+        if isinstance(value, (dict, list)):
+            payload = json.dumps(value, default=str)
+        else:
+            payload = str(value)
+        if ttl and ttl > 0:
+            url = f"{UPSTASH_REDIS_URL}/setex/{urllib.parse.quote(key, safe='')}/{int(ttl)}"
+        else:
+            url = f"{UPSTASH_REDIS_URL}/set/{urllib.parse.quote(key, safe='')}"
+        r = requests.post(
+            url,
+            headers={"Authorization": f"Bearer {UPSTASH_REDIS_TOKEN}"},
+            data=payload,
+            timeout=5,
+        )
+        return r.status_code == 200
+    except Exception as e:
+        print(f"[India Rhetoric] Redis SET error ({key}): {str(e)[:160]}")
+        return False
+
+
+def _redis_lpush_trim(key, value, max_len=HISTORY_MAX_ENTRIES):
+    """LPUSH + LTRIM combo for bounded history lists."""
+    if not UPSTASH_REDIS_URL or not UPSTASH_REDIS_TOKEN:
+        return False
+    try:
+        payload = json.dumps(value, default=str) if isinstance(value, (dict, list)) else str(value)
+        # LPUSH (Upstash REST POST body = element)
+        push_url = f"{UPSTASH_REDIS_URL}/lpush/{urllib.parse.quote(key, safe='')}"
+        r = requests.post(
+            push_url,
+            headers={"Authorization": f"Bearer {UPSTASH_REDIS_TOKEN}"},
+            data=payload,
+            timeout=5,
+        )
+        if r.status_code != 200:
+            return False
+        # LTRIM 0 max_len-1
+        trim_url = f"{UPSTASH_REDIS_URL}/ltrim/{urllib.parse.quote(key, safe='')}/0/{max_len-1}"
+        requests.post(
+            trim_url,
+            headers={"Authorization": f"Bearer {UPSTASH_REDIS_TOKEN}"},
+            timeout=5,
+        )
+        return True
+    except Exception as e:
+        print(f"[India Rhetoric] Redis LPUSH/LTRIM error ({key}): {str(e)[:160]}")
+        return False
+
+
+# ============================================================================
+# CROSS-THEATER READ (PATCH 5) — Iran / China / Pakistan / US subscribers
+# ============================================================================
+# India is downstream of multiple command-node trackers. This function reads
+# their fingerprints from Redis, normalizes the different key conventions in
+# use across the platform, and returns:
+#
+#   1. A flat `upstream_fingerprints` dict suitable for handing directly to
+#      absorption_proxy_asia.detect_and_persist_via_proxy()
+#   2. An `amplifier_actor_deltas` dict telling _score_actor() which actors
+#      should get a +1 level boost because upstream pressure is on
+#   3. A list of human-readable context_notes that surface in the BLUF text
+#      ("China LAC pressure detected — armed_forces amplified")
+#   4. An `india_upstream_stressors[]` list of stressor labels for downstream
+#      display (the absorption card's "upstream stressors" pills)
+#
+# The function NEVER fails the whole scan. If Redis is unreachable or any
+# single upstream fingerprint is missing, it returns sensible defaults so
+# the rest of the India scan can complete. Pattern mirrors China's
+# _read_crosstheater_amplifiers() (which is the most battle-tested reader
+# in the codebase).
+#
+# DUAL KEY CONVENTION REALITY (per architecture memo May 12):
+#   iran     — shared dict at CROSSTHEATER_SHARED_KEY, sub-key 'iran'
+#   china    — shared dict at CROSSTHEATER_SHARED_KEY, sub-key 'china'
+#   pakistan — direct key 'crosstheater:pakistan:fingerprint'
+#   us       — direct key 'fingerprint:us:current'
+# This reader handles all four cleanly via the UPSTREAM_KEYS map at top.
+
+
+def _read_upstream_fingerprints():
+    """
+    Read all relevant upstream theater fingerprints. Returns a dict shape
+    that is COMPATIBLE WITH absorption_detector.ABSORPTION_RULES — meaning
+    the field names match what the detector's `when_upstream()` predicates
+    expect.
+
+    Returns:
+        {
+            'upstream_fingerprints': {
+                'iran':     {... raw fingerprint from shared dict ...},
+                'china':    {... raw fingerprint from shared dict ...},
+                'pakistan': {... raw fingerprint from direct key ...},
+                'us':       {... raw fingerprint from direct key ...},
+            },
+            'amplifier_actor_deltas': {
+                'pmo':          +1,    # if upstream stress is significant
+                'armed_forces': +1,    # if china LAC or pakistan LoC fired
+                ...
+            },
+            'india_upstream_stressors': [
+                'iran_hormuz_oil', 'us_tariff_pressure', ...
+            ],
+            'context_notes': [
+                'Iran-Hormuz pressure active (theatre_score=65) — Modi gold ...',
+                'China LAC posture elevated (PLA L3) — armed_forces amplified',
+                ...
+            ],
+            'read_at': '2026-05-12T...Z',
+        }
+
+    If an upstream fingerprint isn't available, its slot will be {} (empty
+    dict). Callers should never assume any particular field is present;
+    always use .get() with defaults.
+    """
+    upstream_fps = {'iran': {}, 'china': {}, 'pakistan': {}, 'us': {}}
+    amplifier_actor_deltas = {}
+    upstream_stressors = []
+    context_notes = []
+
+    # ── Step 1: pull the shared cross-theater dict (Iran + China live here)
+    shared_dict = _redis_get(CROSSTHEATER_SHARED_KEY) or {}
+    if isinstance(shared_dict, dict):
+        if isinstance(shared_dict.get('iran'), dict):
+            upstream_fps['iran'] = shared_dict['iran']
+        if isinstance(shared_dict.get('china'), dict):
+            upstream_fps['china'] = shared_dict['china']
+
+    # ── Step 2: pull per-country direct keys (Pakistan + US)
+    pak_fp = _redis_get('crosstheater:pakistan:fingerprint')
+    if isinstance(pak_fp, dict):
+        upstream_fps['pakistan'] = pak_fp
+
+    us_fp = _redis_get('fingerprint:us:current')
+    if isinstance(us_fp, dict):
+        upstream_fps['us'] = us_fp
+
+    # ── Step 3: IRAN amplifier logic
+    # Iran is India's primary commodity-pressure upstream. Hormuz pressure
+    # directly elevates Modi/economic-statecraft jawboning likelihood.
+    iran = upstream_fps['iran']
+    if iran:
+        iran_score = int(iran.get('theatre_score', 0) or 0)
+        iran_irgc  = int(iran.get('irgc_level', 0) or 0)
+        iran_proxy = int(iran.get('proxy_activation_level', 0) or 0)
+        iran_targets = iran.get('named_targets', []) or []
+
+        # Hormuz signal: either explicit flag, or named-target match, or
+        # high theatre_score + IRGC elevation combo
+        hormuz_named = any(t in iran_targets for t in
+                          ['hormuz', 'strait of hormuz', 'persian gulf'])
+        hormuz_pressure = (
+            bool(iran.get('iran_hormuz_pressure'))
+            or hormuz_named
+            or (iran_score >= 60 and iran_irgc >= 3)
+        )
+
+        if hormuz_pressure:
+            upstream_stressors.append('iran_hormuz_oil')
+            context_notes.append(
+                f"Iran-Hormuz pressure active (theatre_score={iran_score}, "
+                f"IRGC L{iran_irgc}) — Modi-class jawboning + RBI FX defense "
+                f"more likely; PMO + economic_statecraft amplified."
+            )
+            # Amplify the actors most likely to absorb this pressure
+            amplifier_actor_deltas['pmo'] = amplifier_actor_deltas.get('pmo', 0) + 1
+            amplifier_actor_deltas['economic_statecraft'] = (
+                amplifier_actor_deltas.get('economic_statecraft', 0) + 1
+            )
+
+        # BRICS / dedollarization regime signals — relevant for India's
+        # rupee-internationalization rhetoric (Jaishankar / RBI)
+        if iran.get('iran_brics_alignment_active') or iran.get('iran_dedollarization_active'):
+            upstream_stressors.append('iran_brics_dedollarization')
+            context_notes.append(
+                "Iran BRICS/dedollarization rhetoric active — India MEA + "
+                "economic_statecraft positioning amplified (strategic autonomy frame)."
+            )
+            amplifier_actor_deltas['mea'] = amplifier_actor_deltas.get('mea', 0) + 1
+
+        # Proxy activation = regional volatility multiplier
+        if iran_proxy >= 3:
+            context_notes.append(
+                f"Iran proxy network at L{iran_proxy} — regional volatility "
+                f"affects India's Indian Ocean / Gulf corridor positioning."
+            )
+
+    # ── Step 4: CHINA amplifier logic
+    # China is India's primary kinetic-pressure upstream (LAC) AND
+    # economic-pressure upstream (tech, BRICS architect).
+    china = upstream_fps['china']
+    if china:
+        china_level = int(china.get('level', 0) or 0)
+        china_pla   = int(china.get('pla_level', 0) or 0)
+        china_econ  = int(china.get('econ_level', 0) or 0)
+
+        # LAC pressure: high PLA level or high overall level fires LAC stressor
+        if china_pla >= 3 or china_level >= 3:
+            upstream_stressors.append('china_pla_lac_posture')
+            context_notes.append(
+                f"China PLA posture elevated (PLA L{china_pla}, overall "
+                f"L{china_level}) — India armed_forces amplified; LAC "
+                f"absorption signature candidate."
+            )
+            amplifier_actor_deltas['armed_forces'] = (
+                amplifier_actor_deltas.get('armed_forces', 0) + 1
+            )
+            amplifier_actor_deltas['adversary_crossreads'] = (
+                amplifier_actor_deltas.get('adversary_crossreads', 0) + 1
+            )
+
+        # Tech/economic coercion vector
+        if china_econ >= 3:
+            upstream_stressors.append('china_tech_economic_coercion')
+            context_notes.append(
+                f"China economic coercion vector L{china_econ} — India "
+                f"economic_statecraft amplified (tech sovereignty + app bans)."
+            )
+            amplifier_actor_deltas['economic_statecraft'] = (
+                amplifier_actor_deltas.get('economic_statecraft', 0) + 1
+            )
+
+        # BRICS architect — competes with rupee internationalization
+        if china.get('china_brics_architect_active'):
+            if 'china_brics_architecture' not in upstream_stressors:
+                upstream_stressors.append('china_brics_architecture')
+            context_notes.append(
+                "China BRICS architect role active — India MEA "
+                "multipolar / rupee-internationalization stance amplified."
+            )
+
+        # Yuan internationalization — competes directly with rupee push
+        if china.get('china_yuan_internationalization_active'):
+            context_notes.append(
+                "China yuan-internationalization push active — India "
+                "economic_statecraft rupee-trade rhetoric amplified."
+            )
+
+    # ── Step 5: PAKISTAN amplifier logic
+    # Pakistan is India's primary kinetic-pressure upstream on LoC + Kashmir.
+    pak = upstream_fps['pakistan']
+    if pak:
+        pak_level    = int(pak.get('theatre_level', 0) or 0)
+        pak_kashmir  = int(pak.get('kashmir_loc_level', 0) or 0)
+        pak_nuclear  = int(pak.get('nuclear_doctrine_level', 0) or 0)
+
+        if pak_kashmir >= 3 or pak.get('pakistan_india_active'):
+            upstream_stressors.append('pakistan_loc_escalation')
+            context_notes.append(
+                f"Pakistan LoC/Kashmir level L{pak_kashmir} "
+                f"(india_active={bool(pak.get('pakistan_india_active'))}) — "
+                f"India armed_forces + adversary_crossreads amplified."
+            )
+            amplifier_actor_deltas['armed_forces'] = (
+                amplifier_actor_deltas.get('armed_forces', 0) + 1
+            )
+            amplifier_actor_deltas['adversary_crossreads'] = (
+                amplifier_actor_deltas.get('adversary_crossreads', 0) + 1
+            )
+
+        if pak_nuclear >= 3 or pak.get('pakistan_nuclear_signaling'):
+            upstream_stressors.append('pakistan_nuclear_signaling')
+            context_notes.append(
+                f"Pakistan nuclear doctrine signaling L{pak_nuclear} — "
+                f"India top-level political (PMO) + adversary_crossreads "
+                f"amplified; tripwire territory."
+            )
+            amplifier_actor_deltas['pmo'] = amplifier_actor_deltas.get('pmo', 0) + 1
+            amplifier_actor_deltas['adversary_crossreads'] = (
+                amplifier_actor_deltas.get('adversary_crossreads', 0) + 1
+            )
+
+    # ── Step 6: US amplifier logic
+    # US can fire on India in several ways: tariffs, H-1B, Khalistan
+    # indictments. The us_outbound_targets list is the canonical signal.
+    us = upstream_fps['us']
+    if us:
+        us_active   = bool(us.get('us_active'))
+        us_exec_vol = float(us.get('us_executive_volatility', 0) or 0)
+        us_dhs      = bool(us.get('us_dhs_enforcement_active'))
+        us_outbound = us.get('us_outbound_targets', []) or []
+
+        # India in outbound targets = direct US-on-India rhetoric
+        india_targeted = any(
+            (isinstance(t, dict) and t.get('country') == 'india')
+            or (isinstance(t, str) and t.lower() == 'india')
+            for t in us_outbound
+        )
+
+        if india_targeted:
+            upstream_stressors.append('us_tariff_pressure')
+            context_notes.append(
+                "US tracker shows India in outbound_targets — likely tariff "
+                "/ H-1B / Khalistan rhetoric. India MEA + economic_statecraft "
+                "+ adversary_crossreads amplified."
+            )
+            amplifier_actor_deltas['mea'] = amplifier_actor_deltas.get('mea', 0) + 1
+            amplifier_actor_deltas['economic_statecraft'] = (
+                amplifier_actor_deltas.get('economic_statecraft', 0) + 1
+            )
+            amplifier_actor_deltas['adversary_crossreads'] = (
+                amplifier_actor_deltas.get('adversary_crossreads', 0) + 1
+            )
+
+        # General Trump-class executive volatility — indirect pressure
+        if us_active and us_exec_vol >= 1.5:
+            if 'us_executive_volatility' not in upstream_stressors:
+                upstream_stressors.append('us_executive_volatility')
+            context_notes.append(
+                f"US executive volatility ratio {us_exec_vol:.2f} — broad "
+                f"unpredictability; India MEA amplified for hedging language."
+            )
+
+        # DHS enforcement (H-1B / Khalistan deportations)
+        if us_dhs:
+            if 'us_h1b_pressure' not in upstream_stressors:
+                upstream_stressors.append('us_h1b_pressure')
+            context_notes.append(
+                "US DHS enforcement active — H-1B + Khalistan diaspora "
+                "pressure on India."
+            )
+
+    # ── Step 7: Deduplicate + cap context notes
+    # Keep at most 6 context notes to avoid downstream display bloat
+    context_notes = context_notes[:6]
+
+    return {
+        'upstream_fingerprints':    upstream_fps,
+        'amplifier_actor_deltas':   amplifier_actor_deltas,
+        'india_upstream_stressors': upstream_stressors,
+        'context_notes':            context_notes,
+        'read_at':                  datetime.now(timezone.utc).isoformat(),
+    }
+
+
+def _apply_amplifier_deltas(actor_results, deltas):
+    """
+    Apply per-actor level boosts from the cross-theater read step.
+    Caps the boosted level at 5 (the platform max). Mutates the input dict.
+
+    This is called AFTER _score_actor() has run for every actor, so the
+    amplifier boost reflects "upstream context elevates what we're already
+    seeing" rather than amplifying noise.
+    """
+    if not deltas:
+        return actor_results
+    for actor_key, delta in deltas.items():
+        if actor_key not in actor_results:
+            continue
+        cur = actor_results[actor_key].get('level', 0)
+        # Only boost if actor is already firing at L1+ (no boosting silence)
+        if cur >= 1:
+            new_level = min(5, cur + int(delta))
+            if new_level != cur:
+                actor_results[actor_key]['level']         = new_level
+                actor_results[actor_key]['level_label']   = ESCALATION_LEVELS[new_level]['label']
+                actor_results[actor_key]['level_color']   = ESCALATION_LEVELS[new_level]['color']
+                actor_results[actor_key]['amplified_by']  = delta
+                actor_results[actor_key]['original_level'] = cur
+    return actor_results
+
+
+# ============================================================================
+# END OF PATCH 5
+# ============================================================================
+# The reader above pulls upstream Iran/China/Pakistan/US fingerprints and
+# produces (a) raw fingerprint dict for absorption_detector consumption,
+# (b) per-actor amplifier deltas, (c) named stressor labels, and (d) human-
+# readable context notes for BLUF display.
 #
 # Patches that follow will add:
-#   Patch 5 — Cross-theater READ (Iran/China/Pakistan/US fingerprint subscribers)
-#   Patch 6 — Cross-theater WRITE (dual-key India fingerprint with all fields above)
+#   Patch 6 — Cross-theater WRITE (dual-key India fingerprint with all fields)
 #   Patch 7 — Absorption integration (call detect_and_persist via Asia proxy)
 #   Patch 8 — Main scan orchestration + endpoints + registration
 #   Patch 9 — US tracker patch (add 'india' to outbound keyword dict)
 #   Patch 10 — Asia app.py registration of the india tracker
+#   Patch 11 — rhetoric-india.html (full dedicated frontend page)
+#   Patch 12 — rhetoric-asia.html update (add India link to hub)
+#   Patch 13 — india-stability.html update (live rhetoric panel)
