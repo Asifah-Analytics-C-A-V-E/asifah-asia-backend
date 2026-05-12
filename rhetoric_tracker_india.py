@@ -1410,8 +1410,6 @@ def _aggregate_named_targets(actor_results, limit=12):
 # ============================================================================
 # REDIS HELPERS — minimal Upstash REST shim used by the read function
 # ============================================================================
-# Mirrors the helpers in China/Iran/Pakistan trackers. Lazy-defined here so
-# Patch 5 stands alone; Patch 8 (main scan) will use these same helpers.
 
 def _redis_get(key):
     """GET a JSON value from Upstash. Returns parsed object or None."""
@@ -1470,7 +1468,6 @@ def _redis_lpush_trim(key, value, max_len=HISTORY_MAX_ENTRIES):
         return False
     try:
         payload = json.dumps(value, default=str) if isinstance(value, (dict, list)) else str(value)
-        # LPUSH (Upstash REST POST body = element)
         push_url = f"{UPSTASH_REDIS_URL}/lpush/{urllib.parse.quote(key, safe='')}"
         r = requests.post(
             push_url,
@@ -1480,7 +1477,6 @@ def _redis_lpush_trim(key, value, max_len=HISTORY_MAX_ENTRIES):
         )
         if r.status_code != 200:
             return False
-        # LTRIM 0 max_len-1
         trim_url = f"{UPSTASH_REDIS_URL}/ltrim/{urllib.parse.quote(key, safe='')}/0/{max_len-1}"
         requests.post(
             trim_url,
@@ -1505,22 +1501,14 @@ def _redis_lpush_trim(key, value, max_len=HISTORY_MAX_ENTRIES):
 #   2. An `amplifier_actor_deltas` dict telling _score_actor() which actors
 #      should get a +1 level boost because upstream pressure is on
 #   3. A list of human-readable context_notes that surface in the BLUF text
-#      ("China LAC pressure detected — armed_forces amplified")
 #   4. An `india_upstream_stressors[]` list of stressor labels for downstream
 #      display (the absorption card's "upstream stressors" pills)
-#
-# The function NEVER fails the whole scan. If Redis is unreachable or any
-# single upstream fingerprint is missing, it returns sensible defaults so
-# the rest of the India scan can complete. Pattern mirrors China's
-# _read_crosstheater_amplifiers() (which is the most battle-tested reader
-# in the codebase).
 #
 # DUAL KEY CONVENTION REALITY (per architecture memo May 12):
 #   iran     — shared dict at CROSSTHEATER_SHARED_KEY, sub-key 'iran'
 #   china    — shared dict at CROSSTHEATER_SHARED_KEY, sub-key 'china'
 #   pakistan — direct key 'crosstheater:pakistan:fingerprint'
 #   us       — direct key 'fingerprint:us:current'
-# This reader handles all four cleanly via the UPSTREAM_KEYS map at top.
 
 
 def _read_upstream_fingerprints():
@@ -1529,34 +1517,6 @@ def _read_upstream_fingerprints():
     that is COMPATIBLE WITH absorption_detector.ABSORPTION_RULES — meaning
     the field names match what the detector's `when_upstream()` predicates
     expect.
-
-    Returns:
-        {
-            'upstream_fingerprints': {
-                'iran':     {... raw fingerprint from shared dict ...},
-                'china':    {... raw fingerprint from shared dict ...},
-                'pakistan': {... raw fingerprint from direct key ...},
-                'us':       {... raw fingerprint from direct key ...},
-            },
-            'amplifier_actor_deltas': {
-                'pmo':          +1,    # if upstream stress is significant
-                'armed_forces': +1,    # if china LAC or pakistan LoC fired
-                ...
-            },
-            'india_upstream_stressors': [
-                'iran_hormuz_oil', 'us_tariff_pressure', ...
-            ],
-            'context_notes': [
-                'Iran-Hormuz pressure active (theatre_score=65) — Modi gold ...',
-                'China LAC posture elevated (PLA L3) — armed_forces amplified',
-                ...
-            ],
-            'read_at': '2026-05-12T...Z',
-        }
-
-    If an upstream fingerprint isn't available, its slot will be {} (empty
-    dict). Callers should never assume any particular field is present;
-    always use .get() with defaults.
     """
     upstream_fps = {'iran': {}, 'china': {}, 'pakistan': {}, 'us': {}}
     amplifier_actor_deltas = {}
@@ -1581,8 +1541,6 @@ def _read_upstream_fingerprints():
         upstream_fps['us'] = us_fp
 
     # ── Step 3: IRAN amplifier logic
-    # Iran is India's primary commodity-pressure upstream. Hormuz pressure
-    # directly elevates Modi/economic-statecraft jawboning likelihood.
     iran = upstream_fps['iran']
     if iran:
         iran_score = int(iran.get('theatre_score', 0) or 0)
@@ -1590,8 +1548,6 @@ def _read_upstream_fingerprints():
         iran_proxy = int(iran.get('proxy_activation_level', 0) or 0)
         iran_targets = iran.get('named_targets', []) or []
 
-        # Hormuz signal: either explicit flag, or named-target match, or
-        # high theatre_score + IRGC elevation combo
         hormuz_named = any(t in iran_targets for t in
                           ['hormuz', 'strait of hormuz', 'persian gulf'])
         hormuz_pressure = (
@@ -1607,14 +1563,11 @@ def _read_upstream_fingerprints():
                 f"IRGC L{iran_irgc}) — Modi-class jawboning + RBI FX defense "
                 f"more likely; PMO + economic_statecraft amplified."
             )
-            # Amplify the actors most likely to absorb this pressure
             amplifier_actor_deltas['pmo'] = amplifier_actor_deltas.get('pmo', 0) + 1
             amplifier_actor_deltas['economic_statecraft'] = (
                 amplifier_actor_deltas.get('economic_statecraft', 0) + 1
             )
 
-        # BRICS / dedollarization regime signals — relevant for India's
-        # rupee-internationalization rhetoric (Jaishankar / RBI)
         if iran.get('iran_brics_alignment_active') or iran.get('iran_dedollarization_active'):
             upstream_stressors.append('iran_brics_dedollarization')
             context_notes.append(
@@ -1623,7 +1576,6 @@ def _read_upstream_fingerprints():
             )
             amplifier_actor_deltas['mea'] = amplifier_actor_deltas.get('mea', 0) + 1
 
-        # Proxy activation = regional volatility multiplier
         if iran_proxy >= 3:
             context_notes.append(
                 f"Iran proxy network at L{iran_proxy} — regional volatility "
@@ -1631,15 +1583,12 @@ def _read_upstream_fingerprints():
             )
 
     # ── Step 4: CHINA amplifier logic
-    # China is India's primary kinetic-pressure upstream (LAC) AND
-    # economic-pressure upstream (tech, BRICS architect).
     china = upstream_fps['china']
     if china:
         china_level = int(china.get('level', 0) or 0)
         china_pla   = int(china.get('pla_level', 0) or 0)
         china_econ  = int(china.get('econ_level', 0) or 0)
 
-        # LAC pressure: high PLA level or high overall level fires LAC stressor
         if china_pla >= 3 or china_level >= 3:
             upstream_stressors.append('china_pla_lac_posture')
             context_notes.append(
@@ -1654,7 +1603,6 @@ def _read_upstream_fingerprints():
                 amplifier_actor_deltas.get('adversary_crossreads', 0) + 1
             )
 
-        # Tech/economic coercion vector
         if china_econ >= 3:
             upstream_stressors.append('china_tech_economic_coercion')
             context_notes.append(
@@ -1665,7 +1613,6 @@ def _read_upstream_fingerprints():
                 amplifier_actor_deltas.get('economic_statecraft', 0) + 1
             )
 
-        # BRICS architect — competes with rupee internationalization
         if china.get('china_brics_architect_active'):
             if 'china_brics_architecture' not in upstream_stressors:
                 upstream_stressors.append('china_brics_architecture')
@@ -1674,7 +1621,6 @@ def _read_upstream_fingerprints():
                 "multipolar / rupee-internationalization stance amplified."
             )
 
-        # Yuan internationalization — competes directly with rupee push
         if china.get('china_yuan_internationalization_active'):
             context_notes.append(
                 "China yuan-internationalization push active — India "
@@ -1682,7 +1628,6 @@ def _read_upstream_fingerprints():
             )
 
     # ── Step 5: PAKISTAN amplifier logic
-    # Pakistan is India's primary kinetic-pressure upstream on LoC + Kashmir.
     pak = upstream_fps['pakistan']
     if pak:
         pak_level    = int(pak.get('theatre_level', 0) or 0)
@@ -1716,8 +1661,6 @@ def _read_upstream_fingerprints():
             )
 
     # ── Step 6: US amplifier logic
-    # US can fire on India in several ways: tariffs, H-1B, Khalistan
-    # indictments. The us_outbound_targets list is the canonical signal.
     us = upstream_fps['us']
     if us:
         us_active   = bool(us.get('us_active'))
@@ -1725,7 +1668,6 @@ def _read_upstream_fingerprints():
         us_dhs      = bool(us.get('us_dhs_enforcement_active'))
         us_outbound = us.get('us_outbound_targets', []) or []
 
-        # India in outbound targets = direct US-on-India rhetoric
         india_targeted = any(
             (isinstance(t, dict) and t.get('country') == 'india')
             or (isinstance(t, str) and t.lower() == 'india')
@@ -1747,7 +1689,6 @@ def _read_upstream_fingerprints():
                 amplifier_actor_deltas.get('adversary_crossreads', 0) + 1
             )
 
-        # General Trump-class executive volatility — indirect pressure
         if us_active and us_exec_vol >= 1.5:
             if 'us_executive_volatility' not in upstream_stressors:
                 upstream_stressors.append('us_executive_volatility')
@@ -1756,7 +1697,6 @@ def _read_upstream_fingerprints():
                 f"unpredictability; India MEA amplified for hedging language."
             )
 
-        # DHS enforcement (H-1B / Khalistan deportations)
         if us_dhs:
             if 'us_h1b_pressure' not in upstream_stressors:
                 upstream_stressors.append('us_h1b_pressure')
@@ -1765,8 +1705,7 @@ def _read_upstream_fingerprints():
                 "pressure on India."
             )
 
-    # ── Step 7: Deduplicate + cap context notes
-    # Keep at most 6 context notes to avoid downstream display bloat
+    # Deduplicate + cap context notes
     context_notes = context_notes[:6]
 
     return {
@@ -1781,11 +1720,8 @@ def _read_upstream_fingerprints():
 def _apply_amplifier_deltas(actor_results, deltas):
     """
     Apply per-actor level boosts from the cross-theater read step.
-    Caps the boosted level at 5 (the platform max). Mutates the input dict.
-
-    This is called AFTER _score_actor() has run for every actor, so the
-    amplifier boost reflects "upstream context elevates what we're already
-    seeing" rather than amplifying noise.
+    Only boosts actors already firing at L1+ (no boosting silence).
+    Caps boosted level at 5. Mutates the input dict.
     """
     if not deltas:
         return actor_results
@@ -1793,7 +1729,6 @@ def _apply_amplifier_deltas(actor_results, deltas):
         if actor_key not in actor_results:
             continue
         cur = actor_results[actor_key].get('level', 0)
-        # Only boost if actor is already firing at L1+ (no boosting silence)
         if cur >= 1:
             new_level = min(5, cur + int(delta))
             if new_level != cur:
@@ -1815,48 +1750,6 @@ def _apply_amplifier_deltas(actor_results, deltas):
 #   • Pakistan tracker  (looks at 'fingerprint:india:current' direct key)
 #   • US tracker        (same direct key)
 #   • Future GPI Absorption Dimension (filters for is_absorber_node: True)
-#
-# Two write conventions in production on the platform — we write to BOTH:
-#
-#   Convention A — shared dict at CROSSTHEATER_SHARED_KEY
-#                  We update existing['india'] = {...} preserving other keys
-#                  Used by: Iran, China readers
-#
-#   Convention B — per-country direct key at CROSSTHEATER_INDIA_KEY
-#                  We write the full fingerprint under one key
-#                  Used by: Pakistan, US readers
-#
-# PAYLOAD CONTRACT (consumed by 4 downstream trackers + GPI):
-# ──────────────────────────────────────────────────────────
-# Standard fields (every fingerprint has these):
-#   ts, theatre, theatre_score, theatre_level, level, score
-#
-# India-specific posture levels:
-#   outbound_level, inbound_level, internal_level
-#
-# Per-actor levels (7 clusters):
-#   pmo_level, mea_level, armed_forces_level, economic_statecraft_level,
-#   opposition_level, hindutva_level, adversary_level
-#
-# Bidirectional flags (mirrors Pakistan's pattern):
-#   india_pakistan_active, india_china_lac_active,
-#   india_china_tech_friction_active, india_us_friction_active,
-#   india_russia_active
-#
-# Node-class flags:
-#   is_command_node: False    # India is absorber, NOT commander
-#   is_absorber_node: True    # NEW — India is platform's FIRST
-#
-# Butterfly Build (Phase 2) fields:
-#   absorption_active, absorption_count, upstream_stressors[],
-#   cohesion_stress_level
-#
-# Named cohesion/absorption signals (consumed for display + by downstream):
-#   modi_jawboning_active, rbi_fx_defense_active,
-#   communal_stress_active, opposition_alignment
-#
-# Specificity fields (Iran-pattern):
-#   top_phrases, named_targets, specificity_score
 
 
 def _build_india_fingerprint(
@@ -1871,24 +1764,17 @@ def _build_india_fingerprint(
     """
     Assemble India's cross-theater fingerprint payload. Pure function — no
     Redis IO. Returns the dict that gets persisted by _write_india_fingerprint.
-
-    Patch 7 will pass live absorption_results here; Patch 6 alone leaves
-    those fields at safe defaults.
     """
     upstream_stressors = list(upstream_stressors or [])
     absorption_results = list(absorption_results or [])
 
-    # Cohesion stress: composite of opposition + hindutva activity
-    # (internal dashboard) capped at L5
     opposition_lvl = (actor_results.get('opposition', {}) or {}).get('level', 0)
     hindutva_lvl   = (actor_results.get('hindutva_ideological', {}) or {}).get('level', 0)
     cohesion_stress_level = min(5, max(opposition_lvl, hindutva_lvl))
 
-    # Aggregate top phrases + named targets across all actors
     top_phrases   = _aggregate_top_phrases(actor_results, limit=8)
     named_targets = _aggregate_named_targets(actor_results, limit=12)
 
-    # Specificity score: sum of all actors' specificity (capped at 100)
     spec_total = sum(
         (r.get('specificity', {}) or {}).get('score', 0)
         for r in actor_results.values()
@@ -1896,33 +1782,24 @@ def _build_india_fingerprint(
     spec_total = min(spec_total, 100)
 
     fingerprint = {
-        # ── Identity ─────────────────────────────────────────────────────
         'ts':                datetime.now(timezone.utc).isoformat(),
         'updated_at':        datetime.now(timezone.utc).isoformat(),
         'theatre':           'India',
         'tracker_version':   '1.0.0',
-
-        # ── Node-class flags (the architecturally important ones) ────────
         'is_command_node':   False,
         'is_absorber_node':  True,
-
-        # ── Standard composite scores ────────────────────────────────────
         'theatre_score':     theatre.get('theatre_score', 0),
         'theatre_level':     theatre.get('theatre_level', 0),
-        'level':             theatre.get('theatre_level', 0),       # alias
-        'score':             theatre.get('theatre_score', 0),       # alias
+        'level':             theatre.get('theatre_level', 0),
+        'score':             theatre.get('theatre_score', 0),
         'convergence_bonus': theatre.get('convergence_bonus', 0),
         'lit_dashboards':    theatre.get('lit_dashboards', 0),
-
-        # ── Per-dashboard maxes ──────────────────────────────────────────
         'outbound_level':    dashboard_levels.get('outbound_level', 0),
         'inbound_level':     dashboard_levels.get('inbound_level', 0),
         'internal_level':    dashboard_levels.get('internal_level', 0),
         'outbound_contributors': dashboard_levels.get('outbound_contributors', []),
         'inbound_contributors':  dashboard_levels.get('inbound_contributors', []),
         'internal_contributors': dashboard_levels.get('internal_contributors', []),
-
-        # ── Per-actor levels (7 clusters) ────────────────────────────────
         'pmo_level':                 (actor_results.get('pmo', {}) or {}).get('level', 0),
         'mea_level':                 (actor_results.get('mea', {}) or {}).get('level', 0),
         'armed_forces_level':        (actor_results.get('armed_forces', {}) or {}).get('level', 0),
@@ -1930,17 +1807,11 @@ def _build_india_fingerprint(
         'opposition_level':          opposition_lvl,
         'hindutva_level':            hindutva_lvl,
         'adversary_level':           (actor_results.get('adversary_crossreads', {}) or {}).get('level', 0),
-
-        # ── Bidirectional flags (relationship state) ─────────────────────
         'india_pakistan_active':            bidirectional_flags.get('india_pakistan_active', False),
         'india_china_lac_active':           bidirectional_flags.get('india_china_lac_active', False),
         'india_china_tech_friction_active': bidirectional_flags.get('india_china_tech_friction_active', False),
         'india_us_friction_active':         bidirectional_flags.get('india_us_friction_active', False),
         'india_russia_active':              bidirectional_flags.get('india_russia_active', False),
-
-        # ── Named cohesion / absorption signals ──────────────────────────
-        # These are the high-signal flags downstream consumers + the
-        # rhetoric-india frontend will most often display directly.
         'modi_jawboning_active':    bool(own_signals.get('modi_gold_jawboning')),
         'rbi_fx_defense_active':    bool(own_signals.get('rbi_fx_defense')),
         'mea_us_friction_active':   bool(own_signals.get('mea_us_friction_active')),
@@ -1948,18 +1819,11 @@ def _build_india_fingerprint(
         'armed_forces_lac_active':  bool(own_signals.get('armed_forces_lac_active')),
         'communal_stress_active':   bool(own_signals.get('communal_stress_active')),
         'opposition_alignment':     own_signals.get('opposition_alignment', 'normal'),
-
-        # ── Butterfly Build (Phase 2) — populated fully by Patch 7 ───────
-        # Patch 6 alone leaves these at safe defaults. When Patch 7 calls
-        # the absorption proxy, it will overwrite these with live values
-        # by passing absorption_results to this builder.
         'absorption_active':       len(absorption_results) > 0,
         'absorption_count':        len(absorption_results),
         'absorption_signature_ids': [r.get('signature_id') for r in absorption_results if r.get('signature_id')],
         'upstream_stressors':       upstream_stressors,
         'cohesion_stress_level':    cohesion_stress_level,
-
-        # ── Specificity (Iran-pattern) ───────────────────────────────────
         'top_phrases':       top_phrases,
         'named_targets':     named_targets,
         'specificity_score': spec_total,
@@ -1971,27 +1835,15 @@ def _build_india_fingerprint(
 def _write_india_fingerprint(fingerprint):
     """
     Write India's fingerprint to BOTH cross-theater key conventions.
-
-    Convention A (shared dict): read by Iran + China trackers.
-        We MERGE into the existing dict so we don't clobber Iran's or
-        China's entries.
-
-    Convention B (direct key): read by Pakistan + US trackers.
-        We write the full fingerprint under one key.
-
-    Returns:
-        dict with two booleans showing which writes succeeded:
-            {'shared_dict_write': True/False, 'direct_key_write': True/False}
+    Returns dict with success booleans for each write.
     """
     results = {'shared_dict_write': False, 'direct_key_write': False}
 
-    # ── Write A: merge into shared dict
     try:
         shared = _redis_get(CROSSTHEATER_SHARED_KEY) or {}
         if not isinstance(shared, dict):
             shared = {}
         shared['india'] = fingerprint
-        # 8-hour TTL matches Iran's convention for the shared dict
         ok_a = _redis_set(CROSSTHEATER_SHARED_KEY, shared, ttl=8 * 3600)
         results['shared_dict_write'] = bool(ok_a)
         if ok_a:
@@ -2004,9 +1856,7 @@ def _write_india_fingerprint(fingerprint):
     except Exception as e:
         print(f"[India Rhetoric] ❌ Shared-dict write error: {str(e)[:160]}")
 
-    # ── Write B: per-country direct key
     try:
-        # 14-hour TTL matches Pakistan's convention for direct-key fingerprints
         ok_b = _redis_set(CROSSTHEATER_INDIA_KEY, fingerprint, ttl=14 * 3600)
         results['direct_key_write'] = bool(ok_b)
         if ok_b:
@@ -2019,67 +1869,15 @@ def _write_india_fingerprint(fingerprint):
 
     return results
 
+
 # ============================================================================
 # ABSORPTION INTEGRATION (PATCH 7) — call the Butterfly Build
 # ============================================================================
-# This is the patch that makes the Butterfly Build's wings actually flap
-# every scan. After Patch 4 has scored actors, Patch 5 has applied upstream
-# amplifiers, and we know which upstream fingerprints + own_signals to send,
-# this function calls the Asia proxy → ME backend → absorption_detector and
-# returns the structured results.
-#
-# CRITICAL DESIGN POINT — what the absorption proxy expects:
-#
-#     detect_and_persist_via_proxy(
-#         country='india',
-#         upstream_fingerprints={'iran': {...}, 'china': {...},
-#                                'pakistan': {...}, 'us': {...}},
-#         own_signals={'modi_gold_jawboning': True, 'rbi_fx_defense': False, ...},
-#     ) → list[dict]
-#
-# Each returned dict has shape:
-#     {
-#         'signature_id':        'india_gold_suppress_demand',
-#         'rule_id':             'india_gold_modi_2026_05',
-#         'confidence':          0.85,
-#         'upstream_stressors':  ['iran_hormuz_oil', ...],
-#         'cohesion_stress_level': 1,
-#         'upstream_evidence':   [...],
-#         'persisted':           True/False,
-#     }
-#
-# The 'persisted' flag tells us whether the ME backend successfully wrote
-# the dynamic signature to Redis (which absorption_signatures.py's
-# read_absorption_signature endpoint can then serve back).
-#
-# WHAT WE DO WITH THE RESULTS:
-#   1. Pass them to _build_india_fingerprint() so the next fingerprint write
-#      includes absorption_active: True + absorption_count + signature_ids
-#   2. Log a clear "🦋 N absorption signature(s) fired" line so deploy logs
-#      surface the moment
-#   3. Return them so the caller can include them in the scan result
-#      payload (Patch 8 will surface them on /api/rhetoric/india)
-#
-# FAILURE HANDLING:
-#   The proxy already has graceful failure built in — if ME backend is
-#   unreachable, it returns [] and logs a warning. We propagate that:
-#   absorption_active becomes False, scan continues, fingerprint still
-#   writes (just without absorption fields populated).
-
 
 def _run_absorption_detection(upstream_fingerprints, own_signals):
     """
     Call the Asia absorption proxy to detect + persist absorption signatures.
-
-    Returns:
-        list[dict] — one entry per fired rule, possibly empty.
-        Empty list does NOT signal failure; it signals "no absorption rules
-        fire under current conditions" which is the normal case most of
-        the time.
-
-    The proxy itself routes the call to ME backend's /api/absorption/detect.
-    All detection rules + the static catalog + Redis persistence live on
-    ME. This function is the Asia-side bridge.
+    Returns list[dict] — one entry per fired rule, possibly empty.
     """
     if not ABSORPTION_DETECTOR_AVAILABLE:
         print("[India Rhetoric] ⚠️ Absorption proxy unavailable — "
@@ -2087,7 +1885,6 @@ def _run_absorption_detection(upstream_fingerprints, own_signals):
         return []
 
     if not own_signals:
-        # Defensive — if Patch 4's own_signals builder somehow returned empty
         return []
 
     try:
@@ -2102,8 +1899,6 @@ def _run_absorption_detection(upstream_fingerprints, own_signals):
 
     results = results or []
 
-    # Log the moment — this is the line that appears in Render deploy logs
-    # when the Butterfly fires
     if results:
         signature_summary = ', '.join(
             f"{r.get('signature_id', '?')}@{r.get('confidence', 0):.2f}"
@@ -2114,25 +1909,705 @@ def _run_absorption_detection(upstream_fingerprints, own_signals):
               f"{signature_summary}  "
               f"({persisted_count}/{len(results)} persisted to ME Redis)")
     else:
-        print("[India Rhetoric] 🦋 No absorption signatures fired this scan "
-              "(no rule had both upstream + own conditions satisfied)")
+        print("[India Rhetoric] 🦋 No absorption signatures fired this scan")
 
     return results
 
 
 # ============================================================================
-# END OF PATCH 7
+# ARTICLE FETCHERS (PATCH 8) — RSS / GDELT / NewsAPI / Brave / Reddit
 # ============================================================================
-# The function above completes the Butterfly Build's automatic firing path:
+# Five source families. Each fetcher returns a list of article dicts in this
+# normalized shape (matches what _score_actor() consumes):
 #
-#   Patch 4 scoring → Patch 5 read → Patch 6 fingerprint shape →
-#   Patch 7 absorption call → Patch 6 fingerprint write (now with absorption)
+#     {
+#         'title':                 str,
+#         'description':           str,
+#         'url':                   str,
+#         'publishedAt':           str (ISO or RFC822),
+#         'source':                {'name': str},   (dict for compatibility)
+#         'content':               str,
+#         'source_weight_override': float 0.0-1.0,  (optional)
+#         'language':              'en' / 'hi' / 'ur' / etc.
+#     }
+
+
+def _fetch_rss(url, source_name, weight=0.85, max_items=20, language='en'):
+    """Pull and parse a single RSS feed. Returns normalized article dicts."""
+    articles = []
+    try:
+        resp = requests.get(url, timeout=12, headers={'User-Agent': 'Mozilla/5.0'})
+        if resp.status_code != 200:
+            print(f"[India RSS] {source_name}: HTTP {resp.status_code}")
+            return []
+        content = resp.content.lstrip(b'\xef\xbb\xbf').strip()
+        root = ET.fromstring(content)
+        items = root.findall('.//item')
+        for item in items[:max_items]:
+            title_el = item.find('title')
+            link_el  = item.find('link')
+            pub_el   = item.find('pubDate')
+            desc_el  = item.find('description')
+            if title_el is None or not title_el.text:
+                continue
+            articles.append({
+                'title':       title_el.text.strip(),
+                'description': (desc_el.text or title_el.text or '')[:500] if desc_el is not None else '',
+                'url':         link_el.text.strip() if link_el is not None and link_el.text else '',
+                'publishedAt': pub_el.text if pub_el is not None else '',
+                'source':      {'name': source_name},
+                'content':     title_el.text.strip(),
+                'source_weight_override': weight,
+                'language':    language,
+            })
+        print(f"[India RSS] {source_name}: {len(articles)} articles")
+    except ET.ParseError as e:
+        print(f"[India RSS] {source_name}: XML parse error: {str(e)[:80]}")
+    except Exception as e:
+        print(f"[India RSS] {source_name}: {str(e)[:80]}")
+    return articles
+
+
+def _fetch_gdelt(query, language='eng', days=3, max_records=25):
+    """Fetch from GDELT 2.0 doc API."""
+    articles = []
+    try:
+        params = {
+            'query':      query,
+            'mode':       'artlist',
+            'maxrecords': max_records,
+            'timespan':   f'{days}d',
+            'format':     'json',
+            'sourcelang': language,
+        }
+        resp = requests.get(
+            GDELT_BASE_URL, params=params, timeout=15,
+            headers={'User-Agent': 'Mozilla/5.0'},
+        )
+        if resp.status_code != 200:
+            print(f"[India GDELT] HTTP {resp.status_code} for '{query[:40]}'")
+            return []
+        # Guard against GDELT's HTML error pages
+        if 'application/json' not in resp.headers.get('Content-Type', ''):
+            return []
+        data = resp.json() or {}
+        for item in (data.get('articles') or [])[:max_records]:
+            title = item.get('title') or ''
+            if not title:
+                continue
+            articles.append({
+                'title':       title,
+                'description': item.get('seendate', ''),
+                'url':         item.get('url', ''),
+                'publishedAt': item.get('seendate', ''),
+                'source':      {'name': item.get('domain') or 'GDELT'},
+                'content':     title,
+                'language':    'en' if language == 'eng' else language,
+            })
+        print(f"[India GDELT] {language}/'{query[:40]}': {len(articles)} articles")
+    except Exception as e:
+        print(f"[India GDELT] error: {str(e)[:120]}")
+    return articles
+
+
+def _fetch_newsapi(query, language='en', days=3, max_records=25):
+    """Fetch from NewsAPI. Returns [] gracefully if no API key configured."""
+    if not NEWSAPI_KEY:
+        return []
+    articles = []
+    try:
+        from_date = (datetime.now(timezone.utc) - timedelta(days=days)).date().isoformat()
+        params = {
+            'q':         query,
+            'language':  language,
+            'from':      from_date,
+            'sortBy':    'publishedAt',
+            'pageSize':  max_records,
+            'apiKey':    NEWSAPI_KEY,
+        }
+        resp = requests.get('https://newsapi.org/v2/everything', params=params, timeout=10)
+        if resp.status_code != 200:
+            if resp.status_code == 429:
+                print(f"[India NewsAPI] Rate limit hit for '{query[:40]}'")
+            else:
+                print(f"[India NewsAPI] HTTP {resp.status_code}")
+            return []
+        data = resp.json() or {}
+        for item in (data.get('articles') or [])[:max_records]:
+            if not item.get('title'):
+                continue
+            articles.append({
+                'title':       item.get('title', ''),
+                'description': item.get('description', '') or '',
+                'url':         item.get('url', ''),
+                'publishedAt': item.get('publishedAt', ''),
+                'source':      item.get('source', {}) or {'name': 'NewsAPI'},
+                'content':     (item.get('description', '') or item.get('title', ''))[:500],
+                'language':    language,
+            })
+        print(f"[India NewsAPI] '{query[:40]}': {len(articles)} articles")
+    except Exception as e:
+        print(f"[India NewsAPI] error: {str(e)[:120]}")
+    return articles
+
+
+def _fetch_brave(query, max_records=15):
+    """
+    Fetch from Brave Search API. Tertiary fallback — only called when GDELT
+    + NewsAPI return very few articles for a slot. Returns [] without API key.
+    """
+    if not BRAVE_API_KEY:
+        return []
+    articles = []
+    try:
+        params = {'q': query, 'count': max_records, 'freshness': 'pw'}  # past week
+        resp = requests.get(
+            'https://api.search.brave.com/res/v1/news/search',
+            params=params,
+            headers={
+                'X-Subscription-Token': BRAVE_API_KEY,
+                'Accept':               'application/json',
+            },
+            timeout=10,
+        )
+        if resp.status_code != 200:
+            print(f"[India Brave] HTTP {resp.status_code} for '{query[:40]}'")
+            return []
+        data = resp.json() or {}
+        for item in (data.get('results') or [])[:max_records]:
+            if not item.get('title'):
+                continue
+            articles.append({
+                'title':       item.get('title', ''),
+                'description': item.get('description', '') or '',
+                'url':         item.get('url', ''),
+                'publishedAt': item.get('age', '') or item.get('page_age', ''),
+                'source':      {'name': (item.get('meta_url') or {}).get('hostname') or 'Brave'},
+                'content':     (item.get('description') or item.get('title') or '')[:500],
+                'language':    'en',
+            })
+        print(f"[India Brave] '{query[:40]}': {len(articles)} articles")
+    except Exception as e:
+        print(f"[India Brave] error: {str(e)[:120]}")
+    return articles
+
+
+def _fetch_reddit(subreddits, keywords, days=3, max_per_sub=8):
+    """Pull recent posts from a list of subreddits and filter by keywords."""
+    articles = []
+    cutoff_ts = (datetime.now(timezone.utc) - timedelta(days=days)).timestamp()
+    keywords_lower = [kw.lower() for kw in keywords]
+
+    for sub in subreddits:
+        try:
+            url = f"https://www.reddit.com/r/{sub}/new.json?limit=25"
+            resp = requests.get(
+                url,
+                headers={'User-Agent': 'Asifah-Analytics/1.0 (rachel@asifahanalytics.com)'},
+                timeout=10,
+            )
+            if resp.status_code != 200:
+                continue
+            data = resp.json() or {}
+            posts = (data.get('data') or {}).get('children') or []
+            added = 0
+            for post in posts:
+                if added >= max_per_sub:
+                    break
+                pd = post.get('data') or {}
+                created = pd.get('created_utc', 0)
+                if created < cutoff_ts:
+                    continue
+                title = pd.get('title') or ''
+                body  = pd.get('selftext') or ''
+                text  = f"{title} {body}".lower()
+                if keywords_lower and not any(kw in text for kw in keywords_lower):
+                    continue
+                articles.append({
+                    'title':       title,
+                    'description': body[:400] if body else title,
+                    'url':         f"https://www.reddit.com{pd.get('permalink', '')}",
+                    'publishedAt': datetime.fromtimestamp(created, tz=timezone.utc).isoformat(),
+                    'source':      {'name': f"r/{sub}"},
+                    'content':     (title + ' ' + body)[:500],
+                    'source_weight_override': 0.65,    # Reddit is signal not gospel
+                    'language':    'en',
+                })
+                added += 1
+            time.sleep(0.4)   # be nice to reddit
+        except Exception as e:
+            print(f"[India Reddit] r/{sub}: {str(e)[:80]}")
+    print(f"[India Reddit] {len(articles)} articles total across {len(subreddits)} subs")
+    return articles
+
+
+# ============================================================================
+# ARTICLE AGGREGATOR — call all 5 fetchers, dedupe, return unified list
+# ============================================================================
+
+def fetch_india_rhetoric_articles(days=3):
+    """
+    Pull articles from all 5 source families. Deduplicate by URL.
+    Returns unified article list + source_breakdown dict.
+    """
+    all_articles = []
+    source_breakdown = {'rss': 0, 'gdelt': 0, 'newsapi': 0, 'brave': 0,
+                        'reddit': 0, 'telegram': 0}
+
+    # ── RSS feeds ──
+    for feed in RSS_FEEDS:
+        try:
+            arts = _fetch_rss(
+                feed['url'], feed['source'],
+                weight=feed.get('weight', 0.85),
+                language=feed.get('language', 'en'),
+                max_items=20,
+            )
+            all_articles.extend(arts)
+            source_breakdown['rss'] += len(arts)
+            time.sleep(0.25)
+        except Exception as e:
+            print(f"[India RSS-loop] {feed['source']}: {str(e)[:80]}")
+
+    # ── GDELT queries (en + hi + ur) ──
+    for lang, queries in GDELT_QUERIES.items():
+        gdelt_lang = {'en': 'eng', 'hi': 'hin', 'ur': 'urd'}.get(lang, 'eng')
+        for query in queries:
+            try:
+                arts = _fetch_gdelt(query, language=gdelt_lang, days=days)
+                all_articles.extend(arts)
+                source_breakdown['gdelt'] += len(arts)
+                time.sleep(0.4)
+            except Exception as e:
+                print(f"[India GDELT-loop] {lang}/'{query[:30]}': {str(e)[:80]}")
+
+    # ── NewsAPI ──
+    for query in [
+        'India Modi Pakistan China Kashmir',
+        'India RBI rupee oil import gold',
+        'India Jaishankar diplomacy',
+        'India Khalistan Canada',
+        'India BJP RSS Manipur',
+    ]:
+        try:
+            arts = _fetch_newsapi(query, language='en', days=days)
+            all_articles.extend(arts)
+            source_breakdown['newsapi'] += len(arts)
+            time.sleep(0.3)
+        except Exception as e:
+            print(f"[India NewsAPI-loop] '{query[:30]}': {str(e)[:80]}")
+
+    # ── Brave (tertiary fallback — only if total so far is small) ──
+    if len(all_articles) < 50 and BRAVE_API_KEY:
+        print(f"[India Rhetoric] Triggering Brave fallback (article count = {len(all_articles)})")
+        for query in BRAVE_QUERIES:
+            try:
+                arts = _fetch_brave(query, max_records=15)
+                all_articles.extend(arts)
+                source_breakdown['brave'] += len(arts)
+                time.sleep(0.3)
+            except Exception as e:
+                print(f"[India Brave-loop] '{query[:30]}': {str(e)[:80]}")
+
+    # ── Reddit ──
+    reddit_keywords = [
+        'modi', 'india', 'rbi', 'jaishankar', 'kashmir', 'lac',
+        'china india', 'pakistan india', 'khalistan', 'rss',
+    ]
+    try:
+        arts = _fetch_reddit(REDDIT_SUBREDDITS, reddit_keywords, days=days)
+        all_articles.extend(arts)
+        source_breakdown['reddit'] += len(arts)
+    except Exception as e:
+        print(f"[India Reddit-loop]: {str(e)[:80]}")
+
+    # ── Telegram (optional; via shared Asia cache) ──
+    if TELEGRAM_AVAILABLE:
+        try:
+            tg_msgs = fetch_asia_telegram_signals(hours_back=72, include_extended=True)
+            india_kws = ['india', 'modi', 'jaishankar', 'rbi', 'kashmir',
+                         'pakistan india', 'china india', 'lac', 'mea',
+                         'मोदी', 'مودی']
+            tg_count = 0
+            for msg in (tg_msgs or []):
+                text = ((msg.get('text') or '') + ' ' + (msg.get('title') or '')).lower()
+                if not any(kw in text for kw in india_kws):
+                    continue
+                all_articles.append({
+                    'title':       msg.get('title') or (msg.get('text') or '')[:140],
+                    'description': (msg.get('text') or '')[:500],
+                    'url':         msg.get('url', '') or msg.get('permalink', ''),
+                    'publishedAt': msg.get('date') or msg.get('publishedAt', ''),
+                    'source':      {'name': f"Telegram:{msg.get('channel', 'unknown')}"},
+                    'content':     (msg.get('text') or '')[:500],
+                    'source_weight_override': 0.70,
+                    'language':    msg.get('language', 'en'),
+                })
+                tg_count += 1
+            source_breakdown['telegram'] = tg_count
+            print(f"[India Telegram] {tg_count} India-relevant messages from Asia cache")
+        except Exception as e:
+            print(f"[India Telegram]: {str(e)[:80]}")
+
+    # ── Dedupe by URL ──
+    seen_urls = set()
+    deduped = []
+    for art in all_articles:
+        url = (art.get('url') or '').strip()
+        if not url:
+            # No URL — use title as fallback dedupe key
+            url = f"_no_url_{art.get('title', '')[:80]}"
+        if url in seen_urls:
+            continue
+        seen_urls.add(url)
+        deduped.append(art)
+
+    print(f"[India Rhetoric] Total articles: {len(deduped)} "
+          f"(was {len(all_articles)} before dedupe)  "
+          f"breakdown={source_breakdown}")
+    return deduped, source_breakdown
+
+
+# ============================================================================
+# MAIN SCAN ORCHESTRATOR — the function that runs every 6 hours
+# ============================================================================
+
+def run_india_rhetoric_scan():
+    """
+    The full India rhetoric scan. Runs:
+      1. Article fetching (all 5+ sources)
+      2. Cross-theater upstream READ + amplifier deltas (Patch 5)
+      3. Score 7 actors (Patch 4)
+      4. Apply amplifier deltas to actor results (Patch 5)
+      5. Compute dashboard levels + theatre score (Patch 4)
+      6. Build own_signals + bidirectional_flags (Patch 4)
+      7. CALL absorption proxy (Patch 7) — Butterfly fires here
+      8. Build India fingerprint with absorption results (Patch 6)
+      9. Write fingerprint to both Redis keys (Patch 6)
+     10. Cache scan result + push history + return payload
+
+    Returns the full scan payload dict (the contract /api/rhetoric/india serves).
+    """
+    scan_start = time.time()
+    scanned_at = datetime.now(timezone.utc).isoformat()
+    print(f"\n[India Rhetoric] ── Scan starting at {scanned_at} ──")
+
+    # ── Step 1: Fetch articles
+    articles, source_breakdown = fetch_india_rhetoric_articles(days=3)
+
+    # ── Step 2: Cross-theater upstream read
+    reads = _read_upstream_fingerprints()
+    print(f"[India Rhetoric] Upstream read: "
+          f"{len(reads['india_upstream_stressors'])} stressors, "
+          f"{len(reads['amplifier_actor_deltas'])} amplified actors, "
+          f"{len(reads['context_notes'])} context notes")
+
+    # ── Step 3: Score all 7 actors
+    actor_results = {}
+    for actor_key in ACTORS:
+        actor_results[actor_key] = _score_actor(actor_key, articles)
+
+    # ── Step 4: Apply amplifier deltas
+    _apply_amplifier_deltas(actor_results, reads['amplifier_actor_deltas'])
+
+    # ── Step 5: Compute dashboard levels + theatre score
+    dashboard_levels = _compute_dashboard_levels(actor_results)
+    theatre          = _compute_theatre_score(actor_results, dashboard_levels)
+
+    # ── Step 6: Build own_signals + bidirectional flags
+    own_signals         = _build_own_signals(actor_results)
+    bidirectional_flags = _build_bidirectional_flags(actor_results)
+
+    # ── Step 7: Butterfly Build — call absorption proxy
+    absorption_results = _run_absorption_detection(
+        upstream_fingerprints=reads['upstream_fingerprints'],
+        own_signals=own_signals,
+    )
+
+    # ── Step 8: Build India fingerprint
+    fingerprint = _build_india_fingerprint(
+        actor_results=actor_results,
+        dashboard_levels=dashboard_levels,
+        theatre=theatre,
+        own_signals=own_signals,
+        bidirectional_flags=bidirectional_flags,
+        upstream_stressors=reads['india_upstream_stressors'],
+        absorption_results=absorption_results,
+    )
+
+    # ── Step 9: Write fingerprint to both Redis keys
+    fp_write_results = _write_india_fingerprint(fingerprint)
+
+    scan_duration = round(time.time() - scan_start, 2)
+
+    # ── Step 10: Assemble full scan payload
+    payload = {
+        'success':           True,
+        'scanned_at':        scanned_at,
+        'scan_duration_sec': scan_duration,
+
+        'theatre_score':     theatre['theatre_score'],
+        'theatre_level':     theatre['theatre_level'],
+        'theatre_label':     ESCALATION_LEVELS[theatre['theatre_level']]['label'],
+        'theatre_color':     ESCALATION_LEVELS[theatre['theatre_level']]['color'],
+        'convergence_bonus': theatre['convergence_bonus'],
+        'lit_dashboards':    theatre['lit_dashboards'],
+
+        'dashboards': {
+            'outbound': {
+                'level':        dashboard_levels['outbound_level'],
+                'label':        ESCALATION_LEVELS[dashboard_levels['outbound_level']]['label'],
+                'color':        ESCALATION_LEVELS[dashboard_levels['outbound_level']]['color'],
+                'contributors': dashboard_levels['outbound_contributors'],
+            },
+            'inbound': {
+                'level':        dashboard_levels['inbound_level'],
+                'label':        ESCALATION_LEVELS[dashboard_levels['inbound_level']]['label'],
+                'color':        ESCALATION_LEVELS[dashboard_levels['inbound_level']]['color'],
+                'contributors': dashboard_levels['inbound_contributors'],
+            },
+            'internal': {
+                'level':        dashboard_levels['internal_level'],
+                'label':        ESCALATION_LEVELS[dashboard_levels['internal_level']]['label'],
+                'color':        ESCALATION_LEVELS[dashboard_levels['internal_level']]['color'],
+                'contributors': dashboard_levels['internal_contributors'],
+            },
+        },
+
+        'actors':              actor_results,
+        'own_signals':         own_signals,
+        'bidirectional_flags': bidirectional_flags,
+
+        'cross_theater': {
+            'upstream_stressors':     reads['india_upstream_stressors'],
+            'amplifier_actor_deltas': reads['amplifier_actor_deltas'],
+            'context_notes':          reads['context_notes'],
+            'upstream_fingerprints':  reads['upstream_fingerprints'],
+            'read_at':                reads['read_at'],
+        },
+
+        'absorption': {
+            'active':        fingerprint['absorption_active'],
+            'count':         fingerprint['absorption_count'],
+            'signature_ids': fingerprint['absorption_signature_ids'],
+            'results':       absorption_results,
+        },
+
+        'fingerprint_write': fp_write_results,
+        'fingerprint':       fingerprint,
+
+        'article_count':     len(articles),
+        'source_breakdown':  source_breakdown,
+    }
+
+    # ── Cache + history
+    _redis_set(RHETORIC_CACHE_KEY, payload, ttl=RHETORIC_CACHE_TTL)
+    _redis_set(RHETORIC_CACHE_KEY_LEGACY, payload, ttl=RHETORIC_CACHE_TTL)
+    _redis_lpush_trim(HISTORY_KEY, {
+        'scanned_at':     scanned_at,
+        'theatre_score':  payload['theatre_score'],
+        'theatre_level':  payload['theatre_level'],
+        'absorption_count': payload['absorption']['count'],
+        'article_count':  payload['article_count'],
+    })
+
+    print(f"[India Rhetoric] ── Scan complete in {scan_duration}s — "
+          f"L{theatre['theatre_level']} ({ESCALATION_LEVELS[theatre['theatre_level']]['label']}) "
+          f"score={theatre['theatre_score']} "
+          f"absorption={fingerprint['absorption_count']} ──\n")
+
+    return payload
+
+
+# ============================================================================
+# BACKGROUND SCAN LOOP — daemon thread, runs every SCAN_INTERVAL_HOURS
+# ============================================================================
+
+def _background_scan_loop():
+    """
+    Daemon loop. Sleeps SCAN_INTERVAL_HOURS between scans. Uses _rhetoric_lock
+    so two scans never overlap (defensive against Render worker restarts).
+    """
+    # Initial delay so app startup completes before first scan
+    time.sleep(30)
+    while True:
+        try:
+            with _rhetoric_lock:
+                run_india_rhetoric_scan()
+        except Exception as e:
+            print(f"[India Rhetoric] ❌ Background scan crashed: {str(e)[:200]}")
+        time.sleep(SCAN_INTERVAL_HOURS * 3600)
+
+
+def _start_background_refresh():
+    """Start the daemon thread. Safe to call multiple times (idempotent)."""
+    global _rhetoric_running
+    if _rhetoric_running:
+        print("[India Rhetoric] Background loop already running; not starting again")
+        return
+    _rhetoric_running = True
+    t = threading.Thread(target=_background_scan_loop, name='IndiaRhetoricBg',
+                         daemon=True)
+    t.start()
+    print(f"[India Rhetoric] ✅ Background refresh started "
+          f"(interval = {SCAN_INTERVAL_HOURS}h)")
+
+
+# ============================================================================
+# FLASK ENDPOINTS — registered into Asia app via register_india_rhetoric_endpoints
+# ============================================================================
+
+def register_india_rhetoric_endpoints(app):
+    """
+    Register all India rhetoric endpoints on the Flask app.
+
+    Routes registered:
+      GET /api/rhetoric/india             — full scan payload (cached)
+      GET /api/rhetoric/india/summary     — small object for Asia hub page
+      GET /api/rhetoric/india/history     — last N scans (trend display)
+      GET /api/rhetoric/india/absorption  — currently-fired absorption signatures
+
+    Plus starts the background refresh loop.
+
+    Call from app.py:
+        from rhetoric_tracker_india import register_india_rhetoric_endpoints
+        register_india_rhetoric_endpoints(app)
+    """
+    from flask import jsonify, request as flask_request
+
+    def _get_cached_or_scan():
+        """Return cached payload if present, else trigger a fresh scan."""
+        cached = _redis_get(RHETORIC_CACHE_KEY)
+        if isinstance(cached, dict) and cached.get('scanned_at'):
+            cached['cache_hit'] = True
+            return cached
+        # Cache miss — run a fresh scan (slow path)
+        print("[India Rhetoric] Cache miss — running fresh scan")
+        with _rhetoric_lock:
+            payload = run_india_rhetoric_scan()
+        payload['cache_hit'] = False
+        return payload
+
+    @app.route('/api/rhetoric/india', methods=['GET', 'OPTIONS'])
+    def api_india_rhetoric():
+        """Full scan payload — what rhetoric-india.html will consume."""
+        if flask_request.method == 'OPTIONS':
+            return '', 200
+        try:
+            payload = _get_cached_or_scan()
+            return jsonify(payload)
+        except Exception as e:
+            return jsonify({
+                'success':       False,
+                'error':         f'{type(e).__name__}: {str(e)[:200]}',
+                'theatre':       'India',
+            }), 500
+
+    @app.route('/api/rhetoric/india/summary', methods=['GET', 'OPTIONS'])
+    def api_india_rhetoric_summary():
+        """Slim summary for the Asia rhetoric hub page tile."""
+        if flask_request.method == 'OPTIONS':
+            return '', 200
+        try:
+            payload = _get_cached_or_scan()
+            return jsonify({
+                'success':        True,
+                'theatre':        'India',
+                'theatre_level':  payload.get('theatre_level', 0),
+                'theatre_label':  payload.get('theatre_label', 'Baseline'),
+                'theatre_color':  payload.get('theatre_color', '#6b7280'),
+                'theatre_score':  payload.get('theatre_score', 0),
+                'dashboards':     payload.get('dashboards', {}),
+                'absorption':     {
+                    'active':         payload.get('absorption', {}).get('active', False),
+                    'count':          payload.get('absorption', {}).get('count', 0),
+                    'signature_ids':  payload.get('absorption', {}).get('signature_ids', []),
+                },
+                'scanned_at':     payload.get('scanned_at'),
+                'article_count':  payload.get('article_count', 0),
+            })
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)[:200]}), 500
+
+    @app.route('/api/rhetoric/india/history', methods=['GET', 'OPTIONS'])
+    def api_india_rhetoric_history():
+        """Last N scan snapshots from history list. Default N=48 (~12 days)."""
+        if flask_request.method == 'OPTIONS':
+            return '', 200
+        try:
+            limit = min(int(flask_request.args.get('limit', 48)), HISTORY_MAX_ENTRIES)
+            # Reach for the list via LRANGE
+            if not UPSTASH_REDIS_URL or not UPSTASH_REDIS_TOKEN:
+                return jsonify({'success': True, 'history': [], 'count': 0})
+            try:
+                url = f"{UPSTASH_REDIS_URL}/lrange/{urllib.parse.quote(HISTORY_KEY, safe='')}/0/{limit-1}"
+                r = requests.get(
+                    url,
+                    headers={"Authorization": f"Bearer {UPSTASH_REDIS_TOKEN}"},
+                    timeout=5,
+                )
+                if r.status_code != 200:
+                    return jsonify({'success': True, 'history': [], 'count': 0})
+                raw_items = (r.json() or {}).get('result') or []
+                history = []
+                for raw in raw_items:
+                    try:
+                        history.append(json.loads(raw))
+                    except (json.JSONDecodeError, TypeError):
+                        continue
+                return jsonify({
+                    'success': True,
+                    'count':   len(history),
+                    'history': history,
+                })
+            except Exception as e:
+                return jsonify({'success': False, 'error': str(e)[:200],
+                                'history': [], 'count': 0})
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)[:200]}), 500
+
+    @app.route('/api/rhetoric/india/absorption', methods=['GET', 'OPTIONS'])
+    def api_india_rhetoric_absorption():
+        """Currently-fired absorption signatures from latest scan."""
+        if flask_request.method == 'OPTIONS':
+            return '', 200
+        try:
+            payload = _get_cached_or_scan()
+            absorption = payload.get('absorption') or {}
+            return jsonify({
+                'success':       True,
+                'theatre':       'India',
+                'active':        absorption.get('active', False),
+                'count':         absorption.get('count', 0),
+                'signature_ids': absorption.get('signature_ids', []),
+                'results':       absorption.get('results', []),
+                'scanned_at':    payload.get('scanned_at'),
+            })
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)[:200]}), 500
+
+    # Start the background refresh loop now that endpoints are wired
+    _start_background_refresh()
+
+    print("[India Rhetoric] ✅ Endpoints registered:")
+    print("  GET /api/rhetoric/india")
+    print("  GET /api/rhetoric/india/summary")
+    print("  GET /api/rhetoric/india/history")
+    print("  GET /api/rhetoric/india/absorption")
+
+
+# ============================================================================
+# END OF PATCH 8 — Backend is functionally complete
+# ============================================================================
+# After this patch lands:
+#   - The tracker can scan articles every 6 hours automatically
+#   - 4 endpoints serve scan data to the frontend
+#   - Cross-theater fingerprint is written to both Redis conventions
+#   - Absorption signatures fire automatically via Butterfly Build
 #
 # Patches that follow will add:
-#   Patch 8 — Main scan orchestration + endpoints + registration
-#               (this is where _run_absorption_detection actually gets called)
-#   Patch 9 — US tracker patch (add 'india' to outbound keyword dict)
-#   Patch 10 — Asia app.py registration of the india tracker
+#   Patch 9  — US tracker patch (add 'india' to us_outbound keyword dict)
+#   Patch 10 — Asia app.py registration of the india tracker (2 surgical edits)
 #   Patch 11 — rhetoric-india.html (full dedicated frontend page)
 #   Patch 12 — rhetoric-asia.html update (add India link to hub)
 #   Patch 13 — india-stability.html update (live rhetoric panel)
