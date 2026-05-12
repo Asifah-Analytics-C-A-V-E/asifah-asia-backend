@@ -1806,15 +1806,227 @@ def _apply_amplifier_deltas(actor_results, deltas):
 
 
 # ============================================================================
-# END OF PATCH 5
+# CROSS-THEATER WRITE (PATCH 6) — India fingerprint, dual-key persistence
 # ============================================================================
-# The reader above pulls upstream Iran/China/Pakistan/US fingerprints and
-# produces (a) raw fingerprint dict for absorption_detector consumption,
-# (b) per-actor amplifier deltas, (c) named stressor labels, and (d) human-
-# readable context notes for BLUF display.
+# India is the platform's FIRST absorber-class tracker. Its fingerprint is
+# read by:
+#   • Iran tracker      (looks in shared dict under 'india' key)
+#   • China tracker     (same shared dict)
+#   • Pakistan tracker  (looks at 'fingerprint:india:current' direct key)
+#   • US tracker        (same direct key)
+#   • Future GPI Absorption Dimension (filters for is_absorber_node: True)
+#
+# Two write conventions in production on the platform — we write to BOTH:
+#
+#   Convention A — shared dict at CROSSTHEATER_SHARED_KEY
+#                  We update existing['india'] = {...} preserving other keys
+#                  Used by: Iran, China readers
+#
+#   Convention B — per-country direct key at CROSSTHEATER_INDIA_KEY
+#                  We write the full fingerprint under one key
+#                  Used by: Pakistan, US readers
+#
+# PAYLOAD CONTRACT (consumed by 4 downstream trackers + GPI):
+# ──────────────────────────────────────────────────────────
+# Standard fields (every fingerprint has these):
+#   ts, theatre, theatre_score, theatre_level, level, score
+#
+# India-specific posture levels:
+#   outbound_level, inbound_level, internal_level
+#
+# Per-actor levels (7 clusters):
+#   pmo_level, mea_level, armed_forces_level, economic_statecraft_level,
+#   opposition_level, hindutva_level, adversary_level
+#
+# Bidirectional flags (mirrors Pakistan's pattern):
+#   india_pakistan_active, india_china_lac_active,
+#   india_china_tech_friction_active, india_us_friction_active,
+#   india_russia_active
+#
+# Node-class flags:
+#   is_command_node: False    # India is absorber, NOT commander
+#   is_absorber_node: True    # NEW — India is platform's FIRST
+#
+# Butterfly Build (Phase 2) fields:
+#   absorption_active, absorption_count, upstream_stressors[],
+#   cohesion_stress_level
+#
+# Named cohesion/absorption signals (consumed for display + by downstream):
+#   modi_jawboning_active, rbi_fx_defense_active,
+#   communal_stress_active, opposition_alignment
+#
+# Specificity fields (Iran-pattern):
+#   top_phrases, named_targets, specificity_score
+
+
+def _build_india_fingerprint(
+    actor_results,
+    dashboard_levels,
+    theatre,
+    own_signals,
+    bidirectional_flags,
+    upstream_stressors=None,
+    absorption_results=None,
+):
+    """
+    Assemble India's cross-theater fingerprint payload. Pure function — no
+    Redis IO. Returns the dict that gets persisted by _write_india_fingerprint.
+
+    Patch 7 will pass live absorption_results here; Patch 6 alone leaves
+    those fields at safe defaults.
+    """
+    upstream_stressors = list(upstream_stressors or [])
+    absorption_results = list(absorption_results or [])
+
+    # Cohesion stress: composite of opposition + hindutva activity
+    # (internal dashboard) capped at L5
+    opposition_lvl = (actor_results.get('opposition', {}) or {}).get('level', 0)
+    hindutva_lvl   = (actor_results.get('hindutva_ideological', {}) or {}).get('level', 0)
+    cohesion_stress_level = min(5, max(opposition_lvl, hindutva_lvl))
+
+    # Aggregate top phrases + named targets across all actors
+    top_phrases   = _aggregate_top_phrases(actor_results, limit=8)
+    named_targets = _aggregate_named_targets(actor_results, limit=12)
+
+    # Specificity score: sum of all actors' specificity (capped at 100)
+    spec_total = sum(
+        (r.get('specificity', {}) or {}).get('score', 0)
+        for r in actor_results.values()
+    )
+    spec_total = min(spec_total, 100)
+
+    fingerprint = {
+        # ── Identity ─────────────────────────────────────────────────────
+        'ts':                datetime.now(timezone.utc).isoformat(),
+        'updated_at':        datetime.now(timezone.utc).isoformat(),
+        'theatre':           'India',
+        'tracker_version':   '1.0.0',
+
+        # ── Node-class flags (the architecturally important ones) ────────
+        'is_command_node':   False,
+        'is_absorber_node':  True,
+
+        # ── Standard composite scores ────────────────────────────────────
+        'theatre_score':     theatre.get('theatre_score', 0),
+        'theatre_level':     theatre.get('theatre_level', 0),
+        'level':             theatre.get('theatre_level', 0),       # alias
+        'score':             theatre.get('theatre_score', 0),       # alias
+        'convergence_bonus': theatre.get('convergence_bonus', 0),
+        'lit_dashboards':    theatre.get('lit_dashboards', 0),
+
+        # ── Per-dashboard maxes ──────────────────────────────────────────
+        'outbound_level':    dashboard_levels.get('outbound_level', 0),
+        'inbound_level':     dashboard_levels.get('inbound_level', 0),
+        'internal_level':    dashboard_levels.get('internal_level', 0),
+        'outbound_contributors': dashboard_levels.get('outbound_contributors', []),
+        'inbound_contributors':  dashboard_levels.get('inbound_contributors', []),
+        'internal_contributors': dashboard_levels.get('internal_contributors', []),
+
+        # ── Per-actor levels (7 clusters) ────────────────────────────────
+        'pmo_level':                 (actor_results.get('pmo', {}) or {}).get('level', 0),
+        'mea_level':                 (actor_results.get('mea', {}) or {}).get('level', 0),
+        'armed_forces_level':        (actor_results.get('armed_forces', {}) or {}).get('level', 0),
+        'economic_statecraft_level': (actor_results.get('economic_statecraft', {}) or {}).get('level', 0),
+        'opposition_level':          opposition_lvl,
+        'hindutva_level':            hindutva_lvl,
+        'adversary_level':           (actor_results.get('adversary_crossreads', {}) or {}).get('level', 0),
+
+        # ── Bidirectional flags (relationship state) ─────────────────────
+        'india_pakistan_active':            bidirectional_flags.get('india_pakistan_active', False),
+        'india_china_lac_active':           bidirectional_flags.get('india_china_lac_active', False),
+        'india_china_tech_friction_active': bidirectional_flags.get('india_china_tech_friction_active', False),
+        'india_us_friction_active':         bidirectional_flags.get('india_us_friction_active', False),
+        'india_russia_active':              bidirectional_flags.get('india_russia_active', False),
+
+        # ── Named cohesion / absorption signals ──────────────────────────
+        # These are the high-signal flags downstream consumers + the
+        # rhetoric-india frontend will most often display directly.
+        'modi_jawboning_active':    bool(own_signals.get('modi_gold_jawboning')),
+        'rbi_fx_defense_active':    bool(own_signals.get('rbi_fx_defense')),
+        'mea_us_friction_active':   bool(own_signals.get('mea_us_friction_active')),
+        'kashmir_loc_active':       bool(own_signals.get('kashmir_loc_active')),
+        'armed_forces_lac_active':  bool(own_signals.get('armed_forces_lac_active')),
+        'communal_stress_active':   bool(own_signals.get('communal_stress_active')),
+        'opposition_alignment':     own_signals.get('opposition_alignment', 'normal'),
+
+        # ── Butterfly Build (Phase 2) — populated fully by Patch 7 ───────
+        # Patch 6 alone leaves these at safe defaults. When Patch 7 calls
+        # the absorption proxy, it will overwrite these with live values
+        # by passing absorption_results to this builder.
+        'absorption_active':       len(absorption_results) > 0,
+        'absorption_count':        len(absorption_results),
+        'absorption_signature_ids': [r.get('signature_id') for r in absorption_results if r.get('signature_id')],
+        'upstream_stressors':       upstream_stressors,
+        'cohesion_stress_level':    cohesion_stress_level,
+
+        # ── Specificity (Iran-pattern) ───────────────────────────────────
+        'top_phrases':       top_phrases,
+        'named_targets':     named_targets,
+        'specificity_score': spec_total,
+    }
+
+    return fingerprint
+
+
+def _write_india_fingerprint(fingerprint):
+    """
+    Write India's fingerprint to BOTH cross-theater key conventions.
+
+    Convention A (shared dict): read by Iran + China trackers.
+        We MERGE into the existing dict so we don't clobber Iran's or
+        China's entries.
+
+    Convention B (direct key): read by Pakistan + US trackers.
+        We write the full fingerprint under one key.
+
+    Returns:
+        dict with two booleans showing which writes succeeded:
+            {'shared_dict_write': True/False, 'direct_key_write': True/False}
+    """
+    results = {'shared_dict_write': False, 'direct_key_write': False}
+
+    # ── Write A: merge into shared dict
+    try:
+        shared = _redis_get(CROSSTHEATER_SHARED_KEY) or {}
+        if not isinstance(shared, dict):
+            shared = {}
+        shared['india'] = fingerprint
+        # 8-hour TTL matches Iran's convention for the shared dict
+        ok_a = _redis_set(CROSSTHEATER_SHARED_KEY, shared, ttl=8 * 3600)
+        results['shared_dict_write'] = bool(ok_a)
+        if ok_a:
+            print(f"[India Rhetoric] ✅ Cross-theater fingerprint written to shared dict "
+                  f"(L{fingerprint.get('theatre_level', 0)}, "
+                  f"score={fingerprint.get('theatre_score', 0)}, "
+                  f"is_absorber_node=True)")
+        else:
+            print("[India Rhetoric] ⚠️ Shared-dict write returned False")
+    except Exception as e:
+        print(f"[India Rhetoric] ❌ Shared-dict write error: {str(e)[:160]}")
+
+    # ── Write B: per-country direct key
+    try:
+        # 14-hour TTL matches Pakistan's convention for direct-key fingerprints
+        ok_b = _redis_set(CROSSTHEATER_INDIA_KEY, fingerprint, ttl=14 * 3600)
+        results['direct_key_write'] = bool(ok_b)
+        if ok_b:
+            print(f"[India Rhetoric] ✅ Cross-theater fingerprint written to "
+                  f"{CROSSTHEATER_INDIA_KEY}")
+        else:
+            print(f"[India Rhetoric] ⚠️ Direct-key write to {CROSSTHEATER_INDIA_KEY} returned False")
+    except Exception as e:
+        print(f"[India Rhetoric] ❌ Direct-key write error: {str(e)[:160]}")
+
+    return results
+
+
+# ============================================================================
+# END OF PATCH 6
+# ============================================================================
+# The functions above assemble India's full cross-theater fingerprint and
+# persist it under BOTH key conventions so all downstream readers see it.
 #
 # Patches that follow will add:
-#   Patch 6 — Cross-theater WRITE (dual-key India fingerprint with all fields)
 #   Patch 7 — Absorption integration (call detect_and_persist via Asia proxy)
 #   Patch 8 — Main scan orchestration + endpoints + registration
 #   Patch 9 — US tracker patch (add 'india' to outbound keyword dict)
