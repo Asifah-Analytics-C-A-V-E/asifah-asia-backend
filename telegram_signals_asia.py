@@ -89,6 +89,7 @@ EXTENDED_ASIA_CHANNELS = [
 
     # India / Pakistan / Afghanistan
     'thenewsinternational',    # The News International — Pakistan
+    'PIB_India',               # Press Information Bureau — official GoI press release wire
 
     # ── v1.1 — Pakistan-specific extended (Apr 2026) ──
     'ISPR_Official',           # Inter-Services Public Relations (Army)
