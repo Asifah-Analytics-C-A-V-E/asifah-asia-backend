@@ -196,12 +196,12 @@ except ImportError:
 
 # Optional absorption detector + storage (Butterfly Build Phase 2)
 try:
-    from absorption_detector import detect_and_persist as detect_absorption_and_persist
+    from absorption_proxy_asia import detect_and_persist_via_proxy as detect_absorption_and_persist
     ABSORPTION_DETECTOR_AVAILABLE = True
-    print("[India Rhetoric] ✅ Absorption detector available")
+    print("[India Rhetoric] ✅ Absorption proxy available (routes through ME backend)")
 except ImportError:
     ABSORPTION_DETECTOR_AVAILABLE = False
-    print("[India Rhetoric] ⚠️ Absorption detector not importable — skipping Butterfly write")
+    print("[India Rhetoric] ⚠️ Absorption proxy not importable — skipping Butterfly write")
 
 # Redis keys
 RHETORIC_CACHE_KEY        = 'rhetoric:india:latest'
