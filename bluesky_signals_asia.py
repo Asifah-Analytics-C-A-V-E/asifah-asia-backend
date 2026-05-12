@@ -83,6 +83,16 @@ BLUESKY_ACCOUNTS_ASIA = [
     ('wartranslated.bsky.social',      0.85, ['*'],
         'WarTranslated — Russia/DPRK/global military translation'),
 
+    # ── v1.3 — INDIA-RELEVANT (May 2026, India rhetoric tracker build) ──
+    # govmirrors already serves us StateDept + Trump reliably, so the
+    # likelihood these two India counterparts are also mirrored is high.
+    # If either is dead, the existing failure cache (line 168) will log
+    # once + skip forever — no scan-time cost on subsequent runs.
+    ('pmoindia.govmirrors.com',        1.2,  ['india'],
+        'PMO India / Modi (X mirror via govmirrors) — apex political signaling'),
+    ('meaindia.govmirrors.com',        1.1,  ['india', 'pakistan', 'china'],
+        'MEA India / Jaishankar (X mirror) — diplomatic doctrine, Kashmir/LAC'),
+
     # ── v1.1 — PAKISTAN-RELEVANT ASPIRATIONAL (Apr 2026) ──
     # NOTE: All entries below require manual verification before deploy.
     # Visit https://bsky.app/profile/{handle} to confirm 200 OK.
