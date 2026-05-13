@@ -810,6 +810,14 @@ TRIGGER_MAP = {
 # specificity_score and surfaces as named_targets in the cross-theater
 # fingerprint. Downstream consumers (Iran, China trackers) read these
 # named_targets to know what India is signaling about.
+#
+# IMPORTANT (A2 fix, May 13, 2026): Matching uses word-boundary regex,
+# NOT substring containment. This prevents false positives like "Puri"
+# (the minister) → "uri" (the LoC geography). Tradeoff: some legitimately
+# fuzzy mentions miss; we choose precision over recall as Asifah
+# Analytics scales beyond a single tracker.
+
+import re as _re_specificity
 
 SPECIFIC_GEOGRAPHIES_INDIA = [
     # LAC frontier
@@ -840,23 +848,59 @@ SPECIFIC_ASSETS_INDIA = [
 ]
 
 
+# Compiled module-level regex patterns. Built once, reused on every article.
+# Sorted longest-first so multi-word geographies match before single-word ones.
+_GEO_PATTERN = _re_specificity.compile(
+    r'\b(' + '|'.join(
+        _re_specificity.escape(g)
+        for g in sorted(SPECIFIC_GEOGRAPHIES_INDIA, key=len, reverse=True)
+    ) + r')\b',
+    _re_specificity.IGNORECASE,
+)
+_ASSET_PATTERN = _re_specificity.compile(
+    r'\b(' + '|'.join(
+        _re_specificity.escape(a)
+        for a in sorted(SPECIFIC_ASSETS_INDIA, key=len, reverse=True)
+    ) + r')\b',
+    _re_specificity.IGNORECASE,
+)
+
+
 def _score_specificity(text):
     """
-    Iran-style specificity scoring. Used to extract named_targets for the
-    cross-theater fingerprint write. Higher score = more concrete signal.
+    Iran-style specificity scoring with WORD-BOUNDARY matching (A2 fix).
     Returns (score 0-10, breakdown dict).
+
+    Word boundaries (\b in the regex) prevent false positives where a
+    geography/asset is a substring of an unrelated word. For example:
+        "Petroleum Minister Puri" — would WRONGLY have matched "uri" under
+        substring containment. With \b boundaries, "Puri" does NOT match "uri"
+        because there's no word boundary between "P" and "uri".
     """
     score = 0
     breakdown = {'named_geographies': [], 'named_assets': []}
-    text_lower = (text or '').lower()
-    for geo in SPECIFIC_GEOGRAPHIES_INDIA:
-        if geo in text_lower:
-            breakdown['named_geographies'].append(geo)
-            score += 1
-    for asset in SPECIFIC_ASSETS_INDIA:
-        if asset in text_lower:
-            breakdown['named_assets'].append(asset)
-            score += 1
+    text_safe = text or ''
+
+    # Geographies
+    seen_geos = set()
+    for match in _GEO_PATTERN.findall(text_safe):
+        canonical = match.lower()
+        if canonical in seen_geos:
+            continue
+        seen_geos.add(canonical)
+        breakdown['named_geographies'].append(canonical)
+        score += 1
+
+    # Assets
+    seen_assets = set()
+    for match in _ASSET_PATTERN.findall(text_safe):
+        canonical = match.lower()
+        if canonical in seen_assets:
+            continue
+        seen_assets.add(canonical)
+        breakdown['named_assets'].append(canonical)
+        score += 1
+
     return min(score, 10), breakdown
 
 
