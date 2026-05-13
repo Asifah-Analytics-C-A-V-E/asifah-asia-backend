@@ -1249,7 +1249,34 @@ def _build_own_signals(actor_results):
                     return True
         return False
 
-    # Modi gold jawboning — PMO must be active AND mention gold/discretionary
+    # Modi gold jawboning — PMO must be active AND mention gold/discretionary spending
+    # Fires when Modi directly talks down gold demand or signals citizen austerity
+    # on bullion/jewellery/wedding spending. Pairs with the Leader Commodity
+    # Interventions catalog (modi_on_gold direction).
+    modi_gold_jawboning = (
+        pmo.get('level', 0) >= 2 and (
+            _has_phrase(pmo, ['gold', 'bullion', 'jewellery', 'jewelry',
+                              'wedding gold', 'सोना', 'सोने'])
+            or _articles_mention(pmo, ['gold', 'bullion', 'jewellery',
+                                       'jewelry', 'सोना', 'सोने'])
+        )
+    )
+
+    # Modi austerity active — PMO active AND mentions austerity / discretionary cuts /
+    # citizen-belt-tightening rhetoric (Reuters validated this as a distinct pattern
+    # from gold-specific jawboning — broader "tighten your belt" framing)
+    modi_austerity_active = (
+        pmo.get('level', 0) >= 2 and (
+            _has_phrase(pmo, ['austerity', 'discretionary', 'belt-tighten',
+                              'belt tightening', 'savings', 'frugal',
+                              'restraint', 'मितव्ययिता', 'किफायत'])
+            or _articles_mention(pmo, ['austerity', 'discretionary',
+                                       'belt-tightening', 'belt tightening',
+                                       'frugal', 'restraint'])
+        )
+    )
+
+    # RBI FX defense — Economic Statecraft active AND mentions RBI / rupee / forex defense
     rbi_fx_defense = (
         econ.get('level', 0) >= 2 and (
             _has_phrase(econ, ['rbi', 'rupee', 'forex', 'fx reserves',
@@ -1257,7 +1284,6 @@ def _build_own_signals(actor_results):
             or _articles_mention(econ, ['rbi', 'rupee', 'forex', 'विदेशी मुद्रा'])
         )
     )
-
     # MEA US friction — MEA active AND mentions US/tariff/visa
     mea_us_friction_active = (
         mea.get('level', 0) >= 2 and (
