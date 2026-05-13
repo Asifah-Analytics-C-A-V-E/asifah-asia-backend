@@ -1206,15 +1206,6 @@ def _build_own_signals(actor_results):
         return False
 
     # Modi gold jawboning — PMO must be active AND mention gold/discretionary
-    modi_gold_jawboning = (
-        pmo.get('level', 0) >= 2 and (
-            _has_phrase(pmo, ['gold', 'discretionary imports', 'aatmanirbhar',
-                              'vocal for local', 'cut consumption'])
-            or _articles_mention(pmo, ['gold', 'सोना', 'سونا'])
-        )
-    )
-
-    # RBI FX defense — economic_statecraft active AND mentions FX/rupee/forex
     rbi_fx_defense = (
         econ.get('level', 0) >= 2 and (
             _has_phrase(econ, ['rbi', 'rupee', 'forex', 'fx reserves',
@@ -1283,6 +1274,7 @@ def _build_own_signals(actor_results):
 
     return {
         'modi_gold_jawboning':       modi_gold_jawboning,
+        'modi_austerity_active':     modi_austerity_active,
         'rbi_fx_defense':            rbi_fx_defense,
         'mea_us_friction_active':    mea_us_friction_active,
         'commerce_tariff_response':  commerce_tariff_response,
