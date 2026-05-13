@@ -52,9 +52,9 @@ TRACKER_KEYS = {
     'taiwan':   'rhetoric:taiwan:latest',
     'pakistan': 'rhetoric:pakistan:latest',
     'japan':    'rhetoric:japan:latest',
+    'india':    'rhetoric:india:latest',   # Patch 12 (May 2026) — absorber-class tracker
     # Future Asia trackers slot in here:
     # 'korea_north': 'rhetoric:dprk:latest',
-    # 'india':       'rhetoric:india:latest',
     # 'philippines': 'rhetoric:philippines:latest',
 }
 
@@ -63,6 +63,7 @@ THEATRE_FLAGS = {
     'taiwan':   '\U0001f1f9\U0001f1fc',  # 🇹🇼
     'pakistan': '\U0001f1f5\U0001f1f0',  # 🇵🇰
     'japan':    '\U0001f1ef\U0001f1f5',  # 🇯🇵
+    'india':    '\U0001f1ee\U0001f1f3',  # 🇮🇳
 }
 
 THEATRE_DISPLAY = {
@@ -70,6 +71,7 @@ THEATRE_DISPLAY = {
     'taiwan':   'TAIWAN',
     'pakistan': 'PAKISTAN',
     'japan':    'JAPAN',
+    'india':    'INDIA',
 }
 
 # Top-N signals emitted to GPI (matches ME pattern)
