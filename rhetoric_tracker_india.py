@@ -2537,14 +2537,23 @@ def register_india_rhetoric_endpoints(app):
     """
     from flask import jsonify, request as flask_request
 
-    def _get_cached_or_scan():
-        """Return cached payload if present, else trigger a fresh scan."""
-        cached = _redis_get(RHETORIC_CACHE_KEY)
-        if isinstance(cached, dict) and cached.get('scanned_at'):
-            cached['cache_hit'] = True
-            return cached
-        # Cache miss — run a fresh scan (slow path)
-        print("[India Rhetoric] Cache miss — running fresh scan")
+    def _get_cached_or_scan(force=False):
+        """
+        Return cached payload if present, else trigger a fresh scan.
+
+        If force=True, skip the cache check and always run a fresh scan.
+        This is gated by an explicit query param on the endpoint to avoid
+        accidental cache-busting on page load.
+        """
+        if not force:
+            cached = _redis_get(RHETORIC_CACHE_KEY)
+            if isinstance(cached, dict) and cached.get('scanned_at'):
+                cached['cache_hit'] = True
+                return cached
+            # Cache miss — run a fresh scan (slow path)
+            print("[India Rhetoric] Cache miss — running fresh scan")
+        else:
+            print("[India Rhetoric] ⚡ Force refresh requested — bypassing cache")
         with _rhetoric_lock:
             payload = run_india_rhetoric_scan()
         payload['cache_hit'] = False
@@ -2552,11 +2561,19 @@ def register_india_rhetoric_endpoints(app):
 
     @app.route('/api/rhetoric/india', methods=['GET', 'OPTIONS'])
     def api_india_rhetoric():
-        """Full scan payload — what rhetoric-india.html will consume."""
+        """
+        Full scan payload — what rhetoric-india.html will consume.
+
+        Query params:
+          ?force=true  — bypass cache and run a fresh scan (slow path, ~30-60s).
+                         Use sparingly — meant for manual cache-bust after fixes,
+                         NOT for normal page loads.
+        """
         if flask_request.method == 'OPTIONS':
             return '', 200
         try:
-            payload = _get_cached_or_scan()
+            force = flask_request.args.get('force', '').lower() in ('true', '1', 'yes')
+            payload = _get_cached_or_scan(force=force)
             return jsonify(payload)
         except Exception as e:
             return jsonify({
