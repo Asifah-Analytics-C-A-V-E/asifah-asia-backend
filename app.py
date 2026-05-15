@@ -169,6 +169,23 @@ except Exception as e:
     print(f"[Asia Backend] ⚠️ Absorption proxy not available — {type(e).__name__}: {e}")
     traceback.print_exc()
 
+# Jawboning proxy — forwards detection requests to ME backend's /api/jawboning/detect.
+# Used by rhetoric_tracker_india.py (and future trackers) to fire jawboning
+# signatures from the shared ME-hosted catalog (jawboning_signatures.py +
+# jawboning_detector.py). Phase 3 strangler-fig: Modi flags currently computed
+# BOTH inline (in india tracker) AND via this proxy (dry-run mode) for
+# comparison logging. After ≥3 cycles of matching output, Phase 5 cuts inline.
+# Auth retrofit pending — see SECURITY TODO in jawboning_detector.py.
+try:
+    from jawboning_proxy_asia import register_jawboning_proxy
+    JAWBONING_PROXY_AVAILABLE = True
+    print("[Asia Backend] ✅ Jawboning proxy module loaded")
+except Exception as e:
+    import traceback
+    JAWBONING_PROXY_AVAILABLE = False
+    print(f"[Asia Backend] ⚠️ Jawboning proxy not available — {type(e).__name__}: {e}")
+    traceback.print_exc()
+
 # India rhetoric tracker — three-dashboard absorber-class tracker.
 # Platform's FIRST absorber-node (is_absorber_node: True in fingerprint).
 # Reads upstream Iran/China/Pakistan/US fingerprints, calls absorption proxy
@@ -2968,6 +2985,10 @@ if COMMODITY_PROXY_AVAILABLE:
 
 if ABSORPTION_PROXY_AVAILABLE:
     register_absorption_proxy(app)
+
+if JAWBONING_PROXY_AVAILABLE:
+    register_jawboning_proxy(app)
+    print("[Asia Backend] ✅ Jawboning proxy endpoints registered")
 
 if INDIA_RHETORIC_AVAILABLE:
     register_india_rhetoric_endpoints(app)
