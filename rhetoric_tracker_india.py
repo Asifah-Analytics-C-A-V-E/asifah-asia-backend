@@ -86,6 +86,22 @@ except ImportError:
     ABSORPTION_DETECTOR_AVAILABLE = False
     print("[India Rhetoric] ⚠️ Absorption proxy not importable — skipping Butterfly write")
 
+# Phase 3 Strangler-Fig (May 15, 2026):
+# Jawboning proxy is called IN PARALLEL with the inline _build_own_signals()
+# computation for Modi gold + Modi austerity. Both are logged side-by-side
+# (`[Jawboning Compare] ✅/❌`) so we can verify the primitive matches the
+# inline implementation across ≥3 scan cycles before Phase 5 cuts the inline
+# computation. The inline values are still what gets returned and used by the
+# tracker — the proxy call is for comparison only. write_fingerprints=False
+# means the proxy does NOT pollute Redis during the dual-track period.
+try:
+    from jawboning_proxy_asia import detect_jawboning_via_proxy
+    JAWBONING_PRIMITIVE_AVAILABLE = True
+    print("[India Rhetoric] ✅ Jawboning primitive available (dual-track Phase 3 mode)")
+except ImportError:
+    JAWBONING_PRIMITIVE_AVAILABLE = False
+    print("[India Rhetoric] ⚠️ Jawboning primitive not importable — inline-only this scan")
+
 RHETORIC_CACHE_KEY        = 'rhetoric:india:latest'
 RHETORIC_CACHE_KEY_LEGACY = 'india_rhetoric_cache'
 HISTORY_KEY               = 'rhetoric:india:history'
@@ -1342,6 +1358,48 @@ def _build_own_signals(actor_results):
     else:
         opposition_alignment = 'normal'
 
+    # ──────────────────────────────────────────────────────────────────────
+    # PHASE 3 STRANGLER-FIG — Dual-track jawboning comparison (May 15, 2026)
+    # ──────────────────────────────────────────────────────────────────────
+    # Call the ME-hosted jawboning primitive in parallel with the inline
+    # computation above. Log a comparison line for each Modi signature so
+    # we can verify the primitive matches the inline implementation across
+    # ≥3 scan cycles before Phase 5 cuts the inline path.
+    #
+    # IMPORTANT: write_fingerprints=False — the proxy does NOT write to
+    # Redis during dual-track. The inline modi_gold_jawboning and
+    # modi_austerity_active values above are what flow into the
+    # cross-theater fingerprint and downstream consumers. The proxy is
+    # OBSERVATION ONLY for now.
+    if JAWBONING_PRIMITIVE_AVAILABLE:
+        try:
+            primitive_results = detect_jawboning_via_proxy(
+                leader_id='modi',
+                country_id='india',
+                actor_results=actor_results,
+                write_fingerprints=False,    # dry-run during strangler-fig
+                scan_id=datetime.now(timezone.utc).isoformat(),
+            )
+            # Compare each Modi signature: inline vs primitive
+            for sig_id, inline_value in [
+                ('modi_on_gold',      modi_gold_jawboning),
+                ('modi_on_austerity', modi_austerity_active),
+            ]:
+                primitive_value = bool(primitive_results.get(sig_id, False))
+                if primitive_value == bool(inline_value):
+                    print(f"[Jawboning Compare] ✅ {sig_id}: "
+                          f"inline={inline_value} primitive={primitive_value}")
+                else:
+                    print(f"[Jawboning Compare] ❌ {sig_id}: "
+                          f"inline={inline_value} primitive={primitive_value} "
+                          f"— MISMATCH, investigate before Phase 5 cutover")
+        except Exception as e:
+            print(f"[Jawboning Compare] ⚠️ Primitive call failed: {str(e)[:160]} "
+                  f"— inline values still used, no impact on scan")
+    # ──────────────────────────────────────────────────────────────────────
+    # End strangler-fig block. Continue returning inline-computed values.
+    # ──────────────────────────────────────────────────────────────────────
+
     return {
         'modi_gold_jawboning':       modi_gold_jawboning,
         'modi_austerity_active':     modi_austerity_active,
@@ -1361,7 +1419,6 @@ def _build_own_signals(actor_results):
         'hindutva_level':            hindutva.get('level', 0),
         'adversary_level':           adversary.get('level', 0),
     }
-
 
 # ============================================================================
 # BIDIRECTIONAL FLAGS — what relationships are India "active" with right now
