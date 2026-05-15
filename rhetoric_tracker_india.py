@@ -1360,6 +1360,11 @@ def _build_own_signals(actor_results):
 
     # ──────────────────────────────────────────────────────────────────────
     # PHASE 3 STRANGLER-FIG — Dual-track jawboning comparison (May 15, 2026)
+    # HOTFIX v2 (May 15, 2026 PM): wrap proxy call in a thread with a HARD
+    # 25-second timeout. The proxy's internal requests timeout was somehow
+    # not honored cleanly in the first deploy — scan #3 hung indefinitely.
+    # This wrapper guarantees the scan completes regardless of what the
+    # proxy does, even if it never returns.
     # ──────────────────────────────────────────────────────────────────────
     # Call the ME-hosted jawboning primitive in parallel with the inline
     # computation above. Log a comparison line for each Modi signature so
@@ -1372,34 +1377,52 @@ def _build_own_signals(actor_results):
     # cross-theater fingerprint and downstream consumers. The proxy is
     # OBSERVATION ONLY for now.
     if JAWBONING_PRIMITIVE_AVAILABLE:
+        # Hard-bounded threaded call. If the proxy hangs, we move on after 25s
+        # and use inline values only. Inline values are ALWAYS what gets
+        # returned and used — this dual-track is purely observational.
+        from concurrent.futures import ThreadPoolExecutor, TimeoutError as _CompareTimeout
+        _compare_executor = ThreadPoolExecutor(max_workers=1)
         try:
-            primitive_results = detect_jawboning_via_proxy(
+            _compare_future = _compare_executor.submit(
+                detect_jawboning_via_proxy,
                 leader_id='modi',
                 country_id='india',
                 actor_results=actor_results,
                 write_fingerprints=False,    # dry-run during strangler-fig
                 scan_id=datetime.now(timezone.utc).isoformat(),
             )
-            # Compare each Modi signature: inline vs primitive
-            for sig_id, inline_value in [
-                ('modi_on_gold',      modi_gold_jawboning),
-                ('modi_on_austerity', modi_austerity_active),
-            ]:
-                primitive_value = bool(primitive_results.get(sig_id, False))
-                if primitive_value == bool(inline_value):
-                    print(f"[Jawboning Compare] ✅ {sig_id}: "
-                          f"inline={inline_value} primitive={primitive_value}")
-                else:
-                    print(f"[Jawboning Compare] ❌ {sig_id}: "
-                          f"inline={inline_value} primitive={primitive_value} "
-                          f"— MISMATCH, investigate before Phase 5 cutover")
-        except Exception as e:
-            print(f"[Jawboning Compare] ⚠️ Primitive call failed: {str(e)[:160]} "
-                  f"— inline values still used, no impact on scan")
+            try:
+                primitive_results = _compare_future.result(timeout=25)
+            except _CompareTimeout:
+                print("[Jawboning Compare] ⏱️ Primitive call exceeded 25s — "
+                      "ABANDONING (inline values still used, scan continues)")
+                primitive_results = None
+            except Exception as e:
+                print(f"[Jawboning Compare] ⚠️ Primitive call failed: "
+                      f"{type(e).__name__}: {str(e)[:160]} "
+                      f"— inline values still used")
+                primitive_results = None
+
+            # Compare each Modi signature: inline vs primitive (only if we got results)
+            if isinstance(primitive_results, dict):
+                for sig_id, inline_value in [
+                    ('modi_on_gold',      modi_gold_jawboning),
+                    ('modi_on_austerity', modi_austerity_active),
+                ]:
+                    primitive_value = bool(primitive_results.get(sig_id, False))
+                    if primitive_value == bool(inline_value):
+                        print(f"[Jawboning Compare] ✅ {sig_id}: "
+                              f"inline={inline_value} primitive={primitive_value}")
+                    else:
+                        print(f"[Jawboning Compare] ❌ {sig_id}: "
+                              f"inline={inline_value} primitive={primitive_value} "
+                              f"— MISMATCH, investigate before Phase 5 cutover")
+        finally:
+            # Detach the executor — DO NOT wait for hung threads to complete
+            _compare_executor.shutdown(wait=False)
     # ──────────────────────────────────────────────────────────────────────
     # End strangler-fig block. Continue returning inline-computed values.
     # ──────────────────────────────────────────────────────────────────────
-
     return {
         'modi_gold_jawboning':       modi_gold_jawboning,
         'modi_austerity_active':     modi_austerity_active,
