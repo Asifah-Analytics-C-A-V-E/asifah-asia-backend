@@ -108,6 +108,23 @@ except ImportError as e:
     print(f"[China Rhetoric] WARNING: china_signal_interpreter not available ({e})")
     _INTERPRETER_AVAILABLE = False
 
+# ────────────────────────────────────────────────────────────
+# JAWBONING PRIMITIVE — Phase 5b wire-in for Xi (May 16, 2026)
+# Mirrors Trump-on-US wire-in pattern from rhetoric_tracker_us.py.
+# Detects Xi rare-earth / critical-minerals rhetoric and writes
+# jawboning:command:china:* fingerprints with 24h TTL via ME backend.
+# Cross-theater consumers (US, India, Cuba trackers + butterfly reader)
+# read these fingerprints to amplify their own actor scoring.
+# ────────────────────────────────────────────────────────────
+try:
+    from jawboning_proxy_asia import detect_jawboning_via_proxy
+    JAWBONING_PRIMITIVE_AVAILABLE = True
+    print("[China Rhetoric] ✅ Jawboning primitive available (Phase 5b mode)")
+except ImportError as e:
+    JAWBONING_PRIMITIVE_AVAILABLE = False
+    detect_jawboning_via_proxy = None
+    print(f"[China Rhetoric] WARNING: jawboning_proxy_asia not available ({e})")
+
 # ============================================
 # CONFIG
 # ============================================
@@ -2374,6 +2391,49 @@ def run_china_rhetoric_scan():
         crosstheater_amplifiers=crosstheater_amplifiers,
         regime_signals=regime_signals
     )
+
+    # ──────────────────────────────────────────────────────────────────────
+    # PHASE 5b — JAWBONING DETECTION (Xi → ME detector → Redis fingerprints)
+    # Mirrors rhetoric_tracker_us.py Phase 5b pattern. Hard-bounded threaded
+    # call so scan completes even if ME backend is slow/unreachable.
+    # Writes fingerprints directly (no dual-track compare — Xi has no
+    # inline computation to compare against, this IS the source of truth).
+    # ──────────────────────────────────────────────────────────────────────
+    if JAWBONING_PRIMITIVE_AVAILABLE:
+        from concurrent.futures import ThreadPoolExecutor, TimeoutError as _JBTimeout
+        _jb_executor = ThreadPoolExecutor(max_workers=1)
+        try:
+            _jb_future = _jb_executor.submit(
+                detect_jawboning_via_proxy,
+                leader_id='xi',
+                country_id='china',
+                actor_results=actor_results,
+                write_fingerprints=True,            # write to Redis (production mode)
+                scan_id=datetime.now(timezone.utc).isoformat(),
+            )
+            try:
+                jb_results = _jb_future.result(timeout=25)
+            except _JBTimeout:
+                print("[China Rhetoric] ⏱️ Jawboning detector exceeded 25s — "
+                      "abandoning (scan continues, fingerprints will be stale)")
+                jb_results = None
+            except Exception as e:
+                print(f"[China Rhetoric] ⚠️ Jawboning detector error: "
+                      f"{type(e).__name__}: {str(e)[:160]}")
+                jb_results = None
+
+            if isinstance(jb_results, dict):
+                fired = [sig for sig, v in jb_results.items() if v]
+                if fired:
+                    print(f"[China Rhetoric] 🦋 Xi jawboning fired: {', '.join(fired)}")
+                else:
+                    print(f"[China Rhetoric] Xi jawboning evaluated, "
+                          f"0/{len(jb_results)} signatures fired this scan")
+        finally:
+            _jb_executor.shutdown(wait=False)
+    # ──────────────────────────────────────────────────────────────────────
+    # End Phase 5b block.
+    # ──────────────────────────────────────────────────────────────────────
 
     scan_time = round(time.time() - scan_start, 1)
 
