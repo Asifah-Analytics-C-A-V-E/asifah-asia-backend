@@ -1186,7 +1186,7 @@ def _compute_dashboard_levels(actor_results):
 # THEATRE SCORE / LEVEL — overall India composite
 # ============================================================================
 
-def _compute_theatre_score(actor_results, dashboard_levels):
+def _compute_theatre_score(actor_results, dashboard_levels, l5_gate=None):
     """
     Composite score that rolls 7 actors + 3 dashboards into a single India
     posture metric. Used for the cross-theater fingerprint write and for the
@@ -1195,6 +1195,12 @@ def _compute_theatre_score(actor_results, dashboard_levels):
     Pattern: Each actor contributes weight × level. Convergence bonus when
     multiple dashboards are simultaneously elevated. Theatre level is the
     canonical 0-5 max across dashboards.
+
+    L5 GATE (v1.1.0, May 21 2026): Per platform L5 Reservation Contract,
+    theatre_level=5 requires an explicit per-axis trigger. If l5_gate is
+    provided and NO axis is True, the level is capped at 4 regardless of
+    convergence math. This prevents absorber-class trackers (India) from
+    reaching L5 purely through cross-theater amplification stacking.
     """
     weighted_sum = 0.0
     for actor_key, result in actor_results.items():
@@ -1212,17 +1218,30 @@ def _compute_theatre_score(actor_results, dashboard_levels):
     if lit_dashboards == 3: convergence_bonus = 10
 
     theatre_score = round(weighted_sum + convergence_bonus, 1)
-    theatre_level = max(
+    raw_theatre_level = max(
         dashboard_levels.get('outbound_level', 0),
         dashboard_levels.get('inbound_level', 0),
         dashboard_levels.get('internal_level', 0),
     )
 
+    # ── L5 GATE ENFORCEMENT ────────────────────────────────────────────────
+    # Cap theatre_level at 4 unless at least one L5 axis gate fired.
+    theatre_level = raw_theatre_level
+    l5_capped = False
+    if raw_theatre_level >= 5 and l5_gate is not None:
+        if not l5_gate.get('any', False):
+            theatre_level = 4
+            l5_capped = True
+            print(f"[India Rhetoric] 🚦 L5 gate enforced: raw_level=5 → "
+                  f"capped at L4 (no axis gate fired)")
+
     return {
         'theatre_score':     theatre_score,
         'theatre_level':     theatre_level,
+        'raw_theatre_level': raw_theatre_level,
         'convergence_bonus': convergence_bonus,
         'lit_dashboards':    lit_dashboards,
+        'l5_capped':         l5_capped,
     }
 
 
@@ -1893,7 +1912,181 @@ def _apply_amplifier_deltas(actor_results, deltas):
 #   • US tracker        (same direct key)
 #   • Future GPI Absorption Dimension (filters for is_absorber_node: True)
 
+# ============================================================================
+# L5 GATE COMPUTATION — Platform L5 Reservation Contract (v3.3.0, May 21 2026)
+# ============================================================================
+# Per the platform L5 Reservation Contract, theatre_level=5 requires an
+# explicit per-axis trigger. India is an absorber-class tracker — it should
+# only hit L5 when one of the four real-world conditions fires:
+#
+#   kinetic       — Active hot war (LoC/LAC clash with casualties, India-Pakistan
+#                   kinetic exchange, India-China kinetic exchange, mass communal
+#                   violence with deaths at Manipur-scale)
+#   humanitarian  — Active humanitarian crisis (mass refugee surge, IDP wave,
+#                   famine, IPC Phase 4+ acute food insecurity in India)
+#   economic      — Systemic collapse-class event (RBI emergency, capital
+#                   controls imposed, rupee crisis, BoP-class FX reserves drop)
+#   diplomatic    — Major rupture (India recalls ambassador, India expels
+#                   diplomats, suspended bilateral mechanism with major power)
+#
+# If NO axis gate fires, India caps at L4 regardless of convergence math.
+# The Asia BLUF reads this dict and enforces the cap when synthesizing signals.
 
+
+def _compute_l5_gate(actor_results, own_signals):
+    """
+    Compute per-axis L5 gate state for India.
+
+    Returns:
+        {
+            'kinetic':      bool,   # active hot war / kinetic exchange
+            'humanitarian': bool,   # mass IDP / famine / refugee crisis
+            'economic':     bool,   # systemic collapse-class event
+            'diplomatic':   bool,   # major diplomatic rupture (PNG-class)
+            'reason':       str,    # human-readable explanation if any gate fires
+            'any':          bool,   # convenience: any gate True?
+        }
+    """
+    armed     = actor_results.get('armed_forces', {}) or {}
+    pmo       = actor_results.get('pmo', {}) or {}
+    mea       = actor_results.get('mea', {}) or {}
+    econ      = actor_results.get('economic_statecraft', {}) or {}
+    hindutva  = actor_results.get('hindutva_ideological', {}) or {}
+
+    def _matched(actor_dict, phrases):
+        triggers = ' '.join(actor_dict.get('matched_triggers', []) or []).lower()
+        article_text = ' '.join(
+            (a.get('title') or '').lower() + ' ' + (a.get('trigger') or '').lower()
+            for a in (actor_dict.get('top_articles') or [])
+        )
+        joined = triggers + ' ' + article_text
+        return any(p.lower() in joined for p in phrases)
+
+    # ── KINETIC GATE ───────────────────────────────────────────────────────
+    # Triggers from ARMED_FORCES_TRIGGERS L5 ladder + HINDUTVA_TRIGGERS L5
+    kinetic_gate = (
+        _matched(armed, [
+            'india strikes across loc', 'india strikes pakistan',
+            'india crosses lac', 'india fires across loc',
+            'army combat operations', 'naval task force engaged',
+            'indian air force strikes', 'army returns fire',
+        ])
+        or _matched(hindutva, [
+            'mass communal violence', 'temple mosque attack deaths',
+        ])
+    )
+
+    # ── HUMANITARIAN GATE ──────────────────────────────────────────────────
+    # India does not currently have a humanitarian-crisis trigger ladder
+    # built (no famine, no mass-displacement event in scope right now).
+    # Placeholder: only fires if armed_forces or hindutva specifically
+    # mention mass casualties / mass displacement events.
+    humanitarian_gate = (
+        _matched(hindutva, [
+            'mass communal violence', 'temple mosque attack deaths',
+        ])
+        or _matched(armed, [
+            'mass casualties', 'mass displacement', 'refugee crisis',
+        ])
+    )
+
+    # ── ECONOMIC GATE ──────────────────────────────────────────────────────
+    # Triggers from ECONOMIC_STATECRAFT_TRIGGERS L5 ladder
+    economic_gate = _matched(econ, [
+        'rbi emergency rate hike', 'capital controls imposed',
+        'india approaches imf', 'rupee record low crisis',
+        'forex reserves crisis', 'india suspends gold imports',
+        'budget emergency measures',
+    ])
+
+    # ── DIPLOMATIC GATE ────────────────────────────────────────────────────
+    # Triggers from MEA_TRIGGERS L5 ladder
+    diplomatic_gate = _matched(mea, [
+        'india recalls ambassador', 'india expels diplomats',
+        'india suspends diplomatic ties', 'mea downgrades relations',
+        'india breaks bilateral mechanism',
+    ])
+
+    # ── Reason string (human-readable) ─────────────────────────────────────
+    fired_axes = []
+    if kinetic_gate:      fired_axes.append('kinetic')
+    if humanitarian_gate: fired_axes.append('humanitarian')
+    if economic_gate:     fired_axes.append('economic')
+    if diplomatic_gate:   fired_axes.append('diplomatic')
+    reason = f"L5 gate fired: {', '.join(fired_axes)}" if fired_axes else "No L5 axis gate fired"
+
+    return {
+        'kinetic':      kinetic_gate,
+        'humanitarian': humanitarian_gate,
+        'economic':     economic_gate,
+        'diplomatic':   diplomatic_gate,
+        'reason':       reason,
+        'any':          any([kinetic_gate, humanitarian_gate, economic_gate, diplomatic_gate]),
+    }
+
+
+def _build_india_signal_text(theatre_level, theatre_label, theatre_score,
+                              lit_dashboards, upstream_stressors, l5_gate,
+                              absorption_count):
+    """
+    Build the rich signal_text_short and signal_text_long that the Asia BLUF
+    will display verbatim. The whole point: the reader sees WHY India is at
+    its current level, not just the level number.
+
+    Returns: (signal_text_short, signal_text_long)
+    """
+    flag = '🇮🇳'
+    stressor_brief_map = {
+        'iran_hormuz_oil':           'Iran-Hormuz oil',
+        'iran_brics_dedollarization': 'Iran-BRICS',
+        'china_pla_lac_posture':     'China LAC',
+        'china_tech_economic_coercion': 'China tech coercion',
+        'china_brics_architecture':  'China-BRICS',
+        'pakistan_loc_escalation':   'PAK-LoC',
+        'pakistan_nuclear_signaling': 'PAK nuclear',
+        'us_tariff_pressure':        'US tariffs',
+        'us_executive_volatility':   'US volatility',
+        'us_h1b_pressure':           'US H-1B/Khalistan',
+    }
+    stressor_brief = [stressor_brief_map.get(s, s) for s in (upstream_stressors or [])]
+    stressors_short = ', '.join(stressor_brief[:3])  # top 3 for short text
+    stressors_long  = ', '.join(stressor_brief) if stressor_brief else 'none detected'
+
+    # ── SHORT TEXT (≤120 chars target) ────────────────────────────────────
+    if l5_gate.get('any'):
+        # Genuine L5 — explain what fired
+        short = f'{flag} INDIA L{theatre_level} {theatre_label} — {l5_gate.get("reason", "L5 trigger fired")}'
+    elif theatre_level == 4:
+        # The common case: L4 absorber posture with explanatory context
+        if stressors_short:
+            short = f'{flag} INDIA L4 {theatre_label} — absorbing {stressors_short}'
+        else:
+            short = f'{flag} INDIA L4 {theatre_label} — own-signal posture, no major upstream'
+    else:
+        # L0-L3 baseline / warning
+        short = f'{flag} INDIA L{theatre_level} {theatre_label}'
+
+    # ── LONG TEXT (the full so-what) ──────────────────────────────────────
+    long = (
+        f'{flag} INDIA at L{theatre_level} {theatre_label} (theatre score {theatre_score:.0f}/100, '
+        f'{lit_dashboards}/3 dashboards lit). '
+    )
+    if upstream_stressors:
+        long += f'Upstream pressure: {stressors_long}. '
+    if absorption_count > 0:
+        long += f'{absorption_count} absorption signature(s) firing. '
+    if l5_gate.get('any'):
+        long += f'L5 gate: {l5_gate["reason"]}. '
+    else:
+        long += 'No L5 axis gate fired — absorber-class posture without kinetic/humanitarian/economic/diplomatic L5 trigger. '
+    long += (
+        "India is the platform's first absorber-class tracker; readings reflect "
+        "absorbed pressure from Iran/China/Pakistan/US theaters, not autonomous "
+        "Indian initiation."
+    )
+
+    return short[:120], long
+                                
 def _build_india_fingerprint(
     actor_results,
     dashboard_levels,
@@ -2452,13 +2645,19 @@ def run_india_rhetoric_scan():
     # ── Step 4: Apply amplifier deltas
     _apply_amplifier_deltas(actor_results, reads['amplifier_actor_deltas'])
 
-    # ── Step 5: Compute dashboard levels + theatre score
+    # ── Step 5a: Compute dashboard levels
     dashboard_levels = _compute_dashboard_levels(actor_results)
-    theatre          = _compute_theatre_score(actor_results, dashboard_levels)
 
-    # ── Step 6: Build own_signals + bidirectional flags
+    # ── Step 5b: Build own_signals first (L5 gate needs them)
     own_signals         = _build_own_signals(actor_results)
     bidirectional_flags = _build_bidirectional_flags(actor_results)
+
+    # ── Step 5c: Compute L5 gate state (v3.3.0 — Platform L5 Reservation Contract)
+    l5_gate = _compute_l5_gate(actor_results, own_signals)
+    print(f"[India Rhetoric] L5 gate state: {l5_gate.get('reason', 'unknown')}")
+
+    # ── Step 5d: Compute theatre score WITH L5 gate enforcement
+    theatre = _compute_theatre_score(actor_results, dashboard_levels, l5_gate=l5_gate)
 
     # ── Step 7: Butterfly Build — call absorption proxy
     absorption_results = _run_absorption_detection(
@@ -2482,16 +2681,39 @@ def run_india_rhetoric_scan():
 
     scan_duration = round(time.time() - scan_start, 2)
 
+    # ── Step 9b: Build signal text (rich short + long that Asia BLUF will display)
+    theatre_label = ESCALATION_LEVELS[theatre['theatre_level']]['label']
+    signal_text_short, signal_text_long = _build_india_signal_text(
+        theatre_level     = theatre['theatre_level'],
+        theatre_label     = theatre_label,
+        theatre_score     = theatre['theatre_score'],
+        lit_dashboards    = theatre['lit_dashboards'],
+        upstream_stressors= reads['india_upstream_stressors'],
+        l5_gate           = l5_gate,
+        absorption_count  = fingerprint['absorption_count'],
+    )
+
     # ── Step 10: Assemble full scan payload
     payload = {
         'success':           True,
         'scanned_at':        scanned_at,
         'scan_duration_sec': scan_duration,
 
+        # ── Canonical fields (Asia BLUF reads these) ─────────────────────
         'theatre_score':     theatre['theatre_score'],
         'theatre_level':     theatre['theatre_level'],
-        'theatre_label':     ESCALATION_LEVELS[theatre['theatre_level']]['label'],
+        'theatre_label':     theatre_label,
         'theatre_color':     ESCALATION_LEVELS[theatre['theatre_level']]['color'],
+
+        # ── L5 Reservation Contract fields (v3.3.0) ──────────────────────
+        'source_class':      'absorber',     # vs 'command_node' for Iran/China etc
+        'l5_gate':           l5_gate,
+        'signal_text_short': signal_text_short,
+        'signal_text_long':  signal_text_long,
+
+        # ── Score breakdown / debug fields ───────────────────────────────
+        'raw_theatre_level': theatre.get('raw_theatre_level', theatre['theatre_level']),
+        'l5_capped':         theatre.get('l5_capped', False),
         'convergence_bonus': theatre['convergence_bonus'],
         'lit_dashboards':    theatre['lit_dashboards'],
 
