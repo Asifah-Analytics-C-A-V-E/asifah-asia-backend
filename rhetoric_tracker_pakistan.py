@@ -366,8 +366,19 @@ ACTORS = {
             'pakistan mediate iran', 'pakistan iran us mediation',
             'witkoff pakistan', 'kushner pakistan',
             'pakistan hosts iran talks', 'islamabad iran us',
+            # ── v1.5.0 May 24 2026 — Munir shuttle weekend ──
+            'munir tehran', 'munir iran', 'asim munir tehran',
+            'asim munir iran', 'field marshal munir',
+            'pakistan army chief tehran', 'pakistan army chief iran',
+            'munir pezeshkian', 'munir qalibaf',
+            'munir mediates iran', 'pakistan delivers iran proposal',
+            'pakistan iran 14-clause', 'pakistan iran mou',
+            'pakistan facilitates iran us',
+            'pakistan iran encouraging progress',
+            'pakistan iran final understanding',
             # Farsi / Urdu
             'ایران پاکستان', 'پاکستان میانجی',
+            'منیر تهران', 'فیلڈ مارشل منیر',
         ],
         'baseline_statements_per_week': 3,
     },
@@ -446,6 +457,13 @@ ACTORS = {
             'us counterterror pakistan',
             # Trump cancellation specific
             'trump cancels pakistan', 'witkoff pakistan cancelled',
+            # ── v1.5.0 May 24 2026 — Trump credits Pakistan mediation ──
+            'trump credits pakistan', 'trump praises pakistan iran',
+            'trump pakistan iran deal', 'trump pakistan munir',
+            'pakistan munir trump', 'us response iran via pakistan',
+            'us formal response iran pakistan',
+            'us via pakistan iran', 'state department iran pakistan',
+            'us welcomes pakistan iran mediation',
         ],
         'baseline_statements_per_week': 4,
     },
@@ -536,22 +554,59 @@ NUCLEAR_DOCTRINE_TRIGGERS = {
 PROXY_MEDIATION_TRIGGERS = {
     # Pakistan AS mediator — this is a POSITIVE signal but "elevated" tempo
     # (high mediation activity) is itself analytically important
+    # v1.5.0 (May 24, 2026): Expanded for Munir shuttle + Trump 'largely
+    # negotiated' weekend. Pakistan delivered Iran's MOU proposal to US;
+    # formal US response expected May 24. Field Marshal Asim Munir is
+    # lead mediator, met Pezeshkian + Qalibaf in Tehran on May 23.
     5: [  # Mediation breakthrough
         'pakistan brokers iran us deal', 'pakistan mediation success',
+        # ── v1.5.0 May 24 2026 — breakthrough framing ──
+        'pakistan brokers iran peace', 'pakistan brokers iran agreement',
+        'pakistan delivers iran us deal', 'pakistan iran us deal signed',
+        'munir brokers iran us deal', 'munir secures iran agreement',
+        'pakistan facilitates iran peace',
     ],
     4: [  # Active high-level mediation
         'witkoff islamabad', 'pakistan hosts iran us',
         'kushner islamabad', 'pakistan iran us breakthrough',
+        # ── v1.5.0 May 24 2026 — Munir-led active mediation ──
+        'munir tehran', 'munir iran', 'munir pezeshkian',
+        'munir qalibaf', 'munir mediates iran',
+        'asim munir tehran', 'asim munir iran',
+        'asim munir mediates', 'field marshal munir iran',
+        'field marshal munir tehran', 'pakistan army chief tehran',
+        'pakistan army chief iran', 'munir leaves tehran',
+        'munir departs tehran', 'munir mediation iran',
+        'pakistan delivers iran proposal', 'pakistan delivered iran proposal',
+        'pakistan hands iran proposal', 'pakistan iran us proposal',
+        'pakistan iran mou', 'pakistan iran 14-clause',
+        'pakistan iran framework', 'pakistan iran final understanding',
+        'pakistan iran encouraging progress',
+        'pakistan multination iran mediation',
     ],
     3: [  # Mediation underway
         'pakistan mediates iran', 'pakistan iran us mediation',
         'islamabad iran talks', 'pakistan envoy iran',
+        # ── v1.5.0 May 24 2026 — sustained shuttle ──
+        'pakistan iran us shuttle', 'pakistan iran shuttle',
+        'pakistan iran channel open', 'pakistan iran us channel',
+        'islamabad iran us shuttle', 'pakistan iran facilitation',
+        'pakistan facilitates iran us', 'pakistan iran nudge',
+        'pakistan iran us facilitation',
+        'pakistan iran qatar mediation', 'pakistan qatar iran mediation',
+        'pakistan gulf iran mediation', 'pakistan western iran mediation',
     ],
     2: [
         'pakistan iran channel', 'pakistan diplomatic channel iran',
+        # ── v1.5.0 May 24 2026 — soft signaling ──
+        'pakistan iran message exchange', 'pakistan iran proposal exchange',
+        'pakistan iran us interlocutor', 'pakistan iran intermediary',
+        'pakistan iran neutral broker',
     ],
     1: [
         'pakistan diplomacy iran', 'pakistan mediator',
+        # ── v1.5.0 May 24 2026 ──
+        'pakistan iran mediation effort',
     ],
 }
 
