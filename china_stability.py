@@ -421,6 +421,138 @@ def _fetch_brent_price():
     return None, 0.0, 'unknown'
 
 
+# ============================================================
+# HKEX HANG SENG INDEX FETCHER (v1.0 — May 25 2026)
+# ============================================================
+# Canonical TASE pattern mirror for Hong Kong Stock Exchange.
+# Black Swan POC: tracks Chinese economic confidence via HK-listed equity
+# performance — same architectural family as TASE-for-Israel, allows
+# comparative analysis of how regional conflict signals correlate with
+# financial-confidence stress in two adversary-proximate equity markets.
+#
+# Sourcing strategy (3-tier fallback):
+#   Primary:  Yahoo Finance (^HSI)              — free, no key
+#   Fallback: Yahoo Finance (^HSCE / 0001.HK)   — alternate Hong Kong tickers
+#   Last resort: Cached last-known value        — 7-day Redis TTL
+#
+# Market-hours awareness: HKEX trades Mon–Fri (Hong Kong Time, UTC+8).
+# We don't skip on weekends — Yahoo serves the last close fine — but we
+# DO mark the trend label appropriately when market is closed.
+# ============================================================
+def _fetch_hkex_index():
+    """
+    Fetch Hong Kong Hang Seng Index (HSI).
+    Primary:  Yahoo Finance ^HSI (free, no key)
+    Fallback: Yahoo Finance ^HSCE (Hang Seng China Enterprises) / 0001.HK
+    Last resort: Cached last-known value (7-day Redis TTL)
+
+    Returns dict matching TASE-pattern schema:
+        {index, value, change_pct_24h, trend, source, sparkline, timestamp}
+    """
+    print("[China Stability] Fetching HKEX Hang Seng...")
+
+    # ── Check HKEX market hours (Mon–Fri, Hong Kong time UTC+8) ──
+    hk_tz = timezone(timedelta(hours=8))
+    now_hk = datetime.now(hk_tz)
+    hkex_closed = now_hk.weekday() in (5, 6)  # 5=Saturday, 6=Sunday
+    if hkex_closed:
+        print(f"[China Stability] HKEX closed (weekday={now_hk.weekday()}) — Yahoo will serve last close")
+
+    HKEX_LAST_KNOWN_KEY = 'hkex_last_known'
+
+    # ── Primary + Fallback: Yahoo Finance tickers in priority order ──
+    # ^HSI = Hang Seng Index (main benchmark, 50 blue-chips)
+    # ^HSCE = Hang Seng China Enterprises Index (H-shares, mainland Chinese cos listed in HK)
+    # 0001.HK = CK Hutchison (last-ditch sanity check that Yahoo HK feed is alive)
+    for ticker in ['^HSI', '^HSCE', '0001.HK']:
+        try:
+            url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}?interval=1d&range=5d"
+            r = requests.get(url, timeout=(5, 10), headers={
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            })
+            if r.status_code == 200:
+                data = r.json()
+                result = data.get('chart', {}).get('result', [{}])[0]
+                meta = result.get('meta', {})
+                price = meta.get('regularMarketPrice')
+                prev = meta.get('previousClose') or meta.get('chartPreviousClose')
+
+                # Build sparkline from 5-day daily closes
+                sparkline = []
+                indicators = result.get('indicators', {}).get('quote', [{}])[0]
+                closes = indicators.get('close', []) or []
+                timestamps = result.get('timestamp', []) or []
+                for ts, c in zip(timestamps, closes):
+                    if c is not None:
+                        try:
+                            sparkline.append({
+                                'time': datetime.fromtimestamp(ts, tz=timezone.utc).strftime('%m-%d'),
+                                'value': round(float(c), 2)
+                            })
+                        except Exception:
+                            continue
+
+                if price and price > 0:
+                    change_pct = ((price - prev) / prev * 100) if prev else 0
+                    print(f"[China Stability] ✅ Yahoo {ticker}: {price:,.2f} ({change_pct:+.2f}%) · {len(sparkline)} sparkline pts")
+
+                    # Cache this good value for last-resort use (7-day TTL)
+                    try:
+                        _redis_set(
+                            HKEX_LAST_KNOWN_KEY,
+                            {'value': round(price, 2), 'change_pct_24h': round(change_pct, 3), 'index': ticker.replace('^', '')},
+                            ttl=7 * 24 * 3600
+                        )
+                    except Exception:
+                        pass
+
+                    return {
+                        'index': ticker.replace('^', ''),
+                        'value': round(price, 2),
+                        'change_pct_24h': round(change_pct, 3),
+                        'trend': 'rising' if change_pct > 0.3 else ('falling' if change_pct < -0.3 else 'flat'),
+                        'source': 'Yahoo Finance',
+                        'sparkline': sparkline,
+                        'market_status': 'closed' if hkex_closed else 'open',
+                        'timestamp': datetime.now(timezone.utc).isoformat()
+                    }
+        except Exception as e:
+            print(f"[China Stability] Yahoo {ticker} error: {str(e)[:80]}")
+            continue
+
+    # ── Last resort: serve cached last-known value ──
+    try:
+        cached = _redis_get(HKEX_LAST_KNOWN_KEY)
+        if cached and isinstance(cached, dict):
+            print(f"[China Stability] Using last-known HKEX value: {cached.get('value')}")
+            return {
+                'index': cached.get('index', 'HSI'),
+                'value': cached.get('value'),
+                'change_pct_24h': cached.get('change_pct_24h', 0),
+                'trend': 'unknown',
+                'source': 'Yahoo Finance (last known)',
+                'sparkline': [],
+                'estimated': True,
+                'market_status': 'closed' if hkex_closed else 'unknown',
+                'timestamp': datetime.now(timezone.utc).isoformat()
+            }
+    except Exception as e:
+        print(f"[China Stability] Last-known HKEX cache read failed: {e}")
+
+    # Nothing worked — return unavailable shape so frontend renders gracefully
+    return {
+        'index': 'HSI',
+        'value': None,
+        'change_pct_24h': 0,
+        'trend': 'unknown',
+        'source': 'Unavailable',
+        'sparkline': [],
+        'estimated': True,
+        'market_status': 'unknown',
+        'timestamp': datetime.now(timezone.utc).isoformat()
+    }
+
+
 def _get_economic_indicator_boost(yuan_rate, yuan_status, brent_price, brent_status):
     """
     Convert live economic indicators into an instability level boost (0-2).
@@ -661,6 +793,7 @@ def run_china_stability_scan():
     # Fetch live economic indicators
     yuan_rate, yuan_status                  = _fetch_yuan_usd()
     brent_price, brent_change, brent_status = _fetch_brent_price()
+    hkex                                    = _fetch_hkex_index()  # v1.0 May 25 2026 — HKEX HSI fetcher
     econ_indicator_boost = _get_economic_indicator_boost(
         yuan_rate, yuan_status, brent_price, brent_status
     )
@@ -772,6 +905,7 @@ def run_china_stability_scan():
         'brent_price':       brent_price,
         'brent_change_pct':  brent_change,
         'brent_status':      brent_status,
+        'hkex':              hkex,                  # v1.0 May 25 2026 — HKEX Hang Seng (canonical TASE-pattern)
         'econ_indicator_boost': econ_indicator_boost,
 
         'version': '1.0.0-china-stability',
@@ -882,6 +1016,7 @@ def register_china_stability_endpoints(app):
             'brent_price':      cached.get('brent_price'),
             'brent_change_pct': cached.get('brent_change_pct', 0),
             'brent_status':     cached.get('brent_status', 'unknown'),
+            'hkex':             cached.get('hkex', {}),     # v1.0 May 25 2026
             'version':          '1.0.0-china-stability',
         })
 
