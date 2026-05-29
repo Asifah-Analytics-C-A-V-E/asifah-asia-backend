@@ -916,6 +916,96 @@ def _fetch_newsapi(query, days=3, max_results=30):
 
 
 def _fetch_google_news_rss(query, label, max_items=15):
+    """v1.5.2 (May 29 2026) — cascaded RSS hardening from us_stability.py:
+       - Chrome 130 + Client Hints headers
+       - Firefox UA fallback on 403
+       - curl_cffi TLS impersonation on persistent 403
+       - {*} namespace wildcard XML parser
+    """
+    articles = []
+    encoded = urllib.parse.quote(query)
+    url = f"https://news.google.com/rss/search?q={encoded}&hl=en&gl=US&ceid=US:en"
+    headers = {
+        'User-Agent': (
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+            'AppleWebKit/537.36 (KHTML, like Gecko) '
+            'Chrome/130.0.0.0 Safari/537.36'
+        ),
+        'Accept': ('text/html,application/xhtml+xml,application/xml;q=0.9,'
+                   'application/rss+xml;q=0.9,image/avif,image/webp,*/*;q=0.8'),
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept-Encoding': 'gzip, deflate',
+        'Cache-Control': 'max-age=0',
+        'Sec-Ch-Ua': '"Chromium";v="130", "Google Chrome";v="130", "Not?A_Brand";v="99"',
+        'Sec-Ch-Ua-Mobile': '?0',
+        'Sec-Ch-Ua-Platform': '"Windows"',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+        'Sec-Fetch-User': '?1',
+        'Upgrade-Insecure-Requests': '1',
+        'Referer': 'https://www.google.com/',
+        'DNT': '1',
+    }
+    try:
+        resp = requests.get(url, timeout=(5, 15), headers=headers, allow_redirects=True)
+        # Tier 2: Firefox UA on 403
+        if resp.status_code == 403:
+            print(f"[China Stability] GNews '{label}': HTTP 403 — retrying with Firefox UA")
+            firefox_headers = dict(headers)
+            firefox_headers['User-Agent'] = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:130.0) '
+                                              'Gecko/20100101 Firefox/130.0')
+            firefox_headers.pop('Sec-Ch-Ua', None)
+            firefox_headers.pop('Sec-Ch-Ua-Mobile', None)
+            firefox_headers.pop('Sec-Ch-Ua-Platform', None)
+            firefox_headers['Referer'] = 'https://duckduckgo.com/'
+            time.sleep(1.2)
+            resp = requests.get(url, timeout=(5, 15), headers=firefox_headers, allow_redirects=True)
+        # Tier 3: curl_cffi TLS impersonation
+        if resp.status_code == 403 and CURL_CFFI_AVAILABLE:
+            print(f"[China Stability] GNews '{label}': HTTP 403 — retrying with curl_cffi TLS impersonation")
+            try:
+                time.sleep(0.8)
+                cc_resp = curl_requests.get(url, impersonate='chrome',
+                                            timeout=15, allow_redirects=True)
+                if cc_resp.status_code == 200:
+                    class _CCWrapper:
+                        def __init__(self, cc):
+                            self.status_code = cc.status_code
+                            self.content = cc.content
+                            self.text = cc.text
+                    resp = _CCWrapper(cc_resp)
+                    print(f"[China Stability] GNews '{label}': curl_cffi rescued")
+                else:
+                    print(f"[China Stability] GNews '{label}': curl_cffi also got HTTP {cc_resp.status_code}")
+            except Exception as cc_err:
+                print(f"[China Stability] GNews '{label}': curl_cffi error {str(cc_err)[:100]}")
+        if resp.status_code == 200:
+            root = ET.fromstring(resp.content)
+            # {*} wildcard namespace parser
+            all_items = (root.findall('.//{*}item') or
+                         root.findall('.//{*}entry'))
+            for item in all_items[:max_items]:
+                title_el = item.find('{*}title')
+                link_el  = item.find('{*}link')
+                pub_el   = item.find('{*}pubDate')
+                if title_el is not None and title_el.text:
+                    link_text = ''
+                    if link_el is not None:
+                        link_text = (link_el.text or link_el.get('href') or '').strip()
+                    articles.append({
+                        'title':       title_el.text.strip(),
+                        'description': title_el.text.strip(),
+                        'url':         link_text,
+                        'publishedAt': pub_el.text if (pub_el is not None and pub_el.text) else '',
+                        'source':      {'name': label},
+                        'content':     title_el.text.strip(),
+                        'language':    'en',
+                    })
+        print(f"[China Stability] GNews '{label}': {len(articles)} articles")
+    except Exception as e:
+        print(f"[China Stability] GNews error: {str(e)[:80]}")
+    return articles
 
 
 # ============================================
