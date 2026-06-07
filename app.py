@@ -211,6 +211,8 @@ CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=False)
 # CONFIGURATION
 # ========================================
 NEWSAPI_KEY = os.environ.get('NEWSAPI_KEY')
+BRAVE_API_KEY = os.environ.get('BRAVE_API_KEY')
+BRAVE_NEWS_URL = "https://api.search.brave.com/res/v1/news/search"
 GDELT_BASE_URL = "http://api.gdeltproject.org/api/v2/doc/doc"
 
 # Cache TTL in seconds
@@ -586,6 +588,7 @@ TRAVEL_ADVISORY_CODES = {
     'pakistan':    ['PK'],
     'south_korea': ['KS'],
     'taiwan':      ['TW'],
+    'vietnam':     ['VM'],
 }
 
 # State Dept country name slug for direct advisory links
@@ -598,6 +601,7 @@ TRAVEL_ADVISORY_SLUGS = {
     'pakistan':    'pakistan',
     'south_korea': 'south-korea-republic-of-korea',
     'taiwan':      'taiwan',
+    'vietnam':     'vietnam',
 }
 
 TRAVEL_ADVISORY_LEVELS = {
@@ -640,6 +644,8 @@ SOURCE_WEIGHTS = {
             'Times of India', 'Hindustan Times', 'NDTV',
             # Taiwan
             'Taipei Times', 'Focus Taiwan', 'Liberty Times',
+            # Vietnam / Southeast Asia
+            'VnExpress', 'Tuoi Tre News', 'VietnamNet', 'Vietnam News',
             # China state
             'Global Times', 'Xinhua', 'CGTN',
             # Broadcast + DPRK specialists
@@ -674,6 +680,7 @@ TARGET_BASELINES = {
     'china':       {'base_adjustment': +8,  'description': 'Regional power competition; SCS disputes; Level 2 advisory'},
     'india':       {'base_adjustment': +6,  'description': 'Kashmir LoC; China LAC tensions; Level 2 advisory'},
     'japan':       {'base_adjustment': +4,  'description': 'NK missile overflights; China ADIZ pressure; Level 1'},
+    'vietnam':     {'base_adjustment': +5,  'description': 'SCS sovereignty disputes (Vanguard Bank/Paracels); China Coast Guard friction; stable one-party state; Level 1 advisory'},
 }
 
 # ========================================
@@ -931,6 +938,29 @@ TARGET_KEYWORDS = {
             'taiwan defense', 'CredibleDefense',
         ],
     },
+
+    'vietnam': {
+        'keywords': [
+            # Top 8 form the NewsAPI/GDELT query (keywords[:8]) - keep them sharp
+            'south china sea vietnam', 'vanguard bank',
+            'vietnam china standoff', 'vietnam coast guard',
+            'spratly islands', 'paracel islands',
+            'vietnam maritime', 'us vietnam defense',
+            # Maritime sovereignty / incidents
+            'vietnam south china sea', 'china survey vessel vietnam',
+            'china coast guard vietnam', 'vietnam oil rig standoff',
+            'haiyang dizhi', 'vietnam fishing vessel china',
+            'vietnam maritime militia', 'cam ranh bay',
+            # External balancing / partnerships
+            'vietnam comprehensive strategic partnership',
+            'vietnam philippines coast guard', 'vietnam india defense',
+            'vietnam russia arms', 'vietnam navy', 'vietnam naval exercise',
+        ],
+        'reddit_keywords': [
+            'vietnam', 'south china sea', 'vanguard bank',
+            'spratly', 'CredibleDefense',
+        ],
+    },
 }
 
 
@@ -962,6 +992,11 @@ NOTAM_REGIONS = {
         'name': 'South Asia (India/Pakistan/Afghanistan)',
         'icao_codes': ['VIDP', 'OPKC', 'OAKB'],  # Delhi, Karachi, Kabul
         'fir': ['VIDF', 'OPLR', 'OAKX'],
+    },
+    'vietnam': {
+        'name': 'Vietnam / SCS Coast',
+        'icao_codes': ['VVNB', 'VVTS', 'VVDN'],  # Hanoi (Noi Bai), Ho Chi Minh (Tan Son Nhat), Da Nang
+        'fir': ['VVTS', 'VVNB'],  # Ho Chi Minh FIR, Hanoi FIR
     },
 }
 
@@ -1135,6 +1170,26 @@ REDDIT_SUBREDDITS = {
         # Conflict footage
         'CombatFootage',
     ],
+
+    # -------------------------------------------------------
+    # VIETNAM - South China Sea, Vanguard Bank, China CG friction
+    # -------------------------------------------------------
+    'vietnam': [
+        # Core geopolitics / defense
+        'geopolitics', 'CredibleDefense', 'worldnews', 'LessCredibleDefence',
+        'WarCollege', 'NCD', 'GlobalPowers', 'OSINT',
+        'anime_titties',
+        # Vietnam-specific
+        'Vietnam',
+        # SCS neighbors / China angle
+        'Philippines', 'Sino', 'china', 'taiwan',
+        # Regional
+        'southeast_asia', 'AsiaPacific', 'EastAsia',
+        # Naval
+        'navy', 'WarshipPorn',
+        # Conflict footage
+        'CombatFootage',
+    ],
 }
 
 
@@ -1254,6 +1309,56 @@ def fetch_newsapi_articles(query, days=7):
     except Exception as e:
         print(f"[Asia v1.0] NewsAPI error: {str(e)[:100]}")
     return []
+
+
+def fetch_brave_articles(query, days=7, count=20):
+    """Fetch news from Brave Search API. Tertiary fallback when GDELT + NewsAPI
+    come back thin (GDELT soft-block / NewsAPI quota). Key in BRAVE_API_KEY env var."""
+    if not BRAVE_API_KEY:
+        return []
+    try:
+        headers = {
+            'Accept': 'application/json',
+            'Accept-Encoding': 'gzip',
+            'X-Subscription-Token': BRAVE_API_KEY,
+        }
+        freshness = 'pw' if days <= 7 else 'pm'  # past-week vs past-month
+        params = {
+            'q': query[:380],
+            'count': min(count, 50),
+            'freshness': freshness,
+            'spellcheck': 0,
+        }
+        resp = requests.get(BRAVE_NEWS_URL, headers=headers, params=params, timeout=(5, 12))
+        if resp.status_code == 429:
+            print("[Asia Brave] rate-limited (429)")
+            return []
+        if resp.status_code != 200:
+            print(f"[Asia Brave] HTTP {resp.status_code}")
+            return []
+        results = (resp.json().get('results', []) or [])
+        articles = []
+        for r in results:
+            title = (r.get('title', '') or '').strip()
+            if not title:
+                continue
+            desc = (r.get('description', '') or '')
+            host = (r.get('meta_url', {}) or {}).get('hostname', '') or 'Brave News'
+            articles.append({
+                'title':       title[:200],
+                'description': desc[:500],
+                'url':         r.get('url', ''),
+                'publishedAt': r.get('page_age', '') or r.get('age', '') or '',
+                'source':      {'name': host},
+                'content':     desc[:500],
+                'language':    'en',
+            })
+        if articles:
+            print(f"[Asia Brave] {len(articles)} articles (fallback)")
+        return articles
+    except Exception as e:
+        print(f"[Asia Brave] error: {str(e)[:100]}")
+        return []
 
 
 # ========================================
@@ -1860,6 +1965,7 @@ def _run_threat_scan(target, days=7):
     articles_gdelt_ur = []
     articles_gdelt_fa = []
     articles_gdelt_ja = []
+    articles_gdelt_vi = []
 
     if target in ('china', 'taiwan'):
         time.sleep(0.5)
@@ -1875,6 +1981,22 @@ def _run_threat_scan(target, days=7):
     if target == 'japan':
         time.sleep(0.5)
         articles_gdelt_ja = fetch_gdelt_articles(query, days, 'jpn')
+    if target == 'vietnam':
+        time.sleep(0.5)
+        articles_gdelt_vi = fetch_gdelt_articles(query, days, 'vie')
+
+    # -- Brave Search fallback: fires only when GDELT + NewsAPI came back thin --
+    # (GDELT soft-blocked/rate-limited or NewsAPI quota exhausted). Backend-wide:
+    # benefits every target, not just Vietnam. Key lives in BRAVE_API_KEY env var.
+    articles_brave = []
+    _primary_count = len(articles_en) + len(articles_gdelt_en)
+    if _primary_count < 10:
+        print(f"[Asia Brave] Primary thin ({_primary_count} articles) - firing Brave fallback")
+        try:
+            articles_brave = fetch_brave_articles(query, days)
+        except Exception as e:
+            print(f"[Asia Brave] fallback error: {str(e)[:100]}")
+            articles_brave = []
 
     # Reddit
     articles_reddit = fetch_reddit_posts(
@@ -1898,6 +2020,34 @@ def _run_threat_scan(target, days=7):
                 '台灣海峽 OR 解放軍 OR 台海', 'Taiwan News (ZH)', lang='zh', gl='TW'))
         except Exception as e:
             print(f"Taiwan ZH RSS error: {e}")
+
+    if target == 'vietnam':
+        try:
+            rss_articles.extend(fetch_google_news_rss(
+                'Vietnam South China Sea OR Vanguard Bank OR Vietnam coast guard OR Spratly',
+                'Vietnam News'))
+        except Exception as e:
+            print(f"Vietnam RSS error: {e}")
+        try:
+            rss_articles.extend(fetch_google_news_rss(
+                'Biển Đông OR Trường Sa OR Hoàng Sa',
+                'Vietnam News (VI)', lang='vi', gl='VN'))
+        except Exception as e:
+            print(f"Vietnam VI RSS error: {e}")
+        # VnExpress International - Vietnam's largest online paper (EN edition)
+        try:
+            rss_articles.extend(fetch_direct_rss(
+                'https://e.vnexpress.net/rss/news.rss',
+                'VnExpress', weight=0.85))
+        except Exception as e:
+            print(f"VnExpress RSS error: {e}")
+        # Tuoi Tre News - major daily (EN edition)
+        try:
+            rss_articles.extend(fetch_direct_rss(
+                'https://tuoitrenews.vn/rss/news.rss',
+                'Tuoi Tre News', weight=0.8))
+        except Exception as e:
+            print(f"Tuoi Tre RSS error: {e}")
 
     if target == 'north_korea':
         try:
@@ -2179,6 +2329,7 @@ def _run_threat_scan(target, days=7):
         articles_en + articles_gdelt_en +
         articles_gdelt_zh + articles_gdelt_ko +
         articles_gdelt_ur + articles_gdelt_fa + articles_gdelt_ja +
+        articles_gdelt_vi + articles_brave +
         articles_reddit + rss_articles + telegram_articles +
         bluesky_articles
     )
