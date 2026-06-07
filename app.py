@@ -2320,7 +2320,19 @@ def _run_threat_scan(target, days=7):
     bluesky_articles = []
     if BLUESKY_AVAILABLE:
         try:
-            bluesky_articles = fetch_bluesky_for_target(target, days, max_posts_per_account=20)
+            raw_bsky = fetch_bluesky_for_target(target, days, max_posts_per_account=20)
+            # Relevance gate: global ['*'] accounts (WarTranslated, State Dept, Trump)
+            # post across ALL theatres. Keep only posts that actually mention THIS
+            # target, so a Crimea explosion never scores as a Vietnam signal. Mirrors
+            # the Telegram keyword filter, which already does this.
+            _bsky_kws = [k.lower() for k in TARGET_KEYWORDS.get(target, {}).get('keywords', [])][:15]
+            _bsky_name = target.replace('_', ' ').lower()
+            bluesky_articles = []
+            for a in raw_bsky:
+                _txt = (a.get('title', '') + ' ' + a.get('description', '')).lower()
+                if _bsky_name in _txt or any(k in _txt for k in _bsky_kws):
+                    bluesky_articles.append(a)
+            print(f"[{target}] Bluesky: {len(bluesky_articles)}/{len(raw_bsky)} posts on-target")
         except Exception as e:
             print(f"[{target}] Bluesky error: {str(e)[:100]}")
             bluesky_articles = []
