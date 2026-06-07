@@ -75,6 +75,7 @@ ASIA_CHANNELS = [
 
     # General English news
     'BBCBreaking',             # BBC Breaking News
+    'HMIntelligence',          # HM Intelligence -- OSINT aggregator, China coverage
 ]
 
 # Extended channels — deeper regional coverage (verified or best-guess replacements)
