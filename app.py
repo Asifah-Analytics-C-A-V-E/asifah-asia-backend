@@ -98,6 +98,16 @@ except Exception as e:
     traceback.print_exc()
 
 try:
+    from rhetoric_tracker_vietnam import register_vietnam_rhetoric_endpoints
+    VIETNAM_RHETORIC_AVAILABLE = True
+    print("[Asia Backend] ✅ Vietnam rhetoric tracker loaded")
+except Exception as e:
+    import traceback
+    VIETNAM_RHETORIC_AVAILABLE = False
+    print(f"[Asia Backend] ⚠️ Vietnam rhetoric tracker not available — {type(e).__name__}: {e}")
+    traceback.print_exc()
+
+try:
     from asia_regional_bluf import register_asia_bluf_routes
     ASIA_BLUF_AVAILABLE = True
     print("[Asia Backend] ✅ Asia regional BLUF loaded")
@@ -3127,6 +3137,9 @@ if PAKISTAN_RHETORIC_AVAILABLE:
 
 if JAPAN_RHETORIC_AVAILABLE:
     register_japan_rhetoric_endpoints(app)
+
+if VIETNAM_RHETORIC_AVAILABLE:
+    register_vietnam_rhetoric_endpoints(app)
 
 if ASIA_BLUF_AVAILABLE:
     register_asia_bluf_routes(app)
