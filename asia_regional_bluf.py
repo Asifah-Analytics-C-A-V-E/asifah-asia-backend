@@ -53,6 +53,7 @@ TRACKER_KEYS = {
     'pakistan': 'rhetoric:pakistan:latest',
     'japan':    'rhetoric:japan:latest',
     'india':    'rhetoric:india:latest',   # Patch 12 (May 2026) — absorber-class tracker
+    'vietnam':  'rhetoric:vietnam:latest', # Jun 2026 -- SCS coercion-response tracker
     # Future Asia trackers slot in here:
     # 'korea_north': 'rhetoric:dprk:latest',
     # 'philippines': 'rhetoric:philippines:latest',
@@ -64,6 +65,7 @@ THEATRE_FLAGS = {
     'pakistan': '\U0001f1f5\U0001f1f0',  # 🇵🇰
     'japan':    '\U0001f1ef\U0001f1f5',  # 🇯🇵
     'india':    '\U0001f1ee\U0001f1f3',  # 🇮🇳
+    'vietnam':  '\U0001f1fb\U0001f1f3',  # VN
 }
 
 THEATRE_DISPLAY = {
@@ -72,6 +74,19 @@ THEATRE_DISPLAY = {
     'pakistan': 'PAKISTAN',
     'japan':    'JAPAN',
     'india':    'INDIA',
+    'vietnam':  'VIETNAM',
+}
+
+# v2.5 (Jun 2026): one-clause "why this theatre matters regionally" -- used as the
+# plain-language So-What tail when a tracker is quiet, so every live theatre
+# (China, Taiwan, Pakistan, Japan, India, Vietnam) still carries context at baseline.
+THEATRE_ROLE = {
+    'china':    'the primary driver of regional military and economic pressure',
+    'taiwan':   'the central cross-strait flashpoint and the bellwether for US credibility in Asia',
+    'pakistan': 'a western-front pressure valve that pulls Indian attention away from the China frontier',
+    'japan':    'the alliance anchor whose posture signals how far US-led deterrence extends',
+    'india':    'an absorber-class swing state whose alignment tilts the wider regional balance',
+    'vietnam':  'a South China Sea claimant tied to the Hormuz energy-import chain, where shocks land as input-cost and sovereignty pressure',
 }
 
 # Top-N signals emitted to GPI (matches ME pattern)
@@ -582,37 +597,42 @@ def _read_all_trackers():
 # ============================================================
 # POSTURE DETERMINATION
 # ============================================================
-def _determine_regional_posture(china, taiwan):
+def _determine_regional_posture(trackers):
     """
-    Roll up posture across China + Taiwan.
-    v2.1: Consumes NORMALIZED tracker dicts (post-shim).
-    Taiwan's deterrence_gap is the critical extra signal unique to this region.
+    Roll up posture across ALL live Asia trackers (v2.5, Jun 2026).
+    Previously China + Taiwan only -- which meant a Pakistan/Japan/India spike
+    could never lift max_level (the value GPI reads at altitude 3). Now max_level
+    and breached_count span every live tracker, and the peak theatre is named.
+    China/Taiwan extras (deterrence_gap, kinetic_pressure) are preserved as
+    additional ladder triggers and for the cross-strait synthesis.
     """
-    china  = _safe_dict(china)
-    taiwan = _safe_dict(taiwan)
+    trackers = _safe_dict(trackers)
 
-    # v2.1: read threat level from normalized 'levels' dict
-    cn_levels = _safe_dict(china.get('levels'))
-    tw_levels = _safe_dict(taiwan.get('levels'))
-    cn_level  = _safe_int(cn_levels.get('threat'))
-    tw_level  = _safe_int(tw_levels.get('threat'))
-    max_level = max(cn_level, tw_level)
+    levels      = {}
+    breached_by = {}
+    for theatre, data in trackers.items():
+        data = _safe_dict(data)
+        levels[theatre]      = _safe_int(_safe_dict(data.get('levels')).get('threat'))
+        breached_by[theatre] = sum(
+            1 for r in _safe_list(data.get('red_lines'))
+            if _safe_dict(r).get('status') == 'BREACHED'
+        )
 
-    # red_lines + so_what live at top level of normalized shape
-    cn_red_lines = _safe_list(china.get('red_lines'))
-    tw_red_lines = _safe_list(taiwan.get('red_lines'))
-    cn_breached  = sum(1 for r in cn_red_lines if _safe_dict(r).get('status') == 'BREACHED')
-    tw_breached  = sum(1 for r in tw_red_lines if _safe_dict(r).get('status') == 'BREACHED')
-    total_breached = cn_breached + tw_breached
+    max_level      = max(levels.values()) if levels else 0
+    total_breached = sum(breached_by.values())
+    # Peak theatre = highest level (canonical-order tie-break via dict order)
+    peak_theatre   = max(levels, key=lambda t: levels[t]) if levels else None
 
-    cn_so_what = _safe_dict(china.get('so_what'))
-    tw_so_what = _safe_dict(taiwan.get('so_what'))
-
+    # China/Taiwan extras (preserved for backward compat + cross-strait synthesis)
+    cn_so_what       = _safe_dict(_safe_dict(trackers.get('china')).get('so_what'))
+    tw_so_what       = _safe_dict(_safe_dict(trackers.get('taiwan')).get('so_what'))
     deterrence_gap   = _safe_int(tw_so_what.get('deterrence_gap'))
     kinetic_pressure = _safe_int(cn_so_what.get('kinetic_pressure'))
     inbound_pressure = _safe_int(tw_so_what.get('inbound_pressure'))
+    cn_level         = _safe_int(levels.get('china'))
+    tw_level         = _safe_int(levels.get('taiwan'))
 
-    # ── Scenario ladder ──
+    # ── Scenario ladder (max_level now spans ALL trackers) ──
     if total_breached >= 2 or max_level >= 5:
         label, color = 'CRITICAL -- MULTI-BREACH OR ACTIVE CONFLICT', '#dc2626'
     elif total_breached >= 1 or max_level >= 4 or deterrence_gap >= 3:
@@ -627,101 +647,106 @@ def _determine_regional_posture(china, taiwan):
         label, color = 'BASELINE', '#6b7280'
 
     return {
-        'label':            label,
-        'color':            color,
-        'peak_level':       max_level,
-        'cn_level':         cn_level,
-        'tw_level':         tw_level,
-        'breached_count':   total_breached,
-        'deterrence_gap':   deterrence_gap,
-        'kinetic_pressure': kinetic_pressure,
-        'inbound_pressure': inbound_pressure,
+        'label':             label,
+        'color':             color,
+        'peak_level':        max_level,
+        'peak_theatre':      peak_theatre,
+        'levels_by_theatre': levels,
+        'cn_level':          cn_level,
+        'tw_level':          tw_level,
+        'breached_count':    total_breached,
+        'deterrence_gap':    deterrence_gap,
+        'kinetic_pressure':  kinetic_pressure,
+        'inbound_pressure':  inbound_pressure,
     }
 
 
 # ============================================================
 # BLUF PROSE SYNTHESIS
 # ============================================================
-def _build_bluf_prose(posture, china, taiwan):
-    """
-    Generate regional prose paragraph. 2-4 sentences.
-    v2.1: Consumes NORMALIZED tracker dicts. Reads underlying tracker fields via .raw,
-    threat level via .levels.threat, so_what + red_lines at top level.
-    """
-    cn = _safe_dict(china)
-    tw = _safe_dict(taiwan)
-    cn_raw = _safe_dict(cn.get('raw'))   # original tracker fields
-    tw_raw = _safe_dict(tw.get('raw'))
-    cn_so_what = _safe_dict(cn.get('so_what'))
-    tw_so_what = _safe_dict(tw.get('so_what'))
+def _country_line(theatre, data):
+    """One plain-language sentence for a single tracker (v2.5, Jun 2026).
+    Active theatres (level >= 2 or a breached red line) speak in their own voice
+    -- the tracker's own bluf or top-signal long_text. Quiet theatres fall back to
+    a static regional-role clause, so every live theatre still carries a 'why it
+    matters' tail (this is what guarantees India / Japan are never silent)."""
+    data = _safe_dict(data)
+    name = THEATRE_DISPLAY.get(theatre, theatre.upper())
+    flag = THEATRE_FLAGS.get(theatre, '')
+    lvl  = _safe_int(_safe_dict(data.get('levels')).get('threat'))
+    lvl_label = ESCALATION_LABELS.get(lvl, 'Monitoring').lower()
+    raw  = _safe_dict(data.get('raw'))
+    sigs = _safe_list(data.get('top_signals'))
+    breached = sum(
+        1 for r in _safe_list(data.get('red_lines'))
+        if _safe_dict(r).get('status') == 'BREACHED'
+    )
+    # The theatre's own plain-language line, if it publishes one
+    own = _safe_str(raw.get('bluf')).strip()
+    if not own and sigs:
+        own = _safe_str(_safe_dict(sigs[0]).get('long_text')).strip()
+    role = THEATRE_ROLE.get(theatre, '')
+    top_sig_lvl = _safe_int(_safe_dict(sigs[0]).get('level')) if sigs else 0
+    # Active (own voice) if escalated, breached, OR carrying a high-level signal
+    # (e.g. a cross-theater convergence) even while the headline level is low.
+    active = (lvl >= 2 or breached or top_sig_lvl >= 3)
+    tail = own if (active and own) else (role or own)
+    lead = f"{flag} {name}: {lvl_label}"
+    line = f"{lead} -- {tail}" if tail else f"{lead}."
+    if line[-1] not in '.!?':
+        line += '.'
+    return line
 
+
+def _build_bluf_prose(posture, trackers):
+    """Generate the regional prose paragraph in plain language (v2.5, Jun 2026).
+    Multi-country: every live tracker contributes a sentence (was China + Taiwan
+    only). The So-What pops because each theatre speaks in its own voice when
+    active and carries a regional-role clause when quiet. Ordered most-active first.
+    """
+    trackers = _safe_dict(trackers)
     date_str = datetime.now(timezone.utc).strftime('%b %d, %Y')
     parts = [f"Asia-Pacific Rhetoric Monitor ({date_str}):"]
 
-    parts.append(
-        f"Regional posture at {posture['label']} -- peak escalation L{posture['peak_level']} "
-        f"across China + Taiwan trackers."
-    )
-
-    # China vector — read level from normalized, sub-vectors from raw
-    cn_level   = _safe_int(_safe_dict(cn.get('levels')).get('threat'))
-    cn_kinetic = _safe_int(cn_so_what.get('kinetic_pressure'))
-    cn_econ    = _safe_int(cn_so_what.get('economic_pressure'))
-    cn_pla     = _safe_int(cn_raw.get('pla_level'))
-    cn_xi      = _safe_int(cn_raw.get('xi_level'))
-
-    if cn_level or cn_kinetic or cn_econ:
-        china_desc = f"China coercion at L{cn_level}"
-        if cn_kinetic >= 3:
-            china_desc += f" -- kinetic vector L{cn_kinetic} (PLA operational L{cn_pla})"
-            if cn_econ >= 3:
-                china_desc += f" converging with economic coercion L{cn_econ}"
-            china_desc += "."
-        elif cn_kinetic >= 2:
-            china_desc += f" -- kinetic signaling L{cn_kinetic}, below operational threshold."
-        elif cn_econ >= 3:
-            china_desc += f" -- economic coercion L{cn_econ} leading, kinetic restrained."
-        elif cn_xi >= 2:
-            china_desc += f" -- Xi/CMC L{cn_xi} political signaling, below operational tempo."
-        else:
-            china_desc += " -- baseline rhetoric, no operational signals."
-        parts.append(china_desc)
-
-    # Taiwan vector
-    tw_level = _safe_int(_safe_dict(tw.get('levels')).get('threat'))
-    tw_def   = _safe_int(tw_raw.get('defense_level'))
-    tw_us    = _safe_int(tw_raw.get('us_level'))
-    tw_gap   = _safe_int(tw_so_what.get('deterrence_gap'))
-    tw_det   = _safe_int(tw_so_what.get('deterrence_strength'))
-
-    if tw_level or tw_gap or tw_det:
-        tw_desc = f"Taiwan deterrence at L{tw_level}"
-        if tw_gap >= 3:
-            tw_desc += f" -- ⚠️ deterrence gap L{tw_gap} (inbound pressure exceeds coalition response)."
-        elif tw_gap >= 2:
-            tw_desc += f" -- deterrence gap L{tw_gap} warrants coalition reinforcement."
-        elif tw_us >= 3 and tw_def >= 3:
-            tw_desc += f" -- strong coalition posture (US L{tw_us}, ROC defense L{tw_def})."
-        elif tw_us >= 2:
-            tw_desc += f" -- US partnership L{tw_us}, defense L{tw_def}, baseline deterrence."
-        else:
-            tw_desc += " -- routine posture, coalition and defense signals at baseline."
-        parts.append(tw_desc)
-
-    # Convergence / cross-strait synthesis
-    if cn_level >= 3 and tw_level >= 3:
+    # Plain posture line, naming the peak theatre
+    plain_posture = posture['label'].split('--')[0].strip().title() or 'Baseline'
+    peak      = posture.get('peak_theatre')
+    peak_name = THEATRE_DISPLAY.get(peak, '')
+    peak_flag = THEATRE_FLAGS.get(peak, '')
+    peak_lvl  = _safe_int(posture.get('peak_level'))
+    if peak_lvl >= 1 and peak_name:
         parts.append(
-            f"⚠️ Mutual cross-strait escalation -- both sides at L3+ simultaneously. "
-            f"Coordination tempo between US/Taiwan/Japan becomes decisive variable."
+            f"Regional posture {plain_posture} -- the sharpest signal is "
+            f"{peak_flag} {peak_name} at {ESCALATION_LABELS.get(peak_lvl, '').lower()} (L{peak_lvl})."
         )
-    elif cn_level >= 3 and tw_gap >= 2:
+    else:
+        parts.append(f"Regional posture {plain_posture} -- all Asia-Pacific trackers at or near baseline.")
+
+    # One sentence per live tracker, most active first
+    levels = _safe_dict(posture.get('levels_by_theatre'))
+    order  = sorted(trackers.keys(), key=lambda t: -_safe_int(levels.get(t)))
+    for theatre in order:
+        parts.append(_country_line(theatre, trackers[theatre]))
+
+    # Cross-country convergence -- most specific first
+    cn_l   = _safe_int(levels.get('china'))
+    tw_l   = _safe_int(levels.get('taiwan'))
+    l3plus = [THEATRE_DISPLAY.get(t, t.upper()) for t in trackers
+              if _safe_int(levels.get(t)) >= 3]
+    if cn_l >= 3 and tw_l >= 3:
         parts.append(
-            f"China escalating into a deterrence gap -- classic coercion-into-weakness pattern. "
-            f"Watch coalition response tempo in next 48-72 hours."
+            "Mutual cross-strait escalation -- China and Taiwan are both at Direct-Threat level "
+            "or higher at the same time; the US / Taiwan / Japan coordination tempo becomes the "
+            "decisive variable."
         )
-    elif posture['breached_count'] >= 1:
+    elif len(l3plus) >= 2:
         parts.append(
-            f"{posture['breached_count']} red line(s) breached across Asia-Pacific trackers -- "
+            f"Multiple theaters elevated at once ({', '.join(l3plus)}) -- the combination compounds "
+            f"risk beyond any single front; watch for cross-theater coordination."
+        )
+    elif _safe_int(posture.get('breached_count')) >= 1:
+        parts.append(
+            f"{posture['breached_count']} red line(s) breached across Asia-Pacific -- "
             f"adjacent categories warrant elevated monitoring for cascade."
         )
 
@@ -844,11 +869,8 @@ def build_regional_bluf(force=False):
                 'posture_color': '#6b7280',
             }
 
-        china  = trackers.get('china')
-        taiwan = trackers.get('taiwan')
-
-        posture = _determine_regional_posture(china, taiwan)
-        bluf    = _build_bluf_prose(posture, china, taiwan)
+        posture = _determine_regional_posture(trackers)
+        bluf    = _build_bluf_prose(posture, trackers)
         # v2.3.0: signals collector returns full pool; cap separately for display
         all_signals = _build_signals(posture, trackers)            # full pool — for GPI axis aggregation
         top_signals = all_signals[:TOP_SIGNALS_COUNT]                # capped for display
