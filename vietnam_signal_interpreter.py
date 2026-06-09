@@ -416,13 +416,18 @@ def build_so_what(scan_data, red_lines_triggered, historical_matches):
 
     breached_count    = sum(1 for r in red_lines_triggered if r.get('status') == 'BREACHED')
     approaching_count = sum(1 for r in red_lines_triggered if r.get('status') == 'APPROACHING')
+    # Separate deterrence-POSITIVE (green-line) breaches from negative ones, so a
+    # favorable coalition event does not inflate the scenario into the alarm bands.
+    negative_breached = sum(1 for r in red_lines_triggered
+                            if r.get('status') == 'BREACHED' and r.get('color') != '#22c55e')
+    positive_breached = breached_count - negative_breached
 
     # -- Scenario label --
-    if breached_count >= 2 or china_scs >= 5:
+    if negative_breached >= 2 or china_scs >= 5:
         scenario       = 'CRITICAL -- Multi-Vector SCS Pressure or Kinetic Threshold'
         scenario_color = '#dc2626'
         scenario_icon  = '🔴'
-    elif breached_count >= 1 or coercion_gap >= 3:
+    elif negative_breached >= 1 or coercion_gap >= 3:
         scenario       = 'ELEVATED -- Red Line Breached or Coercion Gap Widening'
         scenario_color = '#f97316'
         scenario_icon  = '🟠'
@@ -430,7 +435,7 @@ def build_so_what(scan_data, red_lines_triggered, historical_matches):
         scenario       = 'WARNING -- SCS Coercion Rising or Response Lagging'
         scenario_color = '#f59e0b'
         scenario_icon  = '🟡'
-    elif inbound_pressure >= 2 or response_strength >= 3:
+    elif inbound_pressure >= 2 or response_strength >= 3 or positive_breached >= 1:
         scenario       = 'MONITORING -- Baseline Elevated, Posture Active'
         scenario_color = '#3b82f6'
         scenario_icon  = '🔵'
@@ -481,7 +486,7 @@ def build_so_what(scan_data, red_lines_triggered, historical_matches):
         })
 
     # -- Assessment --
-    if breached_count >= 2:
+    if negative_breached >= 2:
         assessment = (
             'Vietnam is in a multi-breach SCS scenario -- pressure from several directions at once. '
             'Coalition coordination tempo and CPV willingness to absorb domestic nationalism become '
