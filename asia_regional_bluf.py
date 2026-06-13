@@ -832,6 +832,108 @@ def _build_signals(posture, trackers):
 # ============================================================
 # MAIN BUILD FUNCTION (matches ME pattern -- cache check inside)
 # ============================================================
+# ── Multi-axis tagging + structured BLUF blocks (Jun 13 2026, approach B) ──
+# Mirrors the GPI's NARRATIVE_AXIS_SETS so regional signals declare their axis
+# set; the front-end renders one pill per axis. Primary axis first.
+_REGIONAL_AXIS_SETS = {
+    'kinetic_pressure': ['kinetic'], 'red_line_breached': ['kinetic'],
+    'theatre_high': ['kinetic'], 'theatre_active': ['kinetic'],
+    'mutual_escalation': ['kinetic'], 'deterrence_gap': ['kinetic'],
+    'china_two_front_convergence': ['kinetic', 'diplomatic'],
+    'scs_red_line': ['kinetic'], 'kinetic_threshold': ['kinetic'],
+    'sovereignty_erosion': ['kinetic', 'diplomatic'],
+    'economic_stress': ['economic'], 'sovereign_default': ['economic'],
+    'commodity': ['economic'], 'commodity_coupling': ['economic'],
+    'hormuz_japan_oil_dependency': ['economic'],
+    'green_line_active': ['diplomatic'], 'diplomatic_track_active': ['diplomatic'],
+    'diplomatic_active': ['diplomatic'], 'coalition_positive': ['diplomatic'],
+    'humanitarian': ['humanitarian'], 'displacement': ['humanitarian'],
+    'health_emergency': ['humanitarian'], 'food_price_crisis': ['humanitarian'],
+}
+_AXIS_KEYWORD_HINTS = [
+    ('economic', ['economic', 'default', 'reserves', 'oil', 'commodity', 'trade', 'currency', 'sanction']),
+    ('humanitarian', ['humanitarian', 'displace', 'refugee', 'famine', 'health', 'outbreak']),
+    ('diplomatic', ['diplomatic', 'coalition', 'partnership', 'deterrence-positive', 'mediation', 'negotiat']),
+]
+
+def _axes_for_signal(sig):
+    """Ordered axis list for a regional signal. category map > keyword hint >
+    kinetic default."""
+    cat = _safe_str(_safe_dict(sig).get('category')).lower()
+    if cat in _REGIONAL_AXIS_SETS:
+        return list(_REGIONAL_AXIS_SETS[cat])
+    blob = (cat + ' ' + _safe_str(sig.get('short_text')) + ' ' +
+            _safe_str(sig.get('long_text'))).lower()
+    for axis, kws in _AXIS_KEYWORD_HINTS:
+        if any(k in blob for k in kws):
+            return [axis]
+    return ['kinetic']
+
+def _tag_signal_axes(signals):
+    """Attach 'axes' (and align primary 'pressure_type') to each signal."""
+    out = []
+    for s in _safe_list(signals):
+        s2 = dict(s)
+        axes = _axes_for_signal(s2)
+        s2['axes'] = axes
+        s2.setdefault('pressure_type', axes[0])
+        out.append(s2)
+    return out
+
+def _build_bluf_blocks(posture, trackers):
+    """Structured paragraph blocks for the front-end (approach B).
+    Returns a list of {label, text} dicts. label='' renders as a plain
+    paragraph; a non-empty label renders bold/highlighted (e.g. the header).
+    Built from the same parts as _build_bluf_prose so the two stay in sync."""
+    trackers = _safe_dict(trackers)
+    date_str = datetime.now(timezone.utc).strftime('%b %d, %Y')
+    plain_posture = posture['label'].split('--')[0].strip().title() or 'Baseline'
+    peak      = posture.get('peak_theatre')
+    peak_name = THEATRE_DISPLAY.get(peak, '')
+    peak_flag = THEATRE_FLAGS.get(peak, '')
+    peak_lvl  = _safe_int(posture.get('peak_level'))
+
+    blocks = []
+    # Block 1: header (highlighted label, no body)
+    blocks.append({'label': f'Asia-Pacific Rhetoric Monitor ({date_str})', 'text': ''})
+
+    # Block 2: Regional posture (highlighted)
+    if peak_lvl >= 1 and peak_name:
+        posture_txt = (f"{plain_posture} -- the sharpest signal is {peak_flag} "
+                       f"{peak_name} at {ESCALATION_LABELS.get(peak_lvl, '').lower()} (L{peak_lvl}).")
+    else:
+        posture_txt = f"{plain_posture} -- all Asia-Pacific trackers at or near baseline."
+    blocks.append({'label': 'Regional Posture', 'text': posture_txt})
+
+    # Block 3: Theatre Reads -- one sentence per live tracker, most active first
+    levels = _safe_dict(posture.get('levels_by_theatre'))
+    order  = sorted(trackers.keys(), key=lambda t: -_safe_int(levels.get(t)))
+    country_lines = [_country_line(theatre, trackers[theatre]) for theatre in order]
+    if country_lines:
+        blocks.append({'label': 'Theatre Reads', 'text': ' '.join(country_lines)})
+
+    # Block 4: Convergence closer (highlighted) -- same logic as prose builder
+    cn_l   = _safe_int(levels.get('china'))
+    tw_l   = _safe_int(levels.get('taiwan'))
+    l3plus = [THEATRE_DISPLAY.get(t, t.upper()) for t in trackers
+              if _safe_int(levels.get(t)) >= 3]
+    closer = None
+    if cn_l >= 3 and tw_l >= 3:
+        closer = ("Mutual cross-strait escalation -- China and Taiwan are both at Direct-Threat "
+                  "level or higher at the same time; the US / Taiwan / Japan coordination tempo "
+                  "becomes the decisive variable.")
+    elif len(l3plus) >= 2:
+        closer = (f"Multiple theaters elevated at once ({', '.join(l3plus)}) -- the combination "
+                  f"compounds risk beyond any single front; watch for cross-theater coordination.")
+    elif _safe_int(posture.get('breached_count')) >= 1:
+        closer = (f"{posture['breached_count']} red line(s) breached across Asia-Pacific -- "
+                  f"adjacent categories warrant elevated monitoring for cascade.")
+    if closer:
+        blocks.append({'label': 'Convergence Watch', 'text': closer})
+
+    return blocks
+
+
 def build_regional_bluf(force=False):
     """
     Build the Asia regional BLUF. Reads China + Taiwan caches, synthesizes,
@@ -873,7 +975,9 @@ def build_regional_bluf(force=False):
         bluf    = _build_bluf_prose(posture, trackers)
         # v2.3.0: signals collector returns full pool; cap separately for display
         all_signals = _build_signals(posture, trackers)            # full pool — for GPI axis aggregation
+        all_signals = _tag_signal_axes(all_signals)                # Jun 13 2026: multi-axis pills
         top_signals = all_signals[:TOP_SIGNALS_COUNT]                # capped for display
+        bluf_blocks = _build_bluf_blocks(posture, trackers)         # approach B structured blocks
 
         trackers_live = len(trackers)
 
@@ -914,6 +1018,7 @@ def build_regional_bluf(force=False):
             'success':            True,
             'from_cache':         False,
             'bluf':               bluf,
+            'bluf_v2':            bluf_blocks,           # Jun 13 2026: structured paragraph blocks (approach B)
             'signals':            all_signals,           # v2.3.0: FULL signal pool — for GPI axis aggregation
             'top_signals':        top_signals,           # v2.3.0: capped — for display + prose synthesis
             'posture_label':      posture['label'],
