@@ -1,34 +1,48 @@
 """
-asia_regional_bluf.py
-Asifah Analytics -- Asia Backend Module
-v2.1.0 -- April 2026
+europe_regional_bluf.py
+Asifah Analytics -- Europe Backend Module
+v3.4.0 -- June 2026
 
-Asia-Pacific Regional BLUF (Bottom Line Up Front) Engine.
+Europe Regional BLUF (Bottom Line Up Front) Engine.
 
-Reads from China + Taiwan rhetoric tracker Redis caches and synthesizes
-a single analyst-prose BLUF paragraph + structured top-line signals.
+Reads from Europe rhetoric tracker Redis caches and synthesizes a single
+analyst-prose BLUF paragraph + top-5 structured top-line signals.
 
-Architecture mirrors me_regional_bluf.py v2.0 (proven-working pattern).
+Architecture mirrors me_regional_bluf.py v2.0 + asia_regional_bluf.py v2.1
++ wha_regional_bluf.py v1.0 (proven canonical pattern).
 
-v2.1.0 changes vs v2.0.0:
-- Added compatibility shim _normalize_tracker_data() — handles both
-  legacy trackers (free-form so_what) AND v2.0+ trackers self-emitting top_signals[]
-- Added _synthesize_top_signals_legacy() — builds canonical signals from
-  raw fields when a tracker hasn't been upgraded yet
-- Output emits top_signals[] (canonical), max_level, theatre_summary,
-  region: 'asia' for GPI consumption
-- Top 5 signals (was 6) — matches ME pattern
-- Canonical signal categories: red_line_breached, theatre_high,
-  deterrence_gap, kinetic_pressure, economic_pressure, mutual_escalation,
-  coalition_strong, silence_anomaly
-- Forward-compatible with future stability anchors (Singapore-pattern
-  influence vector) via INFLUENCE_LABELS/COLORS constants
+Currently active trackers:
+  - Russia    (rhetoric:russia:latest)    -- 5-vector model + green/diplomatic
+  - Greenland (rhetoric:greenland:latest) -- inverted-rhetoric arctic tracker
+  - Ukraine   (rhetoric:ukraine:latest)   -- frontline + diplomatic track
+  - Belarus   (rhetoric:belarus:latest)   -- pressure tracker
+  - Hungary   (rhetoric:hungary:latest)   -- axis-reversal tracker
+  - Turkey    (rhetoric:turkey:latest)    -- swing-state tracker (alignment divergence)
 
-v2.0.0 changes vs v1.x (already shipped):
-- Flask import inside register function (matches ME pattern)
-- Removed background refresh thread
-- Cache check inside build_regional_bluf()
-- Redis SET uses /set/{key} convention
+Roadmap (slot in via TRACKER_KEYS as they come online):
+  - Poland
+  - Baltic states (LT/LV/EE composite or separate)
+
+v3.4.0 (Jun 2026) prose rewrite:
+- BLUF prose now NAMES every live country, highest pressure first, pairing
+  the dial reading (level + score) with the driver (lead signal in plain
+  language) in estimative voice per platform analytical doctrine.
+- Turkey is swing-state framed: alignment divergence is its indicator, so
+  it is always named even at L0.
+- New methodology_note payload field: plain-language explanation of what
+  the scores measure (rhetoric-signal composites, not event counts, not
+  probabilities). Frontends render it under the BLUF prose.
+
+v1.0.0 design choices:
+- Trackers use ME pattern: result['interpretation'] wraps so_what / red_lines.
+  Compatibility shim normalizes that AND v2.0+ self-emitted top_signals[].
+- Output emits canonical fields (top_signals, max_level, theatre_summary,
+  region: 'europe') for direct GPI consumption.
+- Top 5 signals per region (matches ME, Asia, WHA).
+- Europe-specific cross-tracker signal: arctic_convergence (Russia arctic_level
+  + Greenland sovereignty crisis simultaneously) + nuclear_signaling alert.
+- Score derivation hierarchy: theatre_score → rhetoric_score → overall_score
+  → threat_level × 20 fallback.
 
 Author: RCGG / Asifah Analytics
 """
@@ -48,58 +62,56 @@ UPSTASH_REDIS_TOKEN = os.environ.get('UPSTASH_REDIS_TOKEN', '')
 
 # Source caches (written by respective trackers)
 TRACKER_KEYS = {
-    'china':    'rhetoric:china:latest',
-    'taiwan':   'rhetoric:taiwan:latest',
-    'pakistan': 'rhetoric:pakistan:latest',
-    'japan':    'rhetoric:japan:latest',
-    'india':    'rhetoric:india:latest',   # Patch 12 (May 2026) — absorber-class tracker
-    'vietnam':  'rhetoric:vietnam:latest', # Jun 2026 -- SCS coercion-response tracker
-    # Future Asia trackers slot in here:
-    # 'korea_north': 'rhetoric:dprk:latest',
-    # 'philippines': 'rhetoric:philippines:latest',
+    'russia':    'rhetoric:russia:latest',
+    'greenland': 'rhetoric:greenland:latest',
+    'ukraine':   'rhetoric:ukraine:latest',
+    'belarus':   'rhetoric:belarus:latest',
+    'hungary':   'rhetoric:hungary:latest',   # v1.0 May 17 2026 -- axis reversal tracker
+    'turkey':    'rhetoric:turkey:latest',    # v1.0 Jun 11 2026 -- swing-state tracker (alignment divergence)
+    # Future Europe trackers slot in here:
+    # 'poland':   'rhetoric:poland:latest',
+    # 'baltics':  'rhetoric:baltics:latest',
 }
 
 THEATRE_FLAGS = {
-    'china':    '\U0001f1e8\U0001f1f3',  # 🇨🇳
-    'taiwan':   '\U0001f1f9\U0001f1fc',  # 🇹🇼
-    'pakistan': '\U0001f1f5\U0001f1f0',  # 🇵🇰
-    'japan':    '\U0001f1ef\U0001f1f5',  # 🇯🇵
-    'india':    '\U0001f1ee\U0001f1f3',  # 🇮🇳
-    'vietnam':  '\U0001f1fb\U0001f1f3',  # VN
+    'russia':    '\U0001f1f7\U0001f1fa',  # 🇷🇺
+    'greenland': '\U0001f1ec\U0001f1f1',  # 🇬🇱
+    'ukraine':   '\U0001f1fa\U0001f1e6',  # 🇺🇦
+    'belarus':   '\U0001f1e7\U0001f1fe',  # 🇧🇾
+    'hungary':   '\U0001f1ed\U0001f1fa',  # 🇭🇺
+    'turkey':    '\U0001f1f9\U0001f1f7',  # 🇹🇷
+    'poland':    '\U0001f1f5\U0001f1f1',  # 🇵🇱
+    'baltics':   '\U0001f1ea\U0001f1fa',  # 🇪🇺 fallback
 }
 
 THEATRE_DISPLAY = {
-    'china':    'CHINA',
-    'taiwan':   'TAIWAN',
-    'pakistan': 'PAKISTAN',
-    'japan':    'JAPAN',
-    'india':    'INDIA',
-    'vietnam':  'VIETNAM',
+    'russia':    'RUSSIA',
+    'greenland': 'GREENLAND',
+    'ukraine':   'UKRAINE',
+    'belarus':   'BELARUS',
+    'hungary':   'HUNGARY',
+    'turkey':    'TURKEY',
+    'poland':    'POLAND',
+    'baltics':   'BALTICS',
 }
 
-# v2.5 (Jun 2026): one-clause "why this theatre matters regionally" -- used as the
-# plain-language So-What tail when a tracker is quiet, so every live theatre
-# (China, Taiwan, Pakistan, Japan, India, Vietnam) still carries context at baseline.
-THEATRE_ROLE = {
-    'china':    'the primary driver of regional military and economic pressure',
-    'taiwan':   'the central cross-strait flashpoint and the bellwether for US credibility in Asia',
-    'pakistan': 'a western-front pressure valve that pulls Indian attention away from the China frontier',
-    'japan':    'the alliance anchor whose posture signals how far US-led deterrence extends',
-    'india':    'an absorber-class swing state whose alignment tilts the wider regional balance',
-    'vietnam':  'a South China Sea claimant tied to the Hormuz energy-import chain, where shocks land as input-cost and sovereignty pressure',
-}
-
-# Top-N signals emitted to GPI (matches ME pattern)
+# Top-N signals emitted to GPI
 TOP_SIGNALS_COUNT = 12      # v2.4.0 May 21 2026 — bumped from 5; supports per-theatre quota
 MAX_PER_THEATRE   = 3       # v2.4.0 May 21 2026 — per-tracker quota during selection
 
-# Our synthesis cache
-BLUF_CACHE_KEY    = 'rhetoric:asia:regional_bluf'
-BLUF_CACHE_TTL    = 14 * 3600    # 14h -- outlasts any individual tracker TTL
+# Synthesis cache
+BLUF_CACHE_KEY    = 'rhetoric:europe:regional_bluf'
+BLUF_CACHE_TTL    = 14 * 3600    # 14h
+BLUF_LASTGOOD_TTL   = 7 * 24 * 3600   # 7d ceiling for held last-known-good tracker snapshots (C)
+BLUF_INCOMPLETE_TTL = 30 * 60         # 30min cache when the picture is incomplete (A: don't freeze gaps)
+
+def _lastgood_key(theatre):
+    """Durable last-known-good snapshot key for a tracker (C)."""
+    return 'rhetoric:' + str(theatre) + ':lastgood'
 
 
 # ============================================================
-# ESCALATION + INFLUENCE LABELS (canonical across all regional BLUFs)
+# ESCALATION + INFLUENCE LABELS (canonical)
 # ============================================================
 ESCALATION_LABELS = {
     0: 'Monitoring',
@@ -119,8 +131,6 @@ ESCALATION_COLORS = {
     5: '#dc2626',
 }
 
-# v2.1: forward-compat for future Asia stability anchors (e.g. Singapore as
-# diplomatic mediator pattern). Currently no Asia trackers use influence axis.
 INFLUENCE_LABELS = {
     0: 'Standby',
     1: 'Engaged',
@@ -141,7 +151,7 @@ INFLUENCE_COLORS = {
 
 
 # ============================================================
-# REDIS HELPERS (matching ME BLUF pattern exactly)
+# REDIS HELPERS
 # ============================================================
 def _redis_get(key):
     if not UPSTASH_REDIS_URL or not UPSTASH_REDIS_TOKEN:
@@ -155,7 +165,7 @@ def _redis_get(key):
         result = resp.json().get('result')
         return json.loads(result) if result else None
     except Exception as e:
-        print(f'[Asia BLUF] Redis GET error ({key}): {e}')
+        print(f'[Europe BLUF] Redis GET error ({key}): {e}')
         return None
 
 
@@ -177,86 +187,74 @@ def _redis_set(key, value, ttl=BLUF_CACHE_TTL):
         )
         return resp.json().get('result') == 'OK'
     except Exception as e:
-        print(f'[Asia BLUF] Redis SET error ({key}): {e}')
+        print(f'[Europe BLUF] Redis SET error ({key}): {e}')
         return False
 
 
 # ============================================================
-# SAFE-ACCESS HELPERS (defensive, kept from v1.1.0)
+# SAFE-ACCESS HELPERS
 # ============================================================
 def _safe_dict(val):
-    """Always return a dict -- even if val is None, non-dict, or missing."""
     return val if isinstance(val, dict) else {}
 
 def _safe_list(val):
-    """Always return a list -- even if val is None, non-list, or missing."""
     return val if isinstance(val, list) else []
 
 def _safe_int(val, default=0):
-    """Always return an int -- even if val is None, str, float, or missing."""
     try:
         return int(val) if val is not None else default
-    except (TypeError, ValueError):
+    except (ValueError, TypeError):
         return default
 
 def _safe_str(val, default=''):
-    """Always return a string -- even if val is None, int, or missing."""
     return str(val) if val is not None else default
 
 
 # ============================================================
-# COMPATIBILITY SHIM -- v2.1
+# COMPATIBILITY SHIM -- v1.0
 # ============================================================
-# Trackers will gradually be upgraded to emit a canonical shape.
-# Until then, this shim normalizes both legacy trackers (China/Taiwan emit
-# so_what + red_lines at top-level) AND v2.0+ self-emitting trackers into
-# the same internal representation that the BLUF engine consumes.
-#
-# Canonical internal shape (matches ME BLUF v2.0):
-# {
-#     'theatre':      str,
-#     'flag':         str,
-#     'levels': {
-#         'threat':         0-5,
-#         'influence':      0-5 or None,
-#         'green':          0-5 or None,
-#         'dominant_axis':  'threat'|'influence'|'green',
-#         'dominant_level': 0-5,
-#     },
-#     'score':        0-100,
-#     'so_what':      {...},
-#     'red_lines':    {...},
-#     'top_signals':  [...],   # NEW v2.0+ -- pre-prioritized
-#     'scanned_at':   str,
-#     'raw':          <untouched original>,  # for legacy access
-# }
-# ============================================================
-
 def _normalize_tracker_data(theatre, raw_data):
     """
-    Convert raw tracker cache into canonical shape regardless of version.
+    Convert raw Europe tracker cache into canonical shape.
+    Dual-pattern aware:
+      - ME-pattern (Russia, Greenland): result['interpretation'] wraps interpreter output.
+      - Top-level pattern (Belarus, Ukraine v1.0+): so_what/red_lines/top_signals
+        emitted directly at root of result dict.
     """
     if not raw_data:
         return None
 
     flag = THEATRE_FLAGS.get(theatre, '')
-    so_what    = _safe_dict(raw_data.get('so_what'))
-    red_lines  = _safe_list(raw_data.get('red_lines'))
+    # Try interpretation wrapper first; fall back to top-level keys
+    interp = _safe_dict(raw_data.get('interpretation'))
+    so_what    = _safe_dict(interp.get('so_what')          or raw_data.get('so_what'))
+    red_lines  = _safe_dict(interp.get('red_lines')        or raw_data.get('red_lines'))
+    green_lines = _safe_dict(interp.get('green_lines')     or raw_data.get('green_lines'))
+    diplomatic = _safe_dict(interp.get('diplomatic_track') or raw_data.get('diplomatic_track'))
 
-    # ---- THREAT LEVEL extraction (China + Taiwan use 'overall_level') ----
-    threat = _safe_int(raw_data.get('overall_level'))
-    if not threat:
-        # Fallbacks for any other Asia tracker (Pakistan + future use 'theatre_level' — ME canonical)
-        threat = _safe_int(raw_data.get('theatre_level',
-                          raw_data.get('theatre_escalation_level',
-                          raw_data.get('threat_level', 0))))
+    # ---- THREAT LEVEL ----
+    # Belarus/Ukraine emit alert_level (string: normal/elevated/high/critical).
+    # Convert to integer level using canonical map.
+    ALERT_TO_LEVEL = {'normal': 0, 'elevated': 1, 'high': 2, 'critical': 4}
+    alert_level_str = (raw_data.get('alert_level') or '').lower()
+    threat = _safe_int(raw_data.get('theatre_level',
+                       raw_data.get('overall_level',
+                       raw_data.get('threat_level', 0))))
+    if threat == 0 and alert_level_str in ALERT_TO_LEVEL:
+        threat = ALERT_TO_LEVEL[alert_level_str]
 
-    # ---- SCORE extraction ----
+    # ---- SCORE ----
+    # Belarus/Ukraine emit theatre_score AND pressure_score (same value).
+    # Russia + Greenland emit theatre_score.
+    # Fallback: level × 20 if none present.
     score = _safe_int(raw_data.get('theatre_score',
-                     raw_data.get('rhetoric_score',
-                     raw_data.get('overall_score', 0))))
+                      raw_data.get('pressure_score',
+                      raw_data.get('rhetoric_score',
+                      raw_data.get('overall_score', 0)))))
+    if score == 0 and threat:
+        score = int(threat) * 20
 
-    # ---- INFLUENCE LEVEL (Asia trackers don't currently use this; future-ready) ----
+    # ---- INFLUENCE LEVEL (forward-ready) ----
     influence = raw_data.get('influence_level')
 
     # ---- DOMINANT AXIS ----
@@ -265,19 +263,33 @@ def _normalize_tracker_data(theatre, raw_data):
     dominant_level = max(threat_int, influence_int)
     dominant_axis  = 'influence' if influence_int > threat_int else 'threat'
 
-    # ---- TOP SIGNALS (v2.0+ if self-emitted; else synthesize from raw) ----
+    # ---- TOP SIGNALS (v2.0+ self-emitted if present; else synthesize) ----
     if 'top_signals' in raw_data and isinstance(raw_data['top_signals'], list):
-        top_signals = list(raw_data['top_signals'])
+        # v3.3 (Jun 2026): country-tag self-emitted signals. Trackers write
+        # short_text for their OWN page ("Diplomatic Track: ..."), but at the
+        # regional altitude an untagged signal is ambiguous. Prefix
+        # "{flag} {DISPLAY}: " unless the country name is already present
+        # (copies, not mutation -- raw_data is re-embedded under 'raw').
+        _disp = THEATRE_DISPLAY.get(theatre, theatre.upper())
+        top_signals = []
+        for _s in raw_data['top_signals']:
+            if not isinstance(_s, dict):
+                continue
+            _c = dict(_s)
+            _st = _c.get('short_text') or ''
+            if _st and _disp not in _st.upper():
+                _c['short_text'] = f"{flag} {_disp}: {_st}"
+            top_signals.append(_c)
     else:
         top_signals = _synthesize_top_signals_legacy(
-            theatre, raw_data, threat_int, score, so_what, red_lines
+            theatre, raw_data, threat_int, score, so_what, red_lines, green_lines
         )
 
     # ALWAYS augment with BLUF-level diplomatic signals (v3.2.0 — mirrors ME pattern).
-    # Forward-compatible: today's Asia trackers (China/Taiwan) don't emit diplomatic_track
-    # data, so this is a no-op now. When future trackers (Korea peace talks, ASEAN
-    # mediation, etc.) emit diplomatic_track in their interpretation block, signals
-    # automatically surface to GPI's diplomatic axis with zero additional code.
+    # Diplomatic propagation is a BLUF-level concern, not per-tracker. v2.0 trackers
+    # don't typically self-emit diplomatic signals (they emit kinetic/threat/anomaly),
+    # so without this we'd lose them. Dedupe by category to avoid double-add for the
+    # legacy path (where _synthesize_top_signals_legacy may also touch green_lines).
     diplomatic_sigs = _extract_diplomatic_signals(theatre, raw_data, threat_int)
     existing_categories = {s.get('category') for s in top_signals}
     for ds in diplomatic_sigs:
@@ -297,8 +309,10 @@ def _normalize_tracker_data(theatre, raw_data):
         'score':        score,
         'so_what':      so_what,
         'red_lines':    red_lines,
+        'green_lines':  green_lines,
+        'diplomatic_track': diplomatic,
         'top_signals':  top_signals,
-        'scanned_at':   _safe_str(raw_data.get('scanned_at') or raw_data.get('timestamp', '')),
+        'scanned_at':   _safe_str(raw_data.get('scanned_at') or raw_data.get('cached_at') or raw_data.get('timestamp', '')),
         'raw':          raw_data,
     }
 
@@ -307,8 +321,15 @@ def _extract_diplomatic_signals(theatre, raw_data, threat_int):
     """
     BLUF-level diplomatic signal extractor (v3.2.0 — mirrors ME pattern).
 
-    Reads diplomatic_track + green_lines from a tracker's interpretation block.
-    Forward-compatible no-op when trackers don't emit diplomatic data.
+    Reads diplomatic_track + green_lines from a tracker's interpretation block and
+    emits diplomatic-axis signals. Runs for EVERY tracker regardless of whether the
+    tracker is v2.0-self-emit or legacy-synthesized — diplomatic propagation is a
+    BLUF-level architectural responsibility, not a per-tracker concern.
+
+    Forward-compatible: when trackers don't emit diplomatic data, this function is
+    a no-op. So adding it now means new trackers (Russia talks, Belarus mediation,
+    Ukraine peace overtures) automatically surface to GPI's diplomatic axis with
+    zero additional code.
 
     Returns list of signal dicts (possibly empty).
     """
@@ -318,6 +339,8 @@ def _extract_diplomatic_signals(theatre, raw_data, threat_int):
     signals = []
 
     # Green lines / diplomatic de-escalation (UNGATED + dual-schema).
+    # Dual-schema: handles both legacy {'count': N} (Russia, etc.) AND newer
+    # {'active_count': N, 'signaled_count': M, 'triggered': [...]} (Lebanon Apr 2026+).
     green_lines = interp.get('green_lines') if interp else None
     if green_lines and isinstance(green_lines, dict):
         if 'count' in green_lines:
@@ -325,7 +348,7 @@ def _extract_diplomatic_signals(theatre, raw_data, threat_int):
         else:
             gl_count = green_lines.get('active_count', 0) + green_lines.get('signaled_count', 0)
         if gl_count >= 1:
-            gl_priority = 6 + min(threat_int, 4)
+            gl_priority = 6 + min(threat_int, 4)   # 6→10 sliding scale
             signals.append({
                 'priority':       gl_priority,
                 'category':       'green_line_active',
@@ -339,7 +362,7 @@ def _extract_diplomatic_signals(theatre, raw_data, threat_int):
                                   f'trigger{"s" if gl_count != 1 else ""} active.',
             })
 
-    # Diplomatic track — mediation, talks, peace overtures.
+    # Diplomatic track — Witkoff mediation, Salalah talks, peace overtures, etc.
     diplomatic_track = interp.get('diplomatic_track') if interp else None
     if diplomatic_track and isinstance(diplomatic_track, dict):
         active_count   = diplomatic_track.get('active_count', 0)
@@ -347,7 +370,7 @@ def _extract_diplomatic_signals(theatre, raw_data, threat_int):
         scenario       = diplomatic_track.get('scenario', '')
         score          = diplomatic_track.get('score', 0)
         if active_count + signaled_count > 0:
-            dt_priority = 7 + min(threat_int, 4)
+            dt_priority = 7 + min(threat_int, 4)   # 7→11 sliding scale
             short_status = 'ACTIVE' if active_count > 0 else 'SIGNALED'
             signals.append({
                 'priority':       dt_priority,
@@ -370,60 +393,33 @@ def _extract_diplomatic_signals(theatre, raw_data, threat_int):
     return signals
 
 
-def _synthesize_top_signals_legacy(theatre, raw_data, threat_int, score, so_what, red_lines):
+def _synthesize_top_signals_legacy(theatre, raw_data, threat_int, score, so_what, red_lines, green_lines):
     """
-    For Asia trackers (China, Taiwan) that haven't been upgraded to v2.0+
-    self-emit pattern. Synthesize top_signals[] from raw fields.
-    Returns list of canonical signal dicts.
+    Synthesize top_signals[] for trackers not yet upgraded to v2.0+ self-emit.
     """
     flag    = THEATRE_FLAGS.get(theatre, '')
     display = THEATRE_DISPLAY.get(theatre, theatre.upper())
     signals = []
 
-    # ---- 1. RED LINES BREACHED ----
-    for rl in red_lines:
-        rl = _safe_dict(rl)
-        status = _safe_str(rl.get('status'))
-        label  = _safe_str(rl.get('label'))
-        is_positive = _safe_str(rl.get('color')) == '#22c55e'
-        if status == 'BREACHED':
-            if is_positive:
-                # Taiwan deterrence-positive red line
-                signals.append({
-                    'priority':   9,
-                    'category':   'green_line_active',
-                    'theatre':    theatre,
-                    'level':      threat_int,
-                    'icon':       '🟢',
-                    'color':      '#22c55e',
-                    'short_text': f'{flag} {display}: DETERRENCE-POSITIVE — {label[:50]}',
-                    'long_text':  f'{flag} {display}: Positive red line breached — {label}.',
-                })
-            else:
-                signals.append({
-                    'priority':   12,
-                    'category':   'red_line_breached',
-                    'theatre':    theatre,
-                    'level':      threat_int,
-                    'icon':       rl.get('icon', '🔴'),
-                    'color':      '#dc2626',
-                    'short_text': f'{flag} {display}: BREACH — {label[:55]}',
-                    'long_text':  f'{flag} {display} red line breached at L{threat_int}: {label}.',
-                })
-        elif status == 'APPROACHING':
-            signals.append({
-                'priority':   8,
-                'category':   'red_line_approaching',
-                'theatre':    theatre,
-                'level':      threat_int,
-                'icon':       '🟠',
-                'color':      '#f97316',
-                'short_text': f'{flag} {display}: Approaching — {label[:50]}',
-                'long_text':  f'{flag} {display} approaching red line: {label}.',
-            })
+    # Red lines breached (ME pattern: red_lines is a dict with 'triggered' key)
+    rl_triggered = _safe_list(red_lines.get('triggered'))
+    breached = [r for r in rl_triggered if isinstance(r, dict) and r.get('status') == 'BREACHED']
 
-    # ---- 2. THEATRE HIGH (overall L4+) ----
-    # L5 GATE (v3.3.0 — May 21 2026): Per platform L5 Reservation Contract,
+    for rl in breached[:2]:
+        label = _safe_str(rl.get('label', 'Red line'))
+        signals.append({
+            'priority':   12,
+            'category':   'red_line_breached',
+            'theatre':    theatre,
+            'level':      max(threat_int, 4),
+            'icon':       rl.get('icon', '🚨'),
+            'color':      '#dc2626',
+            'short_text': f'{flag} {display}: BREACH — {label[:55]}',
+            'long_text':  f'{flag} {display} red line breached at L{threat_int}: {label}',
+        })
+
+    # Theatre-high (L4+ — incident/active conflict tier)
+    # L5 GATE (v1.1.0 — May 21 2026): Per platform L5 Reservation Contract,
     # L5 "Active Conflict" requires an explicit kinetic/humanitarian/economic/
     # diplomatic trigger. If tracker emits l5_gate dict, we honor its decision.
     # If tracker doesn't emit l5_gate (legacy trackers), we trust their level
@@ -436,7 +432,7 @@ def _synthesize_top_signals_legacy(theatre, raw_data, threat_int, score, so_what
         # If tracker emits l5_gate, cap at L4 unless at least one axis gate is True
         if not any(l5_gate.get(axis) for axis in ('kinetic', 'humanitarian', 'economic', 'diplomatic')):
             effective_level = 4
-            print(f"[Asia BLUF] L5 gate enforced: {theatre} capped at L4 "
+            print(f"[Europe BLUF] L5 gate enforced: {theatre} capped at L4 "
                   f"(no l5_gate axes fired; tracker score {score})")
 
     if effective_level >= 4:
@@ -455,116 +451,60 @@ def _synthesize_top_signals_legacy(theatre, raw_data, threat_int, score, so_what
                           f'{flag} {display} at L{effective_level} {tracker_label} (score {score}/100)',
         })
 
-    # ---- 3. CHINA-SPECIFIC: kinetic + economic vectors ----
-    if theatre == 'china':
-        kinetic = _safe_int(so_what.get('kinetic_pressure'))
-        econ    = _safe_int(so_what.get('economic_pressure'))
-        domestic_fracture = _safe_int(so_what.get('domestic_fracture'))
-        coalition_pushback = _safe_int(so_what.get('coalition_pushback'))
+    # Theatre-active (L1-L3 — rhetoric/warning/direct-threat tier) — v2.3.0 NEW
+    # Previously L1-L3 trackers emitted no signals from legacy synth, leaving
+    # them invisible to GPI's kinetic axis aggregation. Now they surface as
+    # lower-priority signals that don't compete with L4+ for top slots but
+    # still propagate to axis cards. Russia at L1 (Rhetoric, score 44) is an
+    # analyst-relevant signal and should be visible.
+    # LABEL PRESERVATION (v1.1.0 May 21 2026): prefer tracker's own theatre_label
+    # and signal_text_short/long if emitted. Backward-compat fallback unchanged.
+    elif threat_int >= 1:
+        # Sliding priority: L1=5, L2=6, L3=7 — well below theatre_high range (13-14)
+        tracker_label = raw_data.get('theatre_label') or ESCALATION_LABELS.get(threat_int, '')
+        signals.append({
+            'priority':   4 + threat_int,
+            'category':   'theatre_active',
+            'theatre':    theatre,
+            'level':      threat_int,
+            'icon':       '🟡' if threat_int <= 1 else ('🟠' if threat_int == 2 else '🔶'),
+            'color':      ESCALATION_COLORS.get(threat_int, '#6b7280'),
+            'short_text': raw_data.get('signal_text_short') or
+                          f'{flag} {display} L{threat_int} — {tracker_label}',
+            'long_text':  raw_data.get('signal_text_long') or
+                          f'{flag} {display} at L{threat_int} {tracker_label} (score {score}/100)',
+        })
 
-        if kinetic >= 3:
-            pla_lvl = _safe_int(raw_data.get('pla_level'))
+    # Russia-specific legacy fallbacks
+    if theatre == 'russia':
+        nuclear = _safe_int(raw_data.get('nuclear_level'))
+        if nuclear >= 3:
             signals.append({
-                'priority':   8 + kinetic,
-                'category':   'kinetic_pressure',
-                'theatre':    'china',
-                'level':      kinetic,
-                'icon':       '⚔️',
-                'color':      '#ef4444',
-                'short_text': f'{flag} CHINA: Kinetic vector L{kinetic} (PLA L{pla_lvl})',
-                'long_text':  f'CHINA kinetic pressure L{kinetic} — PLA operational level L{pla_lvl}; cross-strait coercion active.',
-            })
-        if econ >= 3:
-            signals.append({
-                'priority':   7 + econ,
-                'category':   'economic_pressure',
-                'theatre':    'china',
-                'level':      econ,
-                'icon':       '💰',
-                'color':      '#f97316',
-                'short_text': f'{flag} CHINA: Economic coercion L{econ}',
-                'long_text':  f'CHINA economic coercion L{econ} — trade/investment pressure tools active.',
-            })
-        if domestic_fracture >= 3:
-            signals.append({
-                'priority':   6 + domestic_fracture,
-                'category':   'domestic_fracture',
-                'theatre':    'china',
-                'level':      domestic_fracture,
-                'icon':       '🏚️',
-                'color':      '#a855f7',
-                'short_text': f'{flag} CHINA: Domestic fracture L{domestic_fracture}',
-                'long_text':  f'CHINA domestic fracture indicators L{domestic_fracture} — internal stress accelerates external posturing risk.',
-            })
-        if coalition_pushback >= 3:
-            signals.append({
-                'priority':   5 + coalition_pushback,
-                'category':   'coalition_pushback',
-                'theatre':    'china',
-                'level':      coalition_pushback,
-                'icon':       '🛡️',
-                'color':      '#10b981',
-                'short_text': f'{flag} CHINA: Coalition pushback L{coalition_pushback}',
-                'long_text':  f'CHINA-facing coalition activity L{coalition_pushback} — US/Japan/Australia coordinated signaling detected.',
+                'priority':   10 + (nuclear - 3),
+                'category':   'nuclear_signaling',
+                'theatre':    'russia',
+                'level':      nuclear,
+                'icon':       '☢️',
+                'color':      '#dc2626' if nuclear >= 4 else '#ef4444',
+                'short_text': f'{flag} RUSSIA: Nuclear signaling L{nuclear}',
+                'long_text':  f'RUSSIA nuclear signaling L{nuclear} — coercion threshold elevated.',
             })
 
-    # ---- 4. TAIWAN-SPECIFIC: deterrence gap + coalition strength ----
-    if theatre == 'taiwan':
-        gap            = _safe_int(so_what.get('deterrence_gap'))
-        deterrence_str = _safe_int(so_what.get('deterrence_strength'))
-        inbound        = _safe_int(so_what.get('inbound_pressure'))
-        domestic_resv  = _safe_int(so_what.get('domestic_resolve'))
-        us_lvl         = _safe_int(raw_data.get('us_level'))
-        def_lvl        = _safe_int(raw_data.get('defense_level'))
-
-        if gap >= 3:
+    # Greenland-specific legacy fallbacks
+    if theatre == 'greenland':
+        us_level = _safe_int(raw_data.get('us_pressure_level'))
+        if us_level >= 3:
             signals.append({
-                'priority':   11,
-                'category':   'deterrence_gap',
-                'theatre':    'taiwan',
-                'level':      gap,
-                'icon':       '⚠️',
-                'color':      '#dc2626',
-                'short_text': f'{flag} TAIWAN: Deterrence gap L{gap}',
-                'long_text':  f'TAIWAN deterrence gap L{gap} — inbound pressure L{inbound} exceeds coalition response L{deterrence_str}. Coercion-into-weakness pattern.',
-            })
-        elif gap >= 2:
-            signals.append({
-                'priority':   7,
-                'category':   'deterrence_gap',
-                'theatre':    'taiwan',
-                'level':      gap,
-                'icon':       '📉',
-                'color':      '#f59e0b',
-                'short_text': f'{flag} TAIWAN: Deterrence gap L{gap}',
-                'long_text':  f'TAIWAN deterrence gap L{gap} — coalition signaling lagging inbound pressure; reinforcement window open.',
+                'priority':   8,
+                'category':   'us_pressure_high',
+                'theatre':    'greenland',
+                'level':      us_level,
+                'icon':       '🦅',
+                'color':      '#f97316' if us_level < 4 else '#dc2626',
+                'short_text': f'{flag} GREENLAND: US pressure L{us_level}',
+                'long_text':  f'GREENLAND inbound US sovereignty pressure L{us_level}.',
             })
 
-        if us_lvl >= 3 and def_lvl >= 3 and gap < 2:
-            signals.append({
-                'priority':   6,
-                'category':   'coalition_strong',
-                'theatre':    'taiwan',
-                'level':      max(us_lvl, def_lvl),
-                'icon':       '🤝',
-                'color':      '#10b981',
-                'short_text': f'{flag} TAIWAN: Coalition strong (US L{us_lvl}, ROC L{def_lvl})',
-                'long_text':  f'TAIWAN coalition posture strong — US partnership L{us_lvl}, ROC defense L{def_lvl}; deterrence coordinated.',
-            })
-
-        if domestic_resv >= 4:
-            signals.append({
-                'priority':   6,
-                'category':   'domestic_resolve',
-                'theatre':    'taiwan',
-                'level':      domestic_resv,
-                'icon':       '🏛️',
-                'color':      '#0ea5e9',
-                'short_text': f'{flag} TAIWAN: Domestic resolve L{domestic_resv}',
-                'long_text':  f'TAIWAN domestic resolve L{domestic_resv} — Lai presidential signaling and asymmetric resilience aligned.',
-            })
-
-    # Sort descending; BLUF will dedupe + globally rank with other regions
     signals.sort(key=lambda s: s['priority'], reverse=True)
     return signals
 
@@ -573,203 +513,465 @@ def _synthesize_top_signals_legacy(theatre, raw_data, threat_int, score, so_what
 # TRACKER READERS
 # ============================================================
 def _read_all_trackers():
-    """
-    Read all Asia tracker caches and normalize via shim.
-    Returns dict of tracker_name -> NORMALIZED data.
-    Missing caches are simply omitted (graceful degradation).
+    """Read all Europe tracker caches and normalize via shim.
+
+    Cold-start resilience (Jun 13 2026 -- A/B/C):
+      C: when a tracker's live cache is missing, fall back to a durable
+         last-known-good snapshot (rhetoric:<x>:lastgood, 7d ceiling) so the
+         country is HELD in the rollup rather than silently dropped.
+      B: report which trackers are live / stale-fallback / fully absent.
+    Returns (trackers, missing, stale).
     """
     trackers = {}
+    missing  = []   # no live AND no last-known-good -> truly absent (honest)
+    stale    = []   # served from last-known-good fallback
     for theatre, redis_key in TRACKER_KEYS.items():
         raw = _redis_get(redis_key)
+        # DIAGNOSTIC: dump what BLUF actually reads for Belarus + Ukraine + Turkey
+        if theatre in ('belarus', 'ukraine', 'turkey'):
+            if raw:
+                top_keys = list(raw.keys())[:15] if isinstance(raw, dict) else 'NOT A DICT'
+                print(f'[Europe BLUF DIAG] {theatre} raw type={type(raw).__name__} top_keys={top_keys}')
+                if isinstance(raw, dict):
+                    print(f'[Europe BLUF DIAG] {theatre} theatre_score={raw.get("theatre_score")!r} alert_level={raw.get("alert_level")!r}')
+            else:
+                print(f'[Europe BLUF DIAG] {theatre} raw is None/empty')
         if raw:
             normalized = _normalize_tracker_data(theatre, raw)
             if normalized:
+                normalized['freshness'] = 'live'
                 trackers[theatre] = normalized
+                # C: refresh durable last-known-good snapshot
+                _redis_set(_lastgood_key(theatre), raw, ttl=BLUF_LASTGOOD_TTL)
                 lvls = normalized['levels']
                 axis_str = (f"T{lvls['threat']}" +
                             (f"/I{lvls['influence']}" if lvls['influence'] is not None else ''))
-                print(f'[Asia BLUF] {theatre}: loaded ({axis_str}, score={normalized["score"]})')
-        else:
-            print(f'[Asia BLUF] {theatre}: no cache available')
-    return trackers
+                print(f'[Europe BLUF] {theatre}: loaded ({axis_str}, score={normalized["score"]})')
+                continue
+        # Live cache missing/unparseable -> last-known-good fallback (C)
+        lg = _redis_get(_lastgood_key(theatre))
+        if lg:
+            normalized = _normalize_tracker_data(theatre, lg)
+            if normalized:
+                normalized['freshness'] = 'stale'
+                trackers[theatre] = normalized
+                stale.append(theatre)
+                print(f'[Europe BLUF] {theatre}: STALE fallback (last-known-good held)')
+                continue
+        # Truly absent: no live, no last-known-good
+        missing.append(theatre)
+        print(f'[Europe BLUF] {theatre}: no cache available (absent from rollup)')
+    return trackers, missing, stale
 
 
 # ============================================================
-# POSTURE DETERMINATION
+# REGIONAL POSTURE
 # ============================================================
 def _determine_regional_posture(trackers):
-    """
-    Roll up posture across ALL live Asia trackers (v2.5, Jun 2026).
-    Previously China + Taiwan only -- which meant a Pakistan/Japan/India spike
-    could never lift max_level (the value GPI reads at altitude 3). Now max_level
-    and breached_count span every live tracker, and the peak theatre is named.
-    China/Taiwan extras (deterrence_gap, kinetic_pressure) are preserved as
-    additional ladder triggers and for the cross-strait synthesis.
-    """
-    trackers = _safe_dict(trackers)
+    """Roll up posture across all Europe trackers."""
+    if not trackers:
+        return {
+            'label':              'BASELINE',
+            'color':              '#6b7280',
+            'peak_level':         0,
+            'breached_count':     0,
+            'theatres_at_l3plus': 0,
+            'nuclear_elevated':   False,
+            'arctic_elevated':    False,
+        }
 
-    levels      = {}
-    breached_by = {}
-    for theatre, data in trackers.items():
-        data = _safe_dict(data)
-        levels[theatre]      = _safe_int(_safe_dict(data.get('levels')).get('threat'))
-        breached_by[theatre] = sum(
-            1 for r in _safe_list(data.get('red_lines'))
-            if _safe_dict(r).get('status') == 'BREACHED'
-        )
+    levels = [t['levels']['threat'] for t in trackers.values()]
+    max_level = max(levels) if levels else 0
 
-    max_level      = max(levels.values()) if levels else 0
-    total_breached = sum(breached_by.values())
-    # Peak theatre = highest level (canonical-order tie-break via dict order)
-    peak_theatre   = max(levels, key=lambda t: levels[t]) if levels else None
+    # Count breached red lines (ME pattern: red_lines is dict with triggered list)
+    total_breached = 0
+    for data in trackers.values():
+        rl = data.get('red_lines', {}) or {}
+        for r in rl.get('triggered', []) or []:
+            if isinstance(r, dict) and r.get('status') == 'BREACHED':
+                total_breached += 1
 
-    # China/Taiwan extras (preserved for backward compat + cross-strait synthesis)
-    cn_so_what       = _safe_dict(_safe_dict(trackers.get('china')).get('so_what'))
-    tw_so_what       = _safe_dict(_safe_dict(trackers.get('taiwan')).get('so_what'))
-    deterrence_gap   = _safe_int(tw_so_what.get('deterrence_gap'))
-    kinetic_pressure = _safe_int(cn_so_what.get('kinetic_pressure'))
-    inbound_pressure = _safe_int(tw_so_what.get('inbound_pressure'))
-    cn_level         = _safe_int(levels.get('china'))
-    tw_level         = _safe_int(levels.get('taiwan'))
+    theatres_at_l3plus = sum(1 for l in levels if l >= 3)
 
-    # ── Scenario ladder (max_level now spans ALL trackers) ──
-    if total_breached >= 2 or max_level >= 5:
-        label, color = 'CRITICAL -- MULTI-BREACH OR ACTIVE CONFLICT', '#dc2626'
-    elif total_breached >= 1 or max_level >= 4 or deterrence_gap >= 3:
-        label, color = 'ELEVATED -- RED LINE OR DETERRENCE GAP', '#ef4444'
-    elif max_level >= 3 or kinetic_pressure >= 3:
-        label, color = 'ELEVATED -- CONFRONTATION', '#f97316'
-    elif max_level >= 2 or deterrence_gap >= 2:
-        label, color = 'WARNING', '#f59e0b'
+    # Russia-specific elevated flags
+    russia_data = trackers.get('russia', {})
+    russia_so_what = russia_data.get('so_what', {}) or {}
+    nuclear_elevated = bool(russia_so_what.get('nuclear_elevated', False))
+    arctic_elevated  = bool(russia_so_what.get('arctic_elevated', False))
+
+    # Posture ladder
+    if total_breached >= 2 or max_level >= 5 or nuclear_elevated:
+        label, color = 'CRITICAL -- MULTI-BREACH OR NUCLEAR SIGNALING', '#dc2626'
+    elif total_breached >= 1 or max_level >= 4:
+        label, color = 'ELEVATED -- INCIDENT OR RED LINE', '#ef4444'
+    elif theatres_at_l3plus >= 2:
+        label, color = 'ELEVATED -- MULTI-COUNTRY WARNING', '#f97316'
+    elif max_level >= 3:
+        label, color = 'WARNING -- DIRECT THREAT', '#f59e0b'
+    elif max_level >= 2:
+        label, color = 'MONITORING -- WARNING', '#fbbf24'
     elif max_level >= 1:
         label, color = 'MONITORING -- RHETORIC', '#3b82f6'
     else:
         label, color = 'BASELINE', '#6b7280'
 
     return {
-        'label':             label,
-        'color':             color,
-        'peak_level':        max_level,
-        'peak_theatre':      peak_theatre,
-        'levels_by_theatre': levels,
-        'cn_level':          cn_level,
-        'tw_level':          tw_level,
-        'breached_count':    total_breached,
-        'deterrence_gap':    deterrence_gap,
-        'kinetic_pressure':  kinetic_pressure,
-        'inbound_pressure':  inbound_pressure,
+        'label':              label,
+        'color':              color,
+        'peak_level':         max_level,
+        'breached_count':     total_breached,
+        'theatres_at_l3plus': theatres_at_l3plus,
+        'nuclear_elevated':   nuclear_elevated,
+        'arctic_elevated':    arctic_elevated,
     }
 
 
 # ============================================================
-# BLUF PROSE SYNTHESIS
+# BLUF PROSE
 # ============================================================
-def _country_line(theatre, data):
-    """One plain-language sentence for a single tracker (v2.5, Jun 2026).
-    Active theatres (level >= 2 or a breached red line) speak in their own voice
-    -- the tracker's own bluf or top-signal long_text. Quiet theatres fall back to
-    a static regional-role clause, so every live theatre still carries a 'why it
-    matters' tail (this is what guarantees India / Japan are never silent)."""
-    data = _safe_dict(data)
-    name = THEATRE_DISPLAY.get(theatre, theatre.upper())
-    flag = THEATRE_FLAGS.get(theatre, '')
-    lvl  = _safe_int(_safe_dict(data.get('levels')).get('threat'))
-    lvl_label = ESCALATION_LABELS.get(lvl, 'Monitoring').lower()
-    raw  = _safe_dict(data.get('raw'))
-    sigs = _safe_list(data.get('top_signals'))
-    breached = sum(
-        1 for r in _safe_list(data.get('red_lines'))
-        if _safe_dict(r).get('status') == 'BREACHED'
-    )
-    # The theatre's own plain-language line, if it publishes one
-    own = _safe_str(raw.get('bluf')).strip()
-    if not own and sigs:
-        own = _safe_str(_safe_dict(sigs[0]).get('long_text')).strip()
-    role = THEATRE_ROLE.get(theatre, '')
-    top_sig_lvl = _safe_int(_safe_dict(sigs[0]).get('level')) if sigs else 0
-    # Active (own voice) if escalated, breached, OR carrying a high-level signal
-    # (e.g. a cross-theater convergence) even while the headline level is low.
-    active = (lvl >= 2 or breached or top_sig_lvl >= 3)
-    tail = own if (active and own) else (role or own)
-    lead = f"{flag} {name}: {lvl_label}"
-    line = f"{lead} -- {tail}" if tail else f"{lead}."
-    if line[-1] not in '.!?':
-        line += '.'
-    return line
-
-
 def _build_bluf_prose(posture, trackers):
-    """Generate the regional prose paragraph in plain language (v2.5, Jun 2026).
-    Multi-country: every live tracker contributes a sentence (was China + Taiwan
-    only). The So-What pops because each theatre speaks in its own voice when
-    active and carries a regional-role clause when quiet. Ordered most-active first.
     """
-    trackers = _safe_dict(trackers)
+    Generate the regional prose paragraph -- country-named, estimative voice.
+
+    v3.4.0 prose rewrite (Jun 2026):
+      - Every live tracker is NAMED, highest pressure first. Countries at
+        true baseline roll into one closing sentence to keep it readable.
+      - Each country sentence pairs the dial reading (level + score) with
+        the driver (that country's lead signal, in plain language) so the
+        reader knows WHY the dial reads what it reads.
+      - Estimative voice per platform analytical doctrine: 'consistent
+        with', 'historically precedes', 'likely indicates'. Never
+        probabilities, never dates, never 'will'.
+      - Turkey is swing-state framed: its indicator is alignment
+        divergence, not the threat ladder, so it is always named even
+        at L0.
+    """
     date_str = datetime.now(timezone.utc).strftime('%b %d, %Y')
-    parts = [f"Asia-Pacific Rhetoric Monitor ({date_str}):"]
+    parts = [f"Europe Rhetoric Monitor ({date_str}):"]
 
-    # Plain posture line, naming the peak theatre
-    plain_posture = posture['label'].split('--')[0].strip().title() or 'Baseline'
-    peak      = posture.get('peak_theatre')
-    peak_name = THEATRE_DISPLAY.get(peak, '')
-    peak_flag = THEATRE_FLAGS.get(peak, '')
-    peak_lvl  = _safe_int(posture.get('peak_level'))
-    if peak_lvl >= 1 and peak_name:
-        parts.append(
-            f"Regional posture {plain_posture} -- the sharpest signal is "
-            f"{peak_flag} {peak_name} at {ESCALATION_LABELS.get(peak_lvl, '').lower()} (L{peak_lvl})."
-        )
-    else:
-        parts.append(f"Regional posture {plain_posture} -- all Asia-Pacific trackers at or near baseline.")
+    n_live = len(trackers)
+    parts.append(
+        f"Regional posture {posture['label']} -- peak escalation L{posture['peak_level']} "
+        f"across {n_live} live tracker{'s' if n_live != 1 else ''}."
+    )
 
-    # One sentence per live tracker, most active first
-    levels = _safe_dict(posture.get('levels_by_theatre'))
-    order  = sorted(trackers.keys(), key=lambda t: -_safe_int(levels.get(t)))
-    for theatre in order:
-        parts.append(_country_line(theatre, trackers[theatre]))
+    def _display_name(theatre):
+        return THEATRE_DISPLAY.get(theatre, theatre.upper()).title()
 
-    # Cross-country convergence -- most specific first
-    cn_l   = _safe_int(levels.get('china'))
-    tw_l   = _safe_int(levels.get('taiwan'))
-    l3plus = [THEATRE_DISPLAY.get(t, t.upper()) for t in trackers
-              if _safe_int(levels.get(t)) >= 3]
-    if cn_l >= 3 and tw_l >= 3:
+    def _lead_signal_plain(theatre, data):
+        """First top signal, stripped of its own country prefix."""
+        sigs = data.get('top_signals') or []
+        if not sigs or not isinstance(sigs[0], dict):
+            return ''
+        text = (sigs[0].get('short_text') or '').strip()
+        if not text:
+            return ''
+        disp = THEATRE_DISPLAY.get(theatre, theatre.upper())
+        # The shim prefixes signals with '{flag} {DISPLAY}: ' at this
+        # altitude -- redundant inside a sentence that already names the
+        # country, so strip it back out for prose use.
+        if ':' in text:
+            head, tail = text.split(':', 1)
+            if disp in head.upper():
+                text = tail.strip()
+        return text
+
+    # Estimative tail by level: what this band has meant historically.
+    # Plain language -- says what the reading is consistent with, never
+    # what 'will' happen. The reader completes the inference.
+    estimative_tails = {
+        5: 'a reading consistent with active-conflict dynamics',
+        4: 'a reading consistent with incident-driven escalation',
+        3: 'language of a kind that has historically preceded escalatory cycles',
+        2: 'sustained friction language -- elevated, not yet escalatory',
+    }
+
+    # Order countries highest dominant level first; collect true-baseline
+    # countries for a single closing roll-up sentence.
+    ordered = sorted(
+        trackers.items(),
+        key=lambda kv: kv[1]['levels'].get('dominant_level', 0),
+        reverse=True,
+    )
+    baseline_names = []
+
+    for theatre, data in ordered:
+        threat = data['levels'].get('threat', 0)
+        score  = data.get('score', 0)
+        label  = ESCALATION_LABELS.get(threat, 'Monitoring')
+        name   = _display_name(theatre)
+        lead   = _lead_signal_plain(theatre, data)
+        raw    = data.get('raw', {}) or {}
+
+        # ---- Turkey: swing-state framing, always named ----
+        if theatre == 'turkey':
+            sentence = (
+                f"Turkey (swing-state watch) at L{threat} {label.lower()}, "
+                f"score {score}/100"
+            )
+            if lead:
+                sentence += f" -- lead signal: {lead}"
+            sentence += (
+                ". The indicator that matters here is alignment divergence -- "
+                "the spread between NATO-anchor and strategic-autonomy "
+                "signaling -- rather than the threat ladder; a widening "
+                "spread has historically preceded hedging behavior, not "
+                "necessarily confrontation."
+            )
+            parts.append(sentence)
+            continue
+
+        # ---- Russia: vector-enriched callout (preserved from v1.0) ----
+        if theatre == 'russia':
+            nuclear = _safe_int(raw.get('nuclear_level'))
+            ground  = _safe_int(raw.get('ground_ops_level'))
+            nato    = _safe_int(raw.get('nato_flank_level'))
+            arctic  = _safe_int(raw.get('arctic_level'))
+            if threat >= 1 or nuclear >= 3 or nato >= 3:
+                sentence = f"Russia composite L{threat} ({label}, score {score}/100)"
+                vector_phrases = []
+                if nuclear >= 3:
+                    vector_phrases.append(f"nuclear signaling L{nuclear}")
+                if ground >= 3:
+                    vector_phrases.append(f"ground operations L{ground}")
+                if nato >= 3:
+                    vector_phrases.append(f"NATO-flank pressure L{nato}")
+                if arctic >= 3:
+                    vector_phrases.append(f"Arctic posture L{arctic}")
+                if vector_phrases:
+                    sentence += " -- driven by " + ", ".join(vector_phrases)
+                elif lead:
+                    sentence += f" -- lead signal: {lead}"
+                tail = estimative_tails.get(threat)
+                if tail:
+                    sentence += f"; {tail}"
+                parts.append(sentence + ".")
+            else:
+                baseline_names.append(name)
+            continue
+
+        # ---- Greenland: inbound-pressure framing (preserved) ----
+        if theatre == 'greenland':
+            us_lvl = _safe_int(raw.get('us_pressure_level'))
+            if threat >= 1 or us_lvl >= 3:
+                sentence = f"Greenland sovereignty L{threat} ({label}, score {score}/100)"
+                if us_lvl >= 3:
+                    sentence += (
+                        f" -- inbound US pressure L{us_lvl}, a pattern "
+                        f"consistent with alliance-cohesion stress on the "
+                        f"Denmark track"
+                    )
+                elif lead:
+                    sentence += f" -- lead signal: {lead}"
+                parts.append(sentence + ".")
+            else:
+                baseline_names.append(name)
+            continue
+
+        # ---- Generic named sentence (Ukraine, Belarus, Hungary, future) ----
+        if threat >= 1:
+            sentence = f"{name} L{threat} ({label}, score {score}/100)"
+            if lead:
+                sentence += f" -- lead signal: {lead}"
+            # If the LEAD signal is diplomatic, the escalation tail would
+            # read as calling peace talks a war indicator. Swap in a
+            # diplomatic-appropriate estimative read instead.
+            sigs = data.get('top_signals') or []
+            lead_is_diplomatic = bool(
+                sigs and isinstance(sigs[0], dict) and (
+                    sigs[0].get('pressure_type') == 'diplomatic'
+                    or 'diplomatic' in (sigs[0].get('category') or '')
+                )
+            )
+            if lead_is_diplomatic:
+                sentence += (
+                    "; an active off-ramp track that tempers the "
+                    "escalation read at this level"
+                )
+            else:
+                tail = estimative_tails.get(threat)
+                if tail:
+                    sentence += f"; {tail}"
+            parts.append(sentence + ".")
+        else:
+            baseline_names.append(name)
+
+    if baseline_names:
+        if len(baseline_names) == 1:
+            parts.append(f"{baseline_names[0]} reads baseline this cycle.")
+        else:
+            parts.append("At baseline this cycle: " + ", ".join(baseline_names) + ".")
+
+    # Cross-theater convergence (Russia arctic + Greenland sovereignty)
+    russia_data    = trackers.get('russia')
+    greenland_data = trackers.get('greenland')
+    if russia_data and greenland_data:
+        russia_arctic    = _safe_int(russia_data.get('raw', {}).get('arctic_level'))
+        greenland_threat = greenland_data['levels']['threat']
+        if russia_arctic >= 3 and greenland_threat >= 3:
+            parts.append(
+                f"Arctic convergence: Russia Arctic posture L{russia_arctic} "
+                f"simultaneous with Greenland sovereignty L{greenland_threat} -- "
+                f"a pairing consistent with Russia exploiting US-Denmark "
+                f"friction in the GIUK approaches."
+            )
+
+    if posture['nuclear_elevated']:
         parts.append(
-            "Mutual cross-strait escalation -- China and Taiwan are both at Direct-Threat level "
-            "or higher at the same time; the US / Taiwan / Japan coordination tempo becomes the "
-            "decisive variable."
-        )
-    elif len(l3plus) >= 2:
-        parts.append(
-            f"Multiple theaters elevated at once ({', '.join(l3plus)}) -- the combination compounds "
-            f"risk beyond any single front; watch for cross-theater coordination."
-        )
-    elif _safe_int(posture.get('breached_count')) >= 1:
-        parts.append(
-            f"{posture['breached_count']} red line(s) breached across Asia-Pacific -- "
-            f"adjacent categories warrant elevated monitoring for cascade."
+            "Russian nuclear signaling is at the coercion threshold -- the "
+            "highest-stakes signal in theater; doctrinal language shifts are "
+            "the lead indicator to watch."
         )
 
     return ' '.join(parts)
 
 
 # ============================================================
-# TOP SIGNALS COLLECTOR (v2.1)
+# TOP SIGNALS COLLECTOR
 # ============================================================
+def _fetch_commodity_pressure_via_proxy(commodity_id):
+    """
+    Look up a commodity's GLOBAL pressure state via the Europe backend's
+    commodity_proxy_europe module. The proxy fetches from ME backend
+    (where commodity_tracker actually lives) and caches in Europe Redis.
+
+    Strategy: pull any country exposure (using ukraine as canonical anchor —
+    it's a major wheat producer so always present in commodity_summaries),
+    then read the GLOBAL alert state from that country's commodity entry.
+    The global_alert_level / global_signal_count / global_total_score fields
+    were added yesterday specifically so country pages can know global state
+    without a second API call. We piggyback on that here.
+
+    Returns dict with alert_level, signal_count, pressure_score — or None on failure.
+    """
+    try:
+        from commodity_proxy_europe import get_commodity_data
+        # Ukraine always has wheat exposure mapped — using it as the anchor target
+        # to pull global wheat state. For other commodities (oil, gas) other anchors
+        # may need to be selected, but each commodity has an obvious source country
+        # we can use as anchor.
+        ANCHOR_TARGETS = {
+            'wheat':  'ukraine',
+            'oil':    'russia',
+            'gas':    'russia',
+            'nickel': 'russia',
+            # Add more anchors as new convergences land
+        }
+        anchor = ANCHOR_TARGETS.get(commodity_id)
+        if not anchor:
+            return None
+
+        country_data = get_commodity_data(anchor)
+        if not country_data or not country_data.get('success', True):
+            return None
+
+        commodity_summaries = country_data.get('commodity_summaries', []) or []
+        # Look for the requested commodity in this country's summaries
+        for cs in commodity_summaries:
+            if cs.get('commodity') == commodity_id:
+                return {
+                    'alert_level':     cs.get('global_alert_level', 'normal'),
+                    'pressure_score':  cs.get('global_total_score', 0),
+                    'signal_count':    cs.get('global_signal_count', 0),
+                }
+        return None
+    except ImportError:
+        # commodity_proxy_europe not deployed — silent no-op
+        return None
+    except Exception as e:
+        print(f'[Europe BLUF] Commodity pressure proxy fetch failed for {commodity_id}: {e}')
+        return None
+
+
+def _apply_convergence_enrichments_europe(signals):
+    """
+    Layer 2 enrichment for Europe BLUF — registry-driven cross-regional convergence.
+
+    Walks the convergence registry. For any convergence whose `regions` list includes
+    'europe', AND whose commodity is currently at the configured threshold, locate
+    the relevant signal in this region's `signals` list (by theatre or commodity tag)
+    and stamp the {convergence_id}_active flag onto it.
+
+    This mirrors the ME BLUF Layer 2 enrichment pattern. The downstream effect:
+      - GPI's _detect_convergences_from_registry sees the flag on the Europe signal
+      - Cross-regional convergences emit Tier-1 narratives in GPI
+      - Adding a new Europe-relevant convergence is zero code change here
+
+    Architecture note: commodity state is fetched via commodity_proxy_europe
+    (which round-trips to ME backend over HTTP). This keeps commodity_tracker
+    as the single source of truth on the ME backend.
+
+    Mutates `signals` in place; returns the list for convenience.
+    """
+    try:
+        from convergence_registry import (
+            CONVERGENCE_REGISTRY,
+            alert_meets_threshold,
+            format_enrichment_text,
+        )
+    except ImportError:
+        # convergence_registry not deployed to Europe backend yet — silent no-op
+        return signals
+
+    for entry in CONVERGENCE_REGISTRY:
+        # Only process convergences whose region list includes Europe
+        regions = entry.get('regions', [])
+        if 'europe' not in regions:
+            continue
+
+        # Check current commodity state via Europe backend's proxy module
+        commodity_id = entry.get('commodity')
+        if not commodity_id:
+            continue
+        cs = _fetch_commodity_pressure_via_proxy(commodity_id)
+        if not cs:
+            continue
+        if not alert_meets_threshold(cs['alert_level'], entry.get('commodity_threshold', 'elevated')):
+            continue
+
+        # Find the Europe-side signal that should carry the flag.
+        # Strategy: prefer a commodity signal from the source-side theatre (e.g.
+        # ukraine for wheat). If none, fall back to ANY commodity-tagged signal.
+        # If still none, no Europe signal to enrich — convergence will still be
+        # detected via ME side (this is belt-and-suspenders cross-regional).
+        target_signal = None
+        for sig in signals:
+            cat = (sig.get('category') or '').lower()
+            if 'commodity' in cat:
+                # Prefer signal from ukraine (the Black Sea source)
+                if sig.get('theatre') == 'ukraine':
+                    target_signal = sig
+                    break
+                # Otherwise hold onto first commodity signal as fallback
+                if target_signal is None:
+                    target_signal = sig
+
+        if not target_signal:
+            continue
+
+        # Stamp the flag and convergence state for GPI
+        active_flag = f'{entry["id"]}_active'
+        target_signal[active_flag] = True
+        states = target_signal.setdefault('convergence_states', {})
+        states[entry['id']] = {
+            'alert_level':  cs['alert_level'],
+            'signal_count': cs['signal_count'],
+        }
+        # Append enrichment text to long_text for display
+        enrichment = format_enrichment_text(entry, cs['alert_level'], cs['signal_count'])
+        existing_long = target_signal.get('long_text', '') or target_signal.get('short_text', '')
+        target_signal['long_text'] = (existing_long + ' ' + enrichment).strip()
+        print(f'[Europe BLUF] Convergence stamped: {entry["id"]} on signal {target_signal.get("category")} '
+              f'(theatre={target_signal.get("theatre")}, commodity={commodity_id}, alert={cs["alert_level"]})')
+
+    return signals
+
+
 def _build_signals(posture, trackers):
-    """
-    v2.1 NEW PIPELINE.
-    Each tracker — whether v2.0+ self-emitting or legacy shimmed —
-    arrives normalized with a 'top_signals' array attached. This function:
-      1. Collects all top_signals[] from all trackers
-      2. Adds an Asia-specific cross-tracker MUTUAL ESCALATION signal if applicable
-      3. Globally sorts by priority (descending)
-      4. Dedupes by (theatre, category) key
-      5. Returns top TOP_SIGNALS_COUNT (5)
-    """
+    """Collect, dedupe, and rank top_signals across Europe trackers."""
     all_signals = []
     for theatre, data in trackers.items():
-        for sig in data.get('top_signals', []):
+        for sig in data.get('top_signals', []) or []:
             sig.setdefault('priority', 5)
             sig.setdefault('category', 'unknown')
             sig.setdefault('theatre', theatre)
@@ -779,27 +981,39 @@ def _build_signals(posture, trackers):
             sig.setdefault('long_text', sig.get('short_text', ''))
             all_signals.append(sig)
 
-    # Cross-tracker: Mutual cross-strait escalation
-    cn_level = posture.get('cn_level', 0)
-    tw_level = posture.get('tw_level', 0)
-    if cn_level >= 3 and tw_level >= 3:
-        all_signals.append({
-            'priority':   13,
-            'category':   'mutual_escalation',
-            'theatre':    'regional',
-            'level':      max(cn_level, tw_level),
-            'icon':       '🌀',
-            'color':      '#dc2626',
-            'short_text': 'CROSS-STRAIT: Mutual escalation L3+',
-            'long_text':  'CROSS-STRAIT MUTUAL ESCALATION: Both sides simultaneously at L3+ — coordination window compressed; US/Taiwan/Japan tempo decisive.',
-        })
+    # Cross-tracker: Arctic convergence (Russia arctic + Greenland sovereignty crisis)
+    russia_data = trackers.get('russia')
+    greenland_data = trackers.get('greenland')
+    if russia_data and greenland_data:
+        russia_arctic = _safe_int(russia_data.get('raw', {}).get('arctic_level'))
+        greenland_threat = greenland_data['levels']['threat']
+        if russia_arctic >= 3 and greenland_threat >= 3:
+            all_signals.append({
+                'priority':   13,
+                'category':   'arctic_convergence',
+                'theatre':    'regional',
+                'level':      max(russia_arctic, greenland_threat),
+                'icon':       '🧊',
+                'color':      '#dc2626',
+                'short_text': f'EUROPE: Arctic convergence (RU L{russia_arctic} + GL L{greenland_threat})',
+                'long_text':  f'EUROPE Arctic convergence — Russia Northern Fleet posture L{russia_arctic} '
+                              f'simultaneous with Greenland sovereignty crisis L{greenland_threat}. '
+                              f'Russia exploiting US-Denmark friction; classic GIUK pressure window.',
+            })
 
-    # Global sort
-    all_signals.sort(key=lambda x: x.get('priority', 0), reverse=True)
-    # Dedupe by (theatre, category) AND enforce per-theatre quota (v2.4.0 May 21 2026)
+    # Layer 2: Apply cross-regional convergence enrichments from CONVERGENCE_REGISTRY.
+    # This stamps {convergence_id}_active flags onto Europe-side signals (typically the
+    # Ukraine commodity signal) when the Europe side of a registered convergence is
+    # active. GPI detector reads the flag and emits a Tier-1 narrative.
+    # Architecture: commodity state is fetched via commodity_proxy_europe (HTTP to ME
+    # backend). Single source of truth for commodity data stays on ME backend.
+    all_signals = _apply_convergence_enrichments_europe(all_signals)
+
+    # Sort + dedupe with per-theatre quota (v2.4.0 May 21 2026)
     # Per-tracker quota: max MAX_PER_THEATRE signals per country tracker.
     # Cross-tracker signals (theatre='regional') bypass the quota — they're
     # platform-level convergence signals, not per-country emissions.
+    all_signals.sort(key=lambda x: x.get('priority', 0), reverse=True)
     seen           = set()
     theatre_counts = {}
     deduped        = []
@@ -813,136 +1027,27 @@ def _build_signals(posture, trackers):
         seen.add(key)
         theatre_counts[theatre] = theatre_counts.get(theatre, 0) + 1
         deduped.append(s)
-    # Baseline fallback if absolutely nothing
+
     if not deduped:
         deduped.append({
             'priority':   1,
             'category':   'baseline',
             'theatre':    'regional',
             'level':      0,
-            'icon':       '🌏',
+            'icon':       '🌍',
             'color':      '#6b7280',
-            'short_text': 'Asia-Pacific at baseline',
-            'long_text':  'All Asia-Pacific theaters at baseline — monitoring for coercion escalation.',
+            'short_text': 'Europe at baseline',
+            'long_text':  'All Europe theaters at baseline — monitoring for escalation.',
         })
 
     return deduped     # v2.3.0: full deduped pool (caller caps for display)
 
 
 # ============================================================
-# MAIN BUILD FUNCTION (matches ME pattern -- cache check inside)
+# MAIN BUILD FUNCTION
 # ============================================================
-# ── Multi-axis tagging + structured BLUF blocks (Jun 13 2026, approach B) ──
-# Mirrors the GPI's NARRATIVE_AXIS_SETS so regional signals declare their axis
-# set; the front-end renders one pill per axis. Primary axis first.
-_REGIONAL_AXIS_SETS = {
-    'kinetic_pressure': ['kinetic'], 'red_line_breached': ['kinetic'],
-    'theatre_high': ['kinetic'], 'theatre_active': ['kinetic'],
-    'mutual_escalation': ['kinetic'], 'deterrence_gap': ['kinetic'],
-    'china_two_front_convergence': ['kinetic', 'diplomatic'],
-    'scs_red_line': ['kinetic'], 'kinetic_threshold': ['kinetic'],
-    'sovereignty_erosion': ['kinetic', 'diplomatic'],
-    'economic_stress': ['economic'], 'sovereign_default': ['economic'],
-    'commodity': ['economic'], 'commodity_coupling': ['economic'],
-    'hormuz_japan_oil_dependency': ['economic'],
-    'green_line_active': ['diplomatic'], 'diplomatic_track_active': ['diplomatic'],
-    'diplomatic_active': ['diplomatic'], 'coalition_positive': ['diplomatic'],
-    'humanitarian': ['humanitarian'], 'displacement': ['humanitarian'],
-    'health_emergency': ['humanitarian'], 'food_price_crisis': ['humanitarian'],
-}
-_AXIS_KEYWORD_HINTS = [
-    ('economic', ['economic', 'default', 'reserves', 'oil', 'commodity', 'trade', 'currency', 'sanction']),
-    ('humanitarian', ['humanitarian', 'displace', 'refugee', 'famine', 'health', 'outbreak']),
-    ('diplomatic', ['diplomatic', 'coalition', 'partnership', 'deterrence-positive', 'mediation', 'negotiat']),
-]
-
-def _axes_for_signal(sig):
-    """Ordered axis list for a regional signal. category map > keyword hint >
-    kinetic default."""
-    cat = _safe_str(_safe_dict(sig).get('category')).lower()
-    if cat in _REGIONAL_AXIS_SETS:
-        return list(_REGIONAL_AXIS_SETS[cat])
-    blob = (cat + ' ' + _safe_str(sig.get('short_text')) + ' ' +
-            _safe_str(sig.get('long_text'))).lower()
-    for axis, kws in _AXIS_KEYWORD_HINTS:
-        if any(k in blob for k in kws):
-            return [axis]
-    return ['kinetic']
-
-def _tag_signal_axes(signals):
-    """Attach 'axes' (and align primary 'pressure_type') to each signal."""
-    out = []
-    for s in _safe_list(signals):
-        s2 = dict(s)
-        axes = _axes_for_signal(s2)
-        s2['axes'] = axes
-        s2.setdefault('pressure_type', axes[0])
-        out.append(s2)
-    return out
-
-def _build_bluf_blocks(posture, trackers):
-    """Structured paragraph blocks for the front-end (approach B).
-    Returns a list of {label, text} dicts. label='' renders as a plain
-    paragraph; a non-empty label renders bold/highlighted (e.g. the header).
-    Built from the same parts as _build_bluf_prose so the two stay in sync."""
-    trackers = _safe_dict(trackers)
-    date_str = datetime.now(timezone.utc).strftime('%b %d, %Y')
-    plain_posture = posture['label'].split('--')[0].strip().title() or 'Baseline'
-    peak      = posture.get('peak_theatre')
-    peak_name = THEATRE_DISPLAY.get(peak, '')
-    peak_flag = THEATRE_FLAGS.get(peak, '')
-    peak_lvl  = _safe_int(posture.get('peak_level'))
-
-    blocks = []
-    # Block 1: header (highlighted label, no body)
-    blocks.append({'label': f'Asia-Pacific Rhetoric Monitor ({date_str})', 'text': ''})
-
-    # Block 2: Regional posture (highlighted)
-    if peak_lvl >= 1 and peak_name:
-        posture_txt = (f"{plain_posture} -- the sharpest signal is {peak_flag} "
-                       f"{peak_name} at {ESCALATION_LABELS.get(peak_lvl, '').lower()} (L{peak_lvl}).")
-    else:
-        posture_txt = f"{plain_posture} -- all Asia-Pacific trackers at or near baseline."
-    blocks.append({'label': 'Regional Posture', 'text': posture_txt})
-
-    # Block 3: Theatre Reads -- one sentence per live tracker, most active first
-    levels = _safe_dict(posture.get('levels_by_theatre'))
-    order  = sorted(trackers.keys(), key=lambda t: -_safe_int(levels.get(t)))
-    country_lines = [_country_line(theatre, trackers[theatre]) for theatre in order]
-    if country_lines:
-        blocks.append({'label': 'Theatre Reads', 'text': ' '.join(country_lines)})
-
-    # Block 4: Convergence closer (highlighted) -- same logic as prose builder
-    cn_l   = _safe_int(levels.get('china'))
-    tw_l   = _safe_int(levels.get('taiwan'))
-    l3plus = [THEATRE_DISPLAY.get(t, t.upper()) for t in trackers
-              if _safe_int(levels.get(t)) >= 3]
-    closer = None
-    if cn_l >= 3 and tw_l >= 3:
-        closer = ("Mutual cross-strait escalation -- China and Taiwan are both at Direct-Threat "
-                  "level or higher at the same time; the US / Taiwan / Japan coordination tempo "
-                  "becomes the decisive variable.")
-    elif len(l3plus) >= 2:
-        closer = (f"Multiple theaters elevated at once ({', '.join(l3plus)}) -- the combination "
-                  f"compounds risk beyond any single front; watch for cross-theater coordination.")
-    elif _safe_int(posture.get('breached_count')) >= 1:
-        closer = (f"{posture['breached_count']} red line(s) breached across Asia-Pacific -- "
-                  f"adjacent categories warrant elevated monitoring for cascade.")
-    if closer:
-        blocks.append({'label': 'Convergence Watch', 'text': closer})
-
-    return blocks
-
-
 def build_regional_bluf(force=False):
-    """
-    Build the Asia regional BLUF. Reads China + Taiwan caches, synthesizes,
-    caches result in Redis. Returns dict.
-
-    Cache check is inside this function (matches ME pattern). The endpoint
-    handler simply calls this and returns the result.
-    """
-    # Cache-first unless forced
+    """Build the Europe regional BLUF."""
     if not force:
         cached = _redis_get(BLUF_CACHE_KEY)
         if cached and cached.get('generated_at'):
@@ -955,37 +1060,34 @@ def build_regional_bluf(force=False):
             except Exception:
                 pass
 
-    print('[Asia BLUF v2.1] Building regional BLUF from all Asia tracker caches...')
+    print('[Europe BLUF v3.4] Building regional BLUF from all Europe tracker caches...')
 
     try:
-        trackers = _read_all_trackers()
+        trackers, trackers_missing, trackers_stale = _read_all_trackers()
 
         if not trackers:
             return {
                 'success': False,
                 'error':   'No tracker data available',
-                'bluf':    'BLUF unavailable -- no tracker caches loaded.',
+                'bluf':    'BLUF unavailable -- no Europe tracker caches loaded.',
                 'signals': [],
                 'top_signals': [],
                 'posture_label': 'UNAVAILABLE',
                 'posture_color': '#6b7280',
             }
 
-        posture = _determine_regional_posture(trackers)
-        bluf    = _build_bluf_prose(posture, trackers)
-        # v2.3.0: signals collector returns full pool; cap separately for display
-        all_signals = _build_signals(posture, trackers)            # full pool — for GPI axis aggregation
-        all_signals = _tag_signal_axes(all_signals)                # Jun 13 2026: multi-axis pills
-        top_signals = all_signals[:TOP_SIGNALS_COUNT]                # capped for display
-        bluf_blocks = _build_bluf_blocks(posture, trackers)         # approach B structured blocks
+        posture     = _determine_regional_posture(trackers)
+        bluf        = _build_bluf_prose(posture, trackers)
+        all_signals = _build_signals(posture, trackers)            # v2.3.0: full pool
+        top_signals = all_signals[:TOP_SIGNALS_COUNT]                # v2.3.0: capped for display
 
         trackers_live = len(trackers)
 
-        # v2.1: Per-theatre summary (canonical — matches ME BLUF output shape)
+        # Per-theatre summary
         theatre_summary = {}
         for t, data in trackers.items():
-            lvls       = _safe_dict(data.get('levels'))
-            threat_lvl = _safe_int(lvls.get('threat'))
+            lvls       = data.get('levels', {}) or {}
+            threat_lvl = lvls.get('threat', 0)
             infl_lvl   = lvls.get('influence')
             theatre_summary[t] = {
                 'level':            threat_lvl,
@@ -994,7 +1096,6 @@ def build_regional_bluf(force=False):
                 'score':            data.get('score', 0),
                 'flag':             data.get('flag', THEATRE_FLAGS.get(t, '')),
                 'timestamp':        data.get('scanned_at', ''),
-                # Dual-axis fields:
                 'threat_level':     threat_lvl,
                 'influence_level':  infl_lvl,
                 'green_level':      lvls.get('green'),
@@ -1005,12 +1106,6 @@ def build_regional_bluf(force=False):
                 'influence_color':  INFLUENCE_COLORS.get(infl_lvl, '#6b7280') if infl_lvl is not None else None,
             }
 
-        # Theatres at L3+ (matches ME pattern for GPI consumption)
-        theatres_at_l3plus = sum(
-            1 for t in theatre_summary.values() if t.get('threat_level', 0) >= 3
-        )
-
-        # Average score across live trackers
         scores = [t.get('score', 0) for t in theatre_summary.values()]
         avg_score = round(sum(scores) / len(scores), 1) if scores else 0
 
@@ -1018,108 +1113,101 @@ def build_regional_bluf(force=False):
             'success':            True,
             'from_cache':         False,
             'bluf':               bluf,
-            'bluf_v2':            bluf_blocks,           # Jun 13 2026: structured paragraph blocks (approach B)
-            'signals':            all_signals,           # v2.3.0: FULL signal pool — for GPI axis aggregation
-            'top_signals':        top_signals,           # v2.3.0: capped — for display + prose synthesis
+            'signals':            all_signals,               # v2.3.0: FULL signal pool — for GPI axis aggregation
+            'top_signals':        top_signals,                # v2.3.0: capped — for display + prose synthesis
             'posture_label':      posture['label'],
             'posture_color':      posture['color'],
-            'peak_level':         posture['peak_level'], # legacy alias
-            'max_level':          posture['peak_level'], # canonical (GPI reads this)
+            'peak_level':         posture['peak_level'],      # legacy alias
+            'max_level':          posture['peak_level'],      # canonical
             'avg_score':          avg_score,
-            'cn_level':           posture['cn_level'],
-            'tw_level':           posture['tw_level'],
-            'deterrence_gap':     posture['deterrence_gap'],
-            'kinetic_pressure':   posture['kinetic_pressure'],
             'red_lines_breached': posture['breached_count'],
+            'nuclear_elevated':   posture['nuclear_elevated'],
+            'arctic_elevated':    posture['arctic_elevated'],
             'trackers_live':      trackers_live,
-            'theatres_live':      trackers_live,         # canonical alias
-            'theatres_at_l3plus': theatres_at_l3plus,    # canonical
+            'theatres_live':      trackers_live,
+            'theatres_at_l3plus': posture['theatres_at_l3plus'],
             'trackers_total':     len(TRACKER_KEYS),
-            'theatre_summary':    theatre_summary,       # canonical
+            'trackers_stale':     trackers_stale,    # B: served from last-known-good
+            'trackers_missing':   trackers_missing,  # B: no live AND no last-known-good
+            'picture_complete':   (len(trackers_missing) == 0),
+            'theatre_summary':    theatre_summary,
             'generated_at':       datetime.now(timezone.utc).isoformat(),
-            'version':            '2.1.0',
-            'region':             'asia',                # canonical (GPI reads this)
+            'version':            '3.4.0',
+            'methodology_note':   (
+                'How to read this: country scores are rhetoric-signal '
+                'composites -- weighted volume and severity of classified '
+                'statements from officials, state media, and OSINT channels '
+                '-- not battlefield event counts and not probabilities of '
+                'action. Convergence, not prediction.'
+            ),
+            'region':             'europe',
             'top_signals_count':  len(top_signals),
         }
 
-        _redis_set(BLUF_CACHE_KEY, result)
-        print(f"[Asia BLUF v2.1] Built: posture={posture['label']}, "
+        _bluf_ttl = BLUF_INCOMPLETE_TTL if (trackers_missing or trackers_stale) else BLUF_CACHE_TTL
+        _redis_set(BLUF_CACHE_KEY, result, ttl=_bluf_ttl)
+        print(f"[Europe BLUF v3.4] Built: posture={posture['label']}, "
               f"max_level=L{posture['peak_level']}, "
               f"breached={posture['breached_count']}, "
               f"signals={len(top_signals)}, "
-              f"deterrence_gap=L{posture['deterrence_gap']}")
+              f"theaters_live={trackers_live}, "
+              f"nuclear={posture['nuclear_elevated']}")
         return result
 
     except Exception as e:
-        # Full traceback to Render logs
-        print(f"[Asia BLUF] SYNTHESIS EXCEPTION: {e}")
-        print(f"[Asia BLUF] Traceback follows:")
+        print(f"[Europe BLUF] SYNTHESIS EXCEPTION: {e}")
+        print(f"[Europe BLUF] Traceback follows:")
         print(traceback.format_exc())
         return {
             'success': False,
             'error':   f'{type(e).__name__}: {str(e)[:300]}',
             'bluf':    'BLUF synthesis failed -- check backend logs for traceback.',
             'signals': [],
+            'top_signals': [],
             'posture_label': 'ERROR',
             'posture_color': '#6b7280',
         }
 
 
 # ============================================================
-# ROUTE REGISTRATION (matches ME pattern -- imports inside)
+# ROUTE REGISTRATION
 # ============================================================
-def register_asia_bluf_routes(app):
-    """Register Asia BLUF endpoints on the given Flask app."""
+def register_europe_bluf_routes(app):
+    """Register Europe BLUF endpoints on the given Flask app."""
     from flask import jsonify, request as flask_request
 
-    @app.route('/api/rhetoric/asia/bluf', methods=['GET'])
-    def asia_regional_bluf():
+    @app.route('/api/rhetoric/europe/bluf', methods=['GET'])
+    def get_europe_bluf():
         force = flask_request.args.get('force', 'false').lower() == 'true'
         result = build_regional_bluf(force=force)
         return jsonify(result)
 
-    @app.route('/api/rhetoric/asia/bluf/debug', methods=['GET'])
-    def asia_regional_bluf_debug():
-        """
-        Diagnostic endpoint -- reveals what's actually in Redis.
-        Does NOT attempt synthesis. Safe to hit even when synthesis is broken.
-        """
-        try:
-            china  = _redis_get(CHINA_CACHE_KEY)
-            taiwan = _redis_get(TAIWAN_CACHE_KEY)
-            bluf   = _redis_get(BLUF_CACHE_KEY)
+    @app.route('/api/rhetoric/europe/bluf/debug', methods=['GET'])
+    def get_europe_bluf_debug():
+        cached = _redis_get(BLUF_CACHE_KEY)
+        return jsonify({
+            'cache_present': cached is not None,
+            'cache_data':    cached,
+        })
 
-            def _describe(obj, name):
-                if obj is None:
-                    return {'status': 'MISSING', 'name': name}
-                if not isinstance(obj, dict):
-                    return {'status': 'BAD_TYPE', 'name': name, 'type': type(obj).__name__}
-                return {
-                    'status':          'OK',
-                    'name':            name,
-                    'top_level_keys':  sorted(obj.keys()),
-                    'has_so_what':     isinstance(obj.get('so_what'), dict),
-                    'so_what_keys':    sorted(_safe_dict(obj.get('so_what')).keys()),
-                    'has_red_lines':   isinstance(obj.get('red_lines'), list),
-                    'red_lines_count': len(_safe_list(obj.get('red_lines'))),
-                    'overall_level':   obj.get('overall_level'),
-                    'scanned_at':      obj.get('scanned_at'),
-                    'version':         obj.get('version'),
-                }
+    print('[Europe BLUF] Routes registered: /api/rhetoric/europe/bluf, /bluf/debug')
 
-            return jsonify({
-                'success':          True,
-                'redis_configured': bool(UPSTASH_REDIS_URL and UPSTASH_REDIS_TOKEN),
-                'china_cache':      _describe(china,  CHINA_CACHE_KEY),
-                'taiwan_cache':     _describe(taiwan, TAIWAN_CACHE_KEY),
-                'bluf_cache':       _describe(bluf,   BLUF_CACHE_KEY),
-                'module_version':   '2.0.0-asia-bluf',
-            })
-        except Exception as e:
-            return jsonify({
-                'success':   False,
-                'error':     f'{type(e).__name__}: {str(e)[:300]}',
-                'traceback': traceback.format_exc()[:1500],
-            }), 500
 
-    print('[Asia BLUF] Routes registered: /api/rhetoric/asia/bluf + /bluf/debug')
+# ============================================================
+# STANDALONE TEST
+# ============================================================
+if __name__ == '__main__':
+    print("Europe Regional BLUF Engine -- standalone test")
+    print("(Requires Redis env vars to actually read tracker caches)")
+    print()
+    result = build_regional_bluf(force=True)
+    print('BLUF:')
+    print(result.get('bluf', '(no BLUF)'))
+    print()
+    print('TOP SIGNALS:')
+    for s in result.get('top_signals', []):
+        print(f'  {s.get("icon", "•")} {s.get("short_text", "")}')
+    print()
+    print(f'POSTURE: {result.get("posture_label", "")}')
+    print(f'MAX LEVEL: L{result.get("max_level", 0)}')
+    print(f'TRACKERS LIVE: {result.get("trackers_live", 0)}/{result.get("trackers_total", 0)}')
