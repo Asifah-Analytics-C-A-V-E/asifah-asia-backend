@@ -130,7 +130,7 @@ UPSTASH_REDIS_TOKEN = os.environ.get('UPSTASH_REDIS_TOKEN', '')
 CACHE_KEY                 = 'rhetoric:japan:latest'
 ARTICLES_KEY              = 'rhetoric:japan:articles'
 CROSSTHEATER_KEY          = 'rhetoric:crosstheater:fingerprints'
-CACHE_TTL_HOURS           = 12
+CACHE_TTL_HOURS           = 14
 BACKGROUND_REFRESH_HOURS  = 12
 
 NEWSAPI_KEY = os.environ.get('NEWSAPI_KEY', '')
