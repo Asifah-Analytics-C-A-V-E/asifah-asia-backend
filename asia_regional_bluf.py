@@ -298,7 +298,7 @@ def _normalize_tracker_data(theatre, raw_data):
         'so_what':      so_what,
         'red_lines':    red_lines,
         'top_signals':  top_signals,
-        'scanned_at':   _safe_str(raw_data.get('scanned_at') or raw_data.get('timestamp', '')),
+        'scanned_at':   _safe_str(raw_data.get('scanned_at') or raw_data.get('timestamp') or raw_data.get('updated_at', '')),
         'raw':          raw_data,
     }
 
