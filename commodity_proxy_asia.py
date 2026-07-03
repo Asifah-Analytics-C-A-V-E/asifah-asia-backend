@@ -219,7 +219,7 @@ def get_commodity_data(target, force=False):
 # List of targets to proactively refresh in the background. Anything in
 # this list gets a fresh pull from ME every 12h so users never see a
 # slow first-load. Add new countries here as their stability pages ship.
-PROACTIVE_REFRESH_TARGETS = ['china', 'japan', 'taiwan', 'vietnam']
+PROACTIVE_REFRESH_TARGETS = ['china', 'japan', 'taiwan', 'vietnam', 'afghanistan']
 
 _refresh_lock = threading.Lock()
 _last_refresh = {}  # target -> unix timestamp
