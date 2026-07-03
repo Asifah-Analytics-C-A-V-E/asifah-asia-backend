@@ -232,10 +232,10 @@ ACTORS = {
 }
 
 # Helper sets for downstream classification logic
-DOMESTIC_ACTORS = ['presidency', 'cancilleria', 'ffaa', 'mining_sector', 'las_bambas', 'vraem_sendero']
-EXTERNAL_ACTORS = ['us_afghanistan', 'china_afghanistan']
-RESOURCE_ACTORS = ['mining_sector', 'las_bambas']
-ALIGNMENT_ACTORS = {'us_afghanistan': 'us_alignment', 'china_afghanistan': 'china_alignment'}
+DOMESTIC_ACTORS = ['taliban_kabul', 'taliban_kandahar', 'haqqani_interior', 'drug_economy']
+EXTERNAL_ACTORS = ['pakistan_state', 'iran_afghanistan', 'russia_engagement', 'china_engagement']
+RESOURCE_ACTORS = ['drug_economy']
+ALIGNMENT_ACTORS = {'russia_engagement': 'external_friction', 'china_engagement': 'external_friction'}
 
 # Vector groupings for the 4-vector composite score
 VECTOR_GROUPS = {
@@ -494,7 +494,7 @@ def fetch_gdelt_query(query, language='eng', days=7, max_articles=50):
                 'source':      item.get('domain', 'GDELT'),
                 'feed_id':     'gdelt',
                 'feed_type':   'gdelt',
-                'language':    'es' if language == 'spa' else 'en',
+                'language':    'fa' if language == 'fas' else 'en',
                 'feed_weight': 0.85,
             })
         return articles
@@ -508,7 +508,7 @@ def fetch_all_gdelt(days=7):
         all_articles.extend(fetch_gdelt_query(q, language='eng', days=days))
         time.sleep(0.5)
     for q in GDELT_QUERIES_ES:
-        all_articles.extend(fetch_gdelt_query(q, language='spa', days=days))
+        all_articles.extend(fetch_gdelt_query(q, language='fas', days=days))
         time.sleep(0.5)
     print(f"[AFG Rhetoric] GDELT: {len(all_articles)} articles")
     return all_articles
@@ -552,13 +552,13 @@ def fetch_newsapi(query, days=7):
 
 def fetch_all_newsapi(days=7):
     queries = [
-        'Afghanistan Boluarte OR Castillo',
-        'Afghanistan mining strike OR blockade',
-        'Las Bambas OR Antamina',
-        'Chancay port OR megaport',
-        'Afghanistan China Belt and Road',
-        'Afghanistan US embassy OR FTA',
-        'VRAEM OR Sendero Luminoso',
+        'Taliban decree OR statement',
+        'Afghanistan Pakistan border OR strike',
+        'ISKP OR "ISIS-K" attack',
+        'TTP attack OR claim',
+        'Afghanistan Iran Helmand OR deportation',
+        'Russia OR China Taliban engagement',
+        'Afghanistan UNAMA OR "human rights"',
     ]
     all_articles = []
     for q in queries:
@@ -611,10 +611,10 @@ def fetch_all_brave(days=7, gdelt_count=0, newsapi_count=0):
     if gdelt_count + newsapi_count >= 10:
         return []
     queries = [
-        'Afghanistan Boluarte 2026',
-        'Las Bambas blockade',
-        'Chancay port COSCO',
-        'Afghanistan mining strike',
+        'Taliban Afghanistan 2026',
+        'Pakistan Afghanistan border strike',
+        'ISKP attack',
+        'Afghanistan earthquake OR deportation',
     ]
     all_articles = []
     for q in queries:
@@ -772,7 +772,7 @@ def _read_commodity_pressure_story_for_afghanistan():
       {alert, points, profile_count, commodities: {commodity_id: global_alert_level}}
     """
     try:
-        url = f"{ASIA_BACKEND_SELF_URL}/api/wha/commodity/afghanistan"
+        url = f"{ASIA_BACKEND_SELF_URL}/api/asia/commodity/afghanistan"
         resp = requests.get(url, timeout=8)
         if resp.status_code != 200:
             return {}
@@ -795,23 +795,23 @@ def _read_commodity_pressure_story_for_afghanistan():
 
 def _read_crosstheater_amplifiers():
     """
-    Read fingerprints from sibling trackers that affect Afghanistan's analytical context:
-      • China rhetoric tracker — Latin America focus
-      • Iran rhetoric tracker — Hezbollah/extremist-network signals (TBA, Quds)
+    Sibling-tracker fingerprints that shape Afghanistan's analytical context
+    (the wheels, read from the shared Redis -- absence-honest when missing):
+      pakistan_fingerprint -- crosstheater:pakistan:fingerprint (confirmed sibling)
+      iran_fingerprint     -- crosstheater:iran:fingerprint     (ME backend, attempted)
+      china_fingerprint    -- crosstheater:china:fingerprint    (attempted)
     """
     amplifiers = {}
     candidate_keys = {
-        'china_lac_active':     'rhetoric:china:lac_active',
-        'china_bri_latam':      'rhetoric:china:bri_latam_active',
-        'iran_latam_active':    'rhetoric:iran:latam_active',
-        'iran_hezbollah_tba':   'rhetoric:iran:hezbollah_tba_active',
+        'pakistan_fingerprint': 'crosstheater:pakistan:fingerprint',
+        'iran_fingerprint':     'crosstheater:iran:fingerprint',
+        'china_fingerprint':    'crosstheater:china:fingerprint',
     }
     for label, redis_key in candidate_keys.items():
         val = _redis_get(redis_key)
         if val:
             amplifiers[label] = val
     return amplifiers
-
 
 def _builtin_fallback_signals(composite_score, composite_level, vector_scores,
                               vector_levels, actor_summaries, tripwires_global,
@@ -932,15 +932,12 @@ def _compute_afghanistan_l5_gate(tripwires_global, actor_summaries, vector_score
     Per platform L5 Reservation Contract: Afghanistan L5 "Active Crisis" requires
     an explicit kinetic / humanitarian / economic / diplomatic L5 trigger.
 
-    Afghanistan is a resource-economy absorber-class tracker. Today's typical signals
-    (Las Bambas surge, Boluarte politics, mining-community conflict, US/China
-    alignment shifts) all sit at L1-L4 ceiling. L5 would require crisis-class
-    events (VRAEM mass-casualty attack, sol collapse, sovereign default,
-    mass displacement).
-
-    Today: scaffold — no L5 tripwires defined in actor matrix at severity 5.
-    Weekend audit will add real L5-class tripwires per axis. Until then,
-    gate correctly returns any=False.
+    Afghanistan is a contested-node tracker. L5 'Active Crisis' is reserved for
+    crisis-class events: ISKP mass-casualty external operation, open cross-border
+    war (Pakistan or Iran), catastrophic Hindu Kush quake with state-capacity
+    collapse, or famine-scale humanitarian rupture. Scaffold today -- the
+    weekend audit adds severity-5 tripwires per axis; until then the gate
+    correctly returns any=False.
 
     Returns dict with axis flags + reason string.
     """
@@ -967,24 +964,24 @@ def _compute_afghanistan_l5_gate(tripwires_global, actor_summaries, vector_score
     reasons = []
 
     # ── KINETIC L5 (scaffold — refine in weekend audit) ──
-    # Would fire on: VRAEM mass-casualty attack, sustained Las Bambas violence
-    # with deaths, military coup with kinetic action. No severity-5 tripwires
+    # Would fire on: ISKP mass-casualty external op, Pakistan/Iran cross-border war,
+    # Kabul-regime collapse with kinetic contest. No severity-5 tripwires
     # currently defined in Afghanistan's ACTORS dict. Awaits weekend audit.
     # Today: never fires.
 
     # ── HUMANITARIAN L5 (scaffold — refine in weekend audit) ──
-    # Would fire on: mass displacement from extractive conflict, famine,
-    # major disaster IDPs. No severity-5 tripwires currently defined.
+    # Would fire on: famine-scale rupture, catastrophic quake displacement,
+    # deportation-wave humanitarian collapse. No severity-5 tripwires currently defined.
     # Today: never fires.
 
     # ── ECONOMIC L5 (scaffold — refine in weekend audit) ──
-    # Would fire on: sol currency collapse, sovereign default, mining sector
-    # total shutdown with GDP shock. No severity-5 tripwires currently defined.
+    # Would fire on: afghani collapse, banking-system failure,
+    # total aid-pipeline shutdown. No severity-5 tripwires currently defined.
     # Today: never fires.
 
     # ── DIPLOMATIC L5 (scaffold — refine in weekend audit) ──
-    # Would fire on: mutual PNG with US/Chile/Bolivia, embassy closure,
-    # OAS rupture. No severity-5 tripwires currently defined.
+    # Would fire on: recognition-cascade rupture, wheel-power embassy
+    # closures, UN-mandate collapse. No severity-5 tripwires currently defined.
     # Today: never fires.
 
     gate['any']    = any(gate[k] for k in ('kinetic', 'humanitarian', 'economic', 'diplomatic'))
@@ -1140,41 +1137,6 @@ def scan_afghanistan_rhetoric(force=False, days=7):
     # ── Write Afghanistan fingerprints for downstream consumers ──
     _write_afghanistan_fingerprints(actor_levels, vector_scores, tripwires_global)
 
-    # ── Build executive summary + so-what + top signals via interpreter ──
-    if AFG_INTERPRETER_AVAILABLE:
-        try:
-            top_signals = build_top_signals(actor_summaries, tripwires_global,
-                                             commodity_pressure, crosstheater_amplifiers)
-            executive_summary = build_executive_summary(actor_summaries, vector_scores,
-                                                       vector_levels, tripwires_global)
-            alignment_drift = score_alignment_drift(actor_summaries, tripwires_global,
-                                                    commodity_pressure, crosstheater_amplifiers,
-                                                    country='afghanistan')
-            so_what = build_so_what_factor(actor_summaries, vector_scores, vector_levels,
-                                           tripwires_global, commodity_pressure,
-                                           alignment_drift=alignment_drift)
-            election_watch = None   # RETIRED Jul 2026 -- runoff concluded (Fujimori declared winner)
-        except Exception as e:
-            print(f"[AFG Rhetoric] Interpreter error: {str(e)[:200]}")
-            traceback.print_exc()
-            top_signals, executive_summary, so_what = _builtin_fallback_signals(
-            composite_score, composite_level, vector_scores, vector_levels,
-            actor_summaries, tripwires_global, disaster_state)
-            election_watch = None
-            alignment_drift = None
-    else:
-        top_signals, executive_summary, so_what = _builtin_fallback_signals(
-            composite_score, composite_level, vector_scores, vector_levels,
-            actor_summaries, tripwires_global, disaster_state)
-        election_watch = None
-        alignment_drift = None
-
-    # ── Alignment-drift convergence signal (BRI inroad read) -> WHA BLUF / GPI ──
-    if AFG_INTERPRETER_AVAILABLE and alignment_drift:
-        _drift_sig = build_alignment_drift_top_signal(alignment_drift)
-        if _drift_sig and not any(s.get('category') == 'alignment_drift' for s in top_signals):
-            top_signals = [_drift_sig] + list(top_signals)
-
     # ── Compute composite Afghanistan pressure score ──
     composite_score = round(sum(vector_scores.values()), 2)
 
@@ -1198,6 +1160,55 @@ def scan_afghanistan_rhetoric(force=False, days=7):
         key=lambda lv: ['low', 'normal', 'elevated', 'high', 'surge'].index(lv),
         default='low',
     )
+
+    # ── Build executive summary + so-what + top signals via interpreter ──
+    if AFG_INTERPRETER_AVAILABLE:
+        try:
+            top_signals = build_top_signals(actor_summaries, tripwires_global,
+                                             commodity_pressure, crosstheater_amplifiers)
+            executive_summary = build_executive_summary(actor_summaries, vector_scores,
+                                                       vector_levels, tripwires_global)
+            alignment_drift = score_alignment_drift(actor_summaries, tripwires_global,
+                                                    commodity_pressure, crosstheater_amplifiers,
+                                                    country='afghanistan')
+            so_what = build_so_what_factor(actor_summaries, vector_scores, vector_levels,
+                                           tripwires_global, commodity_pressure,
+                                           alignment_drift=alignment_drift)
+            # Sensor + contested-node signals fire on BOTH paths (Jul 2026):
+            # the interpreter owns prose; the tracker owns its cross-reads.
+            try:
+                _extra, _, _ = _builtin_fallback_signals(
+                    composite_score, composite_level, vector_scores, vector_levels,
+                    actor_summaries, [], disaster_state)
+                _have = {s.get('type') for s in top_signals if isinstance(s, dict)}
+                for _sig in _extra:
+                    if _sig.get('type') in ('natural_disaster_strain', 'contested_node') \
+                            and _sig.get('type') not in _have:
+                        top_signals.append(_sig)
+            except Exception as _e:
+                print(f'[AFG Rhetoric] cross-read append error: {str(_e)[:100]}')
+            election_watch = None   # N/A -- the Emirate rules by decree; no electoral cycle to watch
+        except Exception as e:
+            print(f"[AFG Rhetoric] Interpreter error: {str(e)[:200]}")
+            traceback.print_exc()
+            top_signals, executive_summary, so_what = _builtin_fallback_signals(
+            composite_score, composite_level, vector_scores, vector_levels,
+            actor_summaries, tripwires_global, disaster_state)
+            election_watch = None
+            alignment_drift = None
+    else:
+        top_signals, executive_summary, so_what = _builtin_fallback_signals(
+            composite_score, composite_level, vector_scores, vector_levels,
+            actor_summaries, tripwires_global, disaster_state)
+        election_watch = None
+        alignment_drift = None
+
+    # ── Alignment-drift convergence signal (BRI inroad read) -> WHA BLUF / GPI ──
+    if AFG_INTERPRETER_AVAILABLE and alignment_drift:
+        _drift_sig = build_alignment_drift_top_signal(alignment_drift)
+        if _drift_sig and not any(s.get('category') == 'alignment_drift' for s in top_signals):
+            top_signals = [_drift_sig] + list(top_signals)
+
 
     # ── BLUF compatibility shim ──
     # wha_regional_bluf.py's _normalize_tracker_data() expects an integer
@@ -1250,7 +1261,7 @@ def scan_afghanistan_rhetoric(force=False, days=7):
         'l5_gate':               l5_gate,
         'raw_theatre_level':     raw_theatre_level,
         'l5_capped':             l5_capped,
-        'source_class':          'absorber',  # resource-economy absorber; reads commodity pressure + US/CN alignment
+        'source_class':          'contested_node',  # four-wheel contested node (AZ schema)
         'vector_scores':         vector_scores,
         'vector_levels':         vector_levels,
         'actor_summaries':       actor_summaries,
@@ -1287,10 +1298,10 @@ def scan_afghanistan_rhetoric(force=False, days=7):
             'theatre_score':       theatre_score,
             'scanned_at':          result.get('last_updated') or datetime.now(timezone.utc).isoformat(),
             'red_lines_count':     len(tripwires_global),
-            'domestic_stability':  vector_levels.get('domestic_stability'),
-            'resource_sector':     vector_levels.get('resource_sector'),
-            'us_alignment':        vector_levels.get('us_alignment'),
-            'china_alignment':     vector_levels.get('china_alignment'),
+            'kinetic_afpak':       vector_levels.get('kinetic_afpak'),
+            'repression_rights':   vector_levels.get('repression_rights'),
+            'external_friction':   vector_levels.get('external_friction'),
+            'illicit_economy':     vector_levels.get('illicit_economy'),
         }, max_len=336)
     except Exception as e:
         print(f"[AFG Rhetoric] History snapshot write failed: {e}")
