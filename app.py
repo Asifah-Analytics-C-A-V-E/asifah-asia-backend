@@ -141,6 +141,18 @@ except ImportError:
     CHINA_HUMANITARIAN_AVAILABLE = False
     print("[Asia Backend] ⚠️ China humanitarian module not available")
 
+# Afghanistan humanitarian / disaster + refugee SENSOR (Jul 2026)
+# USGS Hindu Kush bounding-box + IOM DTM + UNHCR population API + GDACS +
+# ReliefWeb. Publishes humanitarian:afghanistan:latest for the stability
+# page and the future rhetoric tracker's L5 humanitarian gate.
+try:
+    from afghanistan_humanitarian import register_afghanistan_humanitarian_endpoints
+    AFGHANISTAN_HUMANITARIAN_AVAILABLE = True
+    print("[Asia Backend] ✅ Afghanistan humanitarian sensor loaded")
+except ImportError:
+    AFGHANISTAN_HUMANITARIAN_AVAILABLE = False
+    print("[Asia Backend] ⚠️ Afghanistan humanitarian sensor not available")
+
 # Convergence Proxy — pulls cross-regional convergence stacks from ME backend
 # (mirrors commodity_proxy_europe.py pattern: 12hr Redis cache + passthrough endpoints)
 try:
@@ -3152,6 +3164,9 @@ if PAKISTAN_STABILITY_AVAILABLE:
 
 if CHINA_HUMANITARIAN_AVAILABLE:
     register_china_humanitarian_endpoints(app)
+
+if AFGHANISTAN_HUMANITARIAN_AVAILABLE:
+    register_afghanistan_humanitarian_endpoints(app)
 
 if CONVERGENCE_PROXY_AVAILABLE:
     register_convergence_proxy(app)
