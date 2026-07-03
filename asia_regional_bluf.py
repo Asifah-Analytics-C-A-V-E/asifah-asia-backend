@@ -54,6 +54,7 @@ TRACKER_KEYS = {
     'japan':    'rhetoric:japan:latest',
     'india':    'rhetoric:india:latest',   # Patch 12 (May 2026) — absorber-class tracker
     'vietnam':  'rhetoric:vietnam:latest', # Jun 2026 -- SCS coercion-response tracker
+    'afghanistan': 'rhetoric:afghanistan:latest',  # Jul 2026 -- four-wheel contested node
     # Future Asia trackers slot in here:
     # 'korea_north': 'rhetoric:dprk:latest',
     # 'philippines': 'rhetoric:philippines:latest',
@@ -66,6 +67,7 @@ THEATRE_FLAGS = {
     'japan':    '\U0001f1ef\U0001f1f5',  # 🇯🇵
     'india':    '\U0001f1ee\U0001f1f3',  # 🇮🇳
     'vietnam':  '\U0001f1fb\U0001f1f3',  # VN
+    'afghanistan': '\U0001f1e6\U0001f1eb',  # AF
 }
 
 THEATRE_DISPLAY = {
@@ -75,6 +77,7 @@ THEATRE_DISPLAY = {
     'japan':    'JAPAN',
     'india':    'INDIA',
     'vietnam':  'VIETNAM',
+    'afghanistan': 'AFGHANISTAN',
 }
 
 # v2.5 (Jun 2026): one-clause "why this theatre matters regionally" -- used as the
@@ -87,6 +90,7 @@ THEATRE_ROLE = {
     'japan':    'the alliance anchor whose posture signals how far US-led deterrence extends',
     'india':    'an absorber-class swing state whose alignment tilts the wider regional balance',
     'vietnam':  'a South China Sea claimant tied to the Hormuz energy-import chain, where shocks land as input-cost and sovereignty pressure',
+    'afghanistan': 'a four-wheel contested node (Iran friction, Pakistan kinetic, Russia normalization, China extraction) whose instability exports terror risk, refugees, and narcotics pressure across the region',
 }
 
 # Top-N signals emitted to GPI (matches ME pattern)
