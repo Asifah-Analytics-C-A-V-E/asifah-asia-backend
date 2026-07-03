@@ -842,6 +842,22 @@ def _builtin_fallback_signals(composite_score, composite_level, vector_scores,
                                    f"afghanistan_humanitarian, USGS bounding-box). A disaster of this scale is "
                                    f"consistent with degraded state capacity in an aid-constrained system. "
                                    f"Convergence read, not a prediction of outcome."})
+    # contested-node read: >=3 wheels elevated+ (AZ schema -- the headline signal)
+    _wheels = {'iran_afghanistan':'friction','pakistan_state':'kinetic',
+               'russia_engagement':'normalization','china_engagement':'extraction'}
+    _active = [(k,r) for k,r in _wheels.items()
+               if (actor_summaries or {}).get(k,{}).get('level','low') in ('elevated','high','surge')]
+    if len(_active) >= 3:
+        _roles = ', '.join(k.split('_')[0].title() + ' (' + r + ')' for k,r in _active)
+        sigs.append({'level':'high','type':'contested_node','priority':9,
+                     'category':'contested_node','theatre':'afghanistan',
+                     'pressure_type':'diplomatic',
+                     'short_text': '\U0001f6de AFGHANISTAN contested node: ' + str(len(_active)) + '/4 wheels active',
+                     'long_text':  'AFGHANISTAN multi-wheel convergence: ' + _roles + ' simultaneously '
+                                   'elevated on one contested node. Mixed-polarity engagement of this '
+                                   'breadth is the pattern that has historically preceded competitive '
+                                   'positioning cascades. Convergence read, not a prediction of alignment.'})
+
     # surge/high actors
     for akey, summ in (actor_summaries or {}).items():
         lvl = summ.get('level','low') if isinstance(summ,dict) else 'low'
