@@ -78,6 +78,14 @@ except Exception as e:
     print(f"[Asia Backend] === END TAIWAN IMPORT TRACEBACK ===")
 
 try:
+    from rhetoric_tracker_afghanistan import register_afghanistan_rhetoric_endpoints
+    AFGHANISTAN_RHETORIC_AVAILABLE = True
+    print("[Asia Backend] ✅ Afghanistan rhetoric tracker loaded")
+except Exception as e:
+    AFGHANISTAN_RHETORIC_AVAILABLE = False
+    print(f"[Asia Backend] ⚠️ Afghanistan rhetoric tracker not available — {type(e).__name__}: {e}")
+
+try:
     from rhetoric_tracker_pakistan import register_pakistan_rhetoric_endpoints
     PAKISTAN_RHETORIC_AVAILABLE = True
     print("[Asia Backend] ✅ Pakistan rhetoric tracker loaded")
@@ -3146,6 +3154,9 @@ if TAIWAN_RHETORIC_AVAILABLE:
 
 if PAKISTAN_RHETORIC_AVAILABLE:
     register_pakistan_rhetoric_endpoints(app)
+
+if AFGHANISTAN_RHETORIC_AVAILABLE:
+    register_afghanistan_rhetoric_endpoints(app)
 
 if JAPAN_RHETORIC_AVAILABLE:
     register_japan_rhetoric_endpoints(app)
