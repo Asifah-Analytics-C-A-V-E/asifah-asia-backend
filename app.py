@@ -115,6 +115,26 @@ except Exception as e:
     print(f"[Asia Backend] ⚠️ Vietnam rhetoric tracker not available — {type(e).__name__}: {e}")
     traceback.print_exc()
 
+# DPRK Leverage Tracker (v1.0 -- Jul 13, 2026)
+# Instrument: LEVERAGE INTEGRITY, and the read is INVERTED -- the DPRK escalates
+# when its leverage DECAYS, not when it peaks. A test is a RELEVANCE signal.
+# Emits crosstheater:dprk:fingerprint AND spoke:china:dprk -- the second China
+# spoke, which is what finally justifies building the China wheel reader.
+# Tempo target: mode='actor'. Pyongyang ANNOUNCES; silence from a claiming actor
+# is the signal. This is the canonical case the tempo engine was built for.
+try:
+    from rhetoric_tracker_dprk import (
+        register_dprk_rhetoric_endpoints,
+        start_dprk_rhetoric_scanner,
+    )
+    DPRK_RHETORIC_AVAILABLE = True
+    print("[Asia Backend] ✅ DPRK leverage tracker loaded")
+except Exception as e:
+    import traceback
+    DPRK_RHETORIC_AVAILABLE = False
+    print(f"[Asia Backend] ⚠️ DPRK leverage tracker not available — {type(e).__name__}: {e}")
+    traceback.print_exc()
+
 try:
     from asia_regional_bluf import register_asia_bluf_routes
     ASIA_BLUF_AVAILABLE = True
@@ -3163,6 +3183,12 @@ if JAPAN_RHETORIC_AVAILABLE:
 
 if VIETNAM_RHETORIC_AVAILABLE:
     register_vietnam_rhetoric_endpoints(app)
+
+# DPRK leverage tracker -- endpoints + 12h background scanner (cross-worker locked)
+if DPRK_RHETORIC_AVAILABLE:
+    register_dprk_rhetoric_endpoints(app)
+    start_dprk_rhetoric_scanner()
+    print("[Asia Backend] ✅ DPRK rhetoric routes registered + scanner started")
 
 if ASIA_BLUF_AVAILABLE:
     register_asia_bluf_routes(app)
