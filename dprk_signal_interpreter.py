@@ -332,6 +332,60 @@ def _score_nuclear_tripwire(scan_data, nuclear):
     }
 
 
+def _gate_provocation_on_tripwire(nuclear, tripwire):
+    """PREPARATION IS NOT EXECUTION. Caught in end-to-end testing, Jul 13 2026.
+
+    The nuclear_test keyword net matches "nuclear test PREPARATION imagery" --
+    the word 'test' sits inside the word 'test preparation'. Left alone, a
+    satellite photo of a truck at Punggye-ri would set provocation_class =
+    'nuclear_test', and conflict_repricing_detector.py would render, on the
+    Market Watch page: "A nuclear test registered in the rhetoric layer this
+    cycle." We would be telling readers the DPRK detonated a weapon because
+    somebody photographed a tunnel entrance.
+
+    The fix is structural rather than another keyword: THE TRIPWIRE IS THE
+    EXECUTED-TEST DETECTOR. A real test trips it to BREACHED. So if the tripwire
+    is not BREACHED, no test occurred, and 'nuclear_test' cannot be the
+    provocation class no matter what the keywords matched. Demote to the next
+    loudest class that actually fired; if none did, there is no provocation.
+
+    Preparation still speaks -- through the tripwire, which is where it belongs.
+    """
+    if nuclear.get('dominant_class') != 'nuclear_test':
+        return nuclear
+    if tripwire.get('state') == 'BREACHED':
+        return nuclear
+
+    demoted = {c: v for c, v in (nuclear.get('classes_fired') or {}).items()
+               if c != 'nuclear_test'}
+    new_dominant = (max(demoted, key=lambda c: PROVOCATION_CLASSES[c]['weight'])
+                    if demoted else None)
+
+    nuclear = dict(nuclear)
+    nuclear['classes_fired'] = demoted
+    nuclear['dominant_class'] = new_dominant
+    nuclear['last_class'] = new_dominant
+    nuclear['provocation_active'] = bool(new_dominant)
+    nuclear['nuclear_test_demoted'] = True
+    if new_dominant:
+        aud = PROVOCATION_CLASSES[new_dominant]['audience']
+        nuclear['reading'] = (
+            f"Nuclear-test language appears in the corpus but the tripwire is not "
+            f"breached -- this is test PREPARATION reporting, not an executed test, "
+            f"and it is read through the tripwire rather than as a provocation. "
+            f"Dominant provocation class this cycle: {new_dominant.replace('_',' ')}, "
+            f"addressed to {aud}."
+        )
+    else:
+        nuclear['reading'] = (
+            "Nuclear-test language appears in the corpus but the tripwire is not "
+            "breached: this is test PREPARATION reporting, not an executed test. "
+            "No provocation class is active this cycle. Preparation is tracked by "
+            "the tripwire, where it belongs."
+        )
+    return nuclear
+
+
 # ════════════════════════════════════════════════════════════
 # VECTOR 3 — LEADERSHIP VISIBILITY (Pyongyangology)
 # ════════════════════════════════════════════════════════════
@@ -815,6 +869,9 @@ def interpret_signals(scan_data):
                                          tempo_baseline=scan_data.get('tempo_baseline'))
     nuclear  = _score_nuclear_signaling(scan_data)
     tripwire = _score_nuclear_tripwire(scan_data, nuclear)
+    # PREPARATION IS NOT EXECUTION. Must run AFTER the tripwire, because the
+    # tripwire is what tells us whether a test actually happened.
+    nuclear  = _gate_provocation_on_tripwire(nuclear, tripwire)
     leader   = _score_leadership(scan_data)
     exped    = _score_expeditionary(scan_data)
     borders  = _score_border_dyads(scan_data)
