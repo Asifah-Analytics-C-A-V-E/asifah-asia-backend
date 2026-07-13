@@ -106,6 +106,42 @@ EXTENDED_ASIA_CHANNELS = [
 ]
 
 
+# ── DPRK channel list (v1.1.0 — Jul 13 2026) ──
+# Used by rhetoric_tracker_dprk.py (mode='actor' tempo target).
+#
+# CURATION LOGIC — and the discipline here is the OPPOSITE of Poland's:
+#
+# Poland runs mode='tape' and its channel list is deliberately NARROW, because
+# Russia never claims and war-OSINT pollution would corrupt the tempo baseline.
+#
+# The DPRK runs mode='actor', and the thing we are measuring is KCNA'S OWN
+# CADENCE. So the list must be weighted toward DPRK-SPECIFIC monitors and
+# state-media mirrors, not toward general conflict OSINT. A channel that posts
+# about Ukraine forty times a day and Pyongyang twice a week will not corrupt
+# the count -- because we count Pyongyang statements, not channel volume -- but
+# it will drown the corpus-health denominator in noise and make the sources_live
+# figure meaningless.
+#
+# HARD RULE INHERITED FROM HUNGARY v1.1.0: no generic war-OSINT feeds
+# (IntelSlava, WarMonitors, OSINTdefender). They inflated Hungary's score 92%
+# with Ukraine-war leakage. For a tempo target the cost is worse than an
+# inflated score -- a polluted baseline is worse than no baseline, because every
+# future deviation call is measured against it.
+DPRK_CHANNELS = [
+    # ── DPRK-specific monitors (the core — these ARE the corpus) ──
+    'kcnawatch',           # KCNA Watch — the state-media mirror. THE tempo source.
+    'nknewsorg',           # NK News — the paper of record for DPRK watchers
+    'dailynk',             # Daily NK — inside-DPRK sourcing, defector network
+    'northkoreatech',      # North Korea Tech — missile/satellite/technical
+
+    # ── ROK wires (fastest on launches; the DMZ side of the dyad) ──
+    'yonhapnewsagency',    # Yonhap — the ROK wire, first on most launches
+
+    # ── Regional context (Japan is the other audience for an IRBM overflight) ──
+    'NHKWorldNews',        # NHK World — Japan's read on overflights and alerts
+]
+
+
 def _telegram_available():
     """Check if Telegram integration is fully configured."""
     if not TELETHON_AVAILABLE:
@@ -251,6 +287,52 @@ def fetch_asia_telegram_signals(hours_back=24, include_extended=True):
                 loop.close()
     except Exception as e:
         print(f"[Telegram Asia] ❌ fetch error: {str(e)[:200]}")
+        return []
+
+
+def fetch_dprk_telegram_signals(hours_back=72):
+    """
+    Fetch Telegram signals for the DPRK leverage tracker (v1.0.0, Jul 13 2026).
+
+    72h window. The DPRK's declaratory rhythm is measured in DAYS, not hours --
+    KCNA publishes on a cadence, not a news cycle -- and a 24h window would
+    mistake an ordinary quiet Tuesday for an anomaly.
+
+    Key signals:
+      - KCNA / Rodong Sinmun statement CADENCE (this is the tempo stream itself:
+        for a CLAIMING actor, a drop below baseline is the signal, not the noise)
+      - Kim Jong Un appearances, and conspicuous absences from staged events
+      - Kim Yo Jong statements -- she is the voice used when the principal wants
+        deniability, so her carrying the message while he is unseen is itself a read
+      - Missile launches: type, and LOCATION, which is the audience
+      - Punggye-ri / Sohae site activity (feeds the nuclear tripwire)
+      - Sidelining tells: skipped ceremonies, scrubbed Russian presence, exclusion
+        from Ukraine settlement talks -- the leverage-decay instrument
+
+    Returns [] on any failure. The tracker soft-imports this, so a Telegram
+    outage degrades the corpus; it never breaks the scan.
+    """
+    if not _telegram_available():
+        print("[Telegram DPRK] Signals unavailable — skipping")
+        return []
+    try:
+        try:
+            loop = asyncio.get_running_loop()
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as pool:
+                future = pool.submit(asyncio.run,
+                                     _async_fetch_messages(DPRK_CHANNELS, hours_back))
+                return future.result(timeout=120)
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                return loop.run_until_complete(
+                    _async_fetch_messages(DPRK_CHANNELS, hours_back))
+            finally:
+                loop.close()
+    except Exception as e:
+        print(f"[Telegram DPRK] ❌ fetch error: {str(e)[:200]}")
         return []
 
 
