@@ -764,6 +764,10 @@ def register_dprk_rhetoric_endpoints(app):
         d = _redis_get(REDIS_KEY_LATEST) or {}
         lev = d.get('leverage_integrity') or {}
         return jsonify({
+            # success gates the hub card's render (loading dots -> score badge).
+            # Without it the card hangs forever even with valid data. True when a
+            # cached scan exists; False on cold cache so the hub shows honest loading.
+            'success': bool(d),
             'theatre': 'dprk', 'flag': '\U0001f1f0\U0001f1f5',
             'theatre_score': d.get('theatre_score', 0),
             'alert_level': d.get('alert_level', 'normal'),
