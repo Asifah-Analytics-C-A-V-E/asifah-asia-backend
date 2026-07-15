@@ -2191,6 +2191,83 @@ def _write_crosstheater_fingerprint(outbound_score, outbound_max, inbound_max,
 
 
 # ============================================
+# CHINA WHEEL — RIM READER (v1.0, Jul 2026)
+# ============================================
+# The China wheel reads its rim. Two spokes now write to it:
+#   spoke:china:kazakhstan  (Kazakhstan tracker -- Turkey-wheel schema:
+#                            level / relationship / top_signal + dual-track extras)
+#   spoke:china:dprk        (DPRK tracker -- native schema:
+#                            node_class / leverage_integrity / dependency_note)
+# The two schemas DIFFER by design (Kazakhstan mirrored the Turkey wheel; DPRK
+# wrote its own), so the reader NORMALIZES both into one shape rather than
+# forcing either writer to change. Surface-only: rim reads are attached to the
+# scan payload for the interpreter, the Asia BLUF, and future China-wheel
+# narratives to consume. No score modification yet -- polarity per spoke
+# (client / friction / alignment) is a China-wheel scoping decision, not a
+# default. Freshness-gated at 24h, absence-honest: missing or stale spokes are
+# reported as such, never invented.
+
+SPOKE_READ_KEYS_CHINA = {
+    'kazakhstan': 'spoke:china:kazakhstan',   # first China-wheel spoke (hedge integrity, dual-track)
+    'dprk':       'spoke:china:dprk',          # second spoke (leverage integrity, client dependency)
+    # Future China-rim spokes slot in here (Pakistan/CPEC, Myanmar, Laos, ...):
+}
+
+
+def _normalize_china_spoke(fp, now):
+    """Fold either spoke schema into one common shape.
+
+    Both writers carry `ts` and `level`; everything else differs. Kazakhstan
+    uses `relationship`/`top_signal`, DPRK uses `node_class`/`dependency_note`.
+    We key off the common fields and preserve spoke-specific extras
+    (leverage_integrity for DPRK, dual-track counts for Kazakhstan) without
+    forcing them into the shared triple.
+    """
+    fresh = False
+    ts_raw = fp.get('ts') or fp.get('updated_at')
+    if ts_raw:
+        try:
+            ts = datetime.fromisoformat(str(ts_raw).replace('Z', '+00:00'))
+            fresh = (now - ts).total_seconds() <= 86400
+        except Exception:
+            fresh = False
+    out = {
+        'present':      True,
+        'fresh':        fresh,
+        'level':        fp.get('level', 0),
+        'relationship': fp.get('relationship') or fp.get('node_class') or 'unknown',
+        'note':         fp.get('top_signal') or fp.get('dependency_note') or '',
+        'ts':           ts_raw,
+    }
+    if 'leverage_integrity' in fp:
+        out['leverage_integrity'] = fp.get('leverage_integrity')
+    if 'track' in fp:
+        out['track']          = fp.get('track')
+        out['elite_signals']  = fp.get('elite_signals', 0)
+        out['street_signals'] = fp.get('street_signals', 0)
+    return out
+
+
+def _read_china_spokes():
+    """Read the China rim. Returns {spoke_name: normalized_read}."""
+    spokes = {}
+    now = datetime.now(timezone.utc)
+    for name, key in SPOKE_READ_KEYS_CHINA.items():
+        try:
+            fp = _redis_get(key)
+            if not fp or not isinstance(fp, dict):
+                spokes[name] = {'present': False}
+                continue
+            spokes[name] = _normalize_china_spoke(fp, now)
+        except Exception as e:
+            spokes[name] = {'present': False, 'error': str(e)[:60]}
+    live = [n for n, s in spokes.items() if s.get('present') and s.get('fresh')]
+    print(f"[China Rhetoric] China rim reads: {len(live)}/{len(SPOKE_READ_KEYS_CHINA)} "
+          f"fresh ({', '.join(live) if live else 'none'})")
+    return spokes
+
+
+# ============================================
 # MAIN SCAN
 # ============================================
 
@@ -2528,6 +2605,11 @@ def run_china_rhetoric_scan():
             print(f"[China Rhetoric] build_top_signals error: {e}")
             top_signals = []
     result['top_signals'] = top_signals
+
+    # v1.0 (Jul 2026): the China wheel reads its rim. Two spokes now live
+    # (Kazakhstan + DPRK). Surface-only; attached for the interpreter, the Asia
+    # BLUF, and future China-wheel narratives. No score modification yet.
+    result['spoke_reads'] = _read_china_spokes()
 
     # Cache to Redis
     _redis_set(RHETORIC_CACHE_KEY, result)
