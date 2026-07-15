@@ -55,8 +55,8 @@ TRACKER_KEYS = {
     'india':    'rhetoric:india:latest',   # Patch 12 (May 2026) — absorber-class tracker
     'vietnam':  'rhetoric:vietnam:latest', # Jun 2026 -- SCS coercion-response tracker
     'afghanistan': 'rhetoric:afghanistan:latest',  # Jul 2026 -- four-wheel contested node
+    'dprk':     'rhetoric:dprk:latest',   # Jul 2026 -- leverage-integrity tracker (INVERTED read)
     # Future Asia trackers slot in here:
-    # 'korea_north': 'rhetoric:dprk:latest',
     # 'philippines': 'rhetoric:philippines:latest',
 }
 
@@ -68,9 +68,8 @@ THEATRE_FLAGS = {
     'india':    '\U0001f1ee\U0001f1f3',  # 🇮🇳
     'vietnam':  '\U0001f1fb\U0001f1f3',  # VN
     'afghanistan': '\U0001f1e6\U0001f1eb',  # AF
+    'dprk':     '\U0001f1f0\U0001f1f5',  # 🇰🇵
 }
-
-THEATRE_DISPLAY = {
     'china':    'CHINA',
     'taiwan':   'TAIWAN',
     'pakistan': 'PAKISTAN',
@@ -78,6 +77,7 @@ THEATRE_DISPLAY = {
     'india':    'INDIA',
     'vietnam':  'VIETNAM',
     'afghanistan': 'AFGHANISTAN',
+    'dprk':     'NORTH KOREA',
 }
 
 # v2.5 (Jun 2026): one-clause "why this theatre matters regionally" -- used as the
@@ -91,6 +91,7 @@ THEATRE_ROLE = {
     'india':    'an absorber-class swing state whose alignment tilts the wider regional balance',
     'vietnam':  'a South China Sea claimant tied to the Hormuz energy-import chain, where shocks land as input-cost and sovereignty pressure',
     'afghanistan': 'a four-wheel contested node (Iran friction, Pakistan kinetic, Russia normalization, China extraction) whose instability exports terror risk, refugees, and narcotics pressure across the region',
+    'dprk':     'a combatant-tier client of Russia whose leverage decays as the Ukraine war winds down -- and which escalates when sidelined, not when courted, making a quiet Pyongyang a signal rather than a reassurance',
 }
 
 # Top-N signals emitted to GPI (matches ME pattern)
@@ -566,6 +567,76 @@ def _synthesize_top_signals_legacy(theatre, raw_data, threat_int, score, so_what
                 'color':      '#0ea5e9',
                 'short_text': f'{flag} TAIWAN: Domestic resolve L{domestic_resv}',
                 'long_text':  f'TAIWAN domestic resolve L{domestic_resv} — Lai presidential signaling and asymmetric resilience aligned.',
+            })
+
+    # ---- 5. DPRK-SPECIFIC: leverage (inverted) + nuclear tripwire + expeditionary ----
+    # The DPRK instrument is INVERTED: a low leverage_integrity is the DANGEROUS
+    # reading, because Pyongyang escalates when it is negotiated around, not when
+    # it is courted. A generic score read would call this "high pressure" and stop;
+    # these vectors surface WHY -- the leverage-decay logic, the discrete Black
+    # Swan (a seventh test), and the expeditionary transfer convergence.
+    if theatre == 'dprk':
+        lev = _safe_dict(raw_data.get('leverage_integrity'))
+        lev_state = _safe_str(lev.get('state'))
+        lev_score = _safe_int(lev.get('integrity'))
+
+        if lev_state in ('decaying', 'collapsed'):
+            signals.append({
+                'priority':   11,
+                'category':   'leverage_decay',
+                'theatre':    'dprk',
+                'level':      4 if lev_state == 'decaying' else 5,
+                'icon':       '🎰',
+                'color':      '#ef4444' if lev_state == 'decaying' else '#dc2626',
+                'short_text': f'{flag} DPRK: Leverage {lev_state.upper()} ({lev_score}/100)',
+                'long_text':  (f'DPRK leverage {lev_state} at {lev_score}/100 — the relevance-'
+                               f'signal band. Pyongyang historically escalates FOR ATTENTION '
+                               f'when its war-rent is switched off, not when it is courted. '
+                               f'Read a provocation here as a bid for relevance, not advantage.'),
+            })
+
+        trip = _safe_str(_safe_dict(raw_data.get('nuclear_tripwire')).get('state'))
+        if trip in ('APPROACHING', 'BREACHED'):
+            signals.append({
+                'priority':   13 if trip == 'BREACHED' else 10,
+                'category':   'nuclear_tripwire',
+                'theatre':    'dprk',
+                'level':      5 if trip == 'BREACHED' else 4,
+                'icon':       '☢️',
+                'color':      '#dc2626' if trip == 'BREACHED' else '#ef4444',
+                'short_text': f'{flag} DPRK: Nuclear test tripwire {trip}',
+                'long_text':  (f'DPRK nuclear-test tripwire {trip} — the discrete Black Swan. '
+                               f'A seventh test resets the baseline for every downstream read.'),
+            })
+
+        prov_class = _safe_str(raw_data.get('provocation_class'))
+        if raw_data.get('provocation_active') and prov_class:
+            signals.append({
+                'priority':   9,
+                'category':   'nuclear_signaling',
+                'theatre':    'dprk',
+                'level':      3,
+                'icon':       '🚀',
+                'color':      '#f59e0b',
+                'short_text': f'{flag} DPRK: {prov_class.replace("_", " ").title()} signaling',
+                'long_text':  (f'DPRK provocation active — class {prov_class.replace("_", " ")}. '
+                               f'Location is the audience: type and site carry the message.'),
+            })
+
+        exped = _safe_dict(raw_data.get('expeditionary_footprint'))
+        if exped.get('tunnel_convergence'):
+            hosts = ', '.join(_safe_list(exped.get('hosts'))[:3])
+            signals.append({
+                'priority':   10,
+                'category':   'expeditionary_footprint',
+                'theatre':    'dprk',
+                'level':      4,
+                'icon':       '🔨',
+                'color':      '#a855f7',
+                'short_text': f'{flag} DPRK: Expeditionary convergence ({hosts})',
+                'long_text':  (f'DPRK labor + tunnel-construction + malign-actor co-location '
+                               f'({hosts}) converging — the compound pattern that has preceded '
+                               f'documented transfers of DPRK tunnelling expertise.'),
             })
 
     # Sort descending; BLUF will dedupe + globally rank with other regions
