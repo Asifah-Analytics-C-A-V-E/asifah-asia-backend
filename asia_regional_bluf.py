@@ -70,6 +70,8 @@ THEATRE_FLAGS = {
     'afghanistan': '\U0001f1e6\U0001f1eb',  # AF
     'dprk':     '\U0001f1f0\U0001f1f5',  # 🇰🇵
 }
+
+THEATRE_DISPLAY = {
     'china':    'CHINA',
     'taiwan':   'TAIWAN',
     'pakistan': 'PAKISTAN',
