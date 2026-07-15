@@ -1426,6 +1426,9 @@ def register_japan_rhetoric_endpoints(app):
         try:
             data = scan_japan_rhetoric(force=False)
             return jsonify({
+                # success gates the hub card render; without it the card hangs on
+                # loading dots even though the data is valid.
+                'success':            bool(data),
                 'theatre':            'japan',
                 'theatre_score':      data.get('theatre_score', 0),
                 'overall_level':      data.get('overall_level', 0),
