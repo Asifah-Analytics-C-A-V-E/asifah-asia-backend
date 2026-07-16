@@ -1678,6 +1678,74 @@ def get_source_weight(source_name):
     return SOURCE_WEIGHTS['standard']['weight']
 
 
+SOCIAL_SOURCE_HINTS = (
+    'r/', 'reddit', 'bluesky', 'bsky', 'telegram', 'nitter',
+    'social', 'mirror'
+)
+
+EXPANDED_PRESSURE_SIGNALS = {
+    'kinetic': {
+        'weight': 2.0,
+        'phrases': [
+            'missile launch', 'missile test', 'ballistic missile',
+            'drone strike', 'airspace violation', 'naval blockade',
+            'live-fire drill', 'border clash', 'cross-border fire',
+            'artillery fire', 'incursion', 'intercepted',
+            'å¯¼å¼¹', 'å¯¦å¼¹', 'ç©ºåŸŸ', 'æµ·å³½', 'è¶Šç•Œ',
+            'ë¯¸ì‚¬ì¼', 'í¬ê²©', 'ë¬´ì¸ê¸°', 'êµ­ê²½',
+            'Ù…ÛŒØ²Ø§Ø¦Ù„', 'Ú¯ÙˆÙ„ÛŒ Ø¨Ø§Ø±ÛŒ', 'Ù¾ÛØ§Ú‘ÛŒ',
+        ],
+    },
+    'mobilization': {
+        'weight': 1.3,
+        'phrases': [
+            'troop movement', 'mobilization', 'reserve call-up',
+            'combat readiness', 'evacuation order', 'embassy drawdown',
+            'carrier group', 'amphibious exercise', 'air defense alert',
+            'åŠ¨å‘˜', 'å†›æ¼”', 'æˆ˜å¤‡', 'ç–æ•£',
+            'ë™ì›', 'êµ°ì‚¬ í›ˆë ¨', 'ëŒ€í”¼',
+            'Ø§Ù†Ø®Ù„Ø§Ø¡', 'Ø¬Ù†Ú¯ÛŒ ØªÛŒØ§Ø±ÛŒ',
+        ],
+    },
+    'structural': {
+        'weight': 0.8,
+        'phrases': [
+            'capital controls', 'currency crisis', 'fuel shortage',
+            'food shortage', 'power outage', 'blackout', 'export ban',
+            'port closure', 'refugee surge', 'internet shutdown',
+            'é™ç”µ', 'æ–­ç”µ', 'é£Ÿç‰©çŸ­ç¼º', 'èµ„æœ¬ç®¡åˆ¶',
+            'ì •ì „', 'ì‹ëŸ‰ ë¶€ì¡±', 'ì¸í„°ë„· ì°¨ë‹¨',
+            'Ø¨Ø¬Ù„ÛŒ Ø¨Ù†Ø¯', 'Ø®ÙˆØ±Ø§Ú© Ø¨Ø­Ø±Ø§Ù†',
+        ],
+    },
+}
+
+
+def _is_social_source(source_name):
+    source_lower = (source_name or '').lower()
+    return any(hint in source_lower for hint in SOCIAL_SOURCE_HINTS)
+
+
+def _calibrated_source_weight(source_name, source_weight):
+    if not _is_social_source(source_name):
+        return source_weight
+    if 'telegram' in source_name.lower():
+        return min(source_weight, 0.55)
+    return min(source_weight, 0.42)
+
+
+def detect_expanded_pressure_signals(text):
+    """Return additive pressure bonus and labels from multilingual pressure phrases."""
+    text_lower = (text or '').lower()
+    labels = []
+    bonus = 0.0
+    for label, config in EXPANDED_PRESSURE_SIGNALS.items():
+        if any(phrase.lower() in text_lower for phrase in config['phrases']):
+            labels.append(label)
+            bonus += config['weight']
+    return min(bonus, 3.5), labels
+
+
 def calculate_threat_probability(articles, days=7, target=None):
     """
     Score articles against escalation keywords with time decay and source weighting.
@@ -1741,6 +1809,8 @@ def calculate_threat_probability(articles, days=7, target=None):
         # Escalation scoring
         matched_keywords = [kw for kw in ESCALATION_KEYWORDS if kw in text]
         severity = len(matched_keywords)
+        pressure_bonus, pressure_labels = detect_expanded_pressure_signals(text)
+        severity = min(severity + pressure_bonus, 10.0)
 
         # De-escalation penalty
         deesc_matches = [kw for kw in deescalation_keywords if kw in text]
@@ -1759,6 +1829,7 @@ def calculate_threat_probability(articles, days=7, target=None):
             source_weight = float(override)
         else:
             source_weight = get_source_weight(source_name)
+        source_weight = _calibrated_source_weight(source_name, source_weight)
 
         contribution = severity * source_weight * time_decay
         scored_articles.append({
@@ -1768,6 +1839,8 @@ def calculate_threat_probability(articles, days=7, target=None):
             'time_decay': time_decay,
             'contribution': contribution,
             'source': source_name,
+            'pressure_signals': pressure_labels,
+            'is_social_source': _is_social_source(source_name),
             'deescalation': len(deesc_matches) > 0,
         })
 
@@ -1790,6 +1863,15 @@ def calculate_threat_probability(articles, days=7, target=None):
 
     deesc_count = sum(1 for s in scored_articles if s['deescalation'])
     older_count = len(scored_articles) - recent_count
+    unique_sources = len(set(s['source'] for s in scored_articles))
+    social_signal_count = sum(1 for s in scored_articles if s.get('is_social_source'))
+    non_social_signal_count = len(scored_articles) - social_signal_count
+    pressure_signal_count = sum(1 for s in scored_articles if s.get('pressure_signals'))
+    source_diversity_bonus = min(5.0, max(0, unique_sources - 3) * 0.4)
+    social_corroboration_bonus = 0.0
+    if social_signal_count and non_social_signal_count >= 2:
+        social_corroboration_bonus = min(4.0, social_signal_count * 0.35)
+    weighted_score += source_diversity_bonus + social_corroboration_bonus
 
     # Normalize to 0-100
     probability = min(100, int(weighted_score * 1.5))
@@ -1809,6 +1891,12 @@ def calculate_threat_probability(articles, days=7, target=None):
         'momentum': momentum,
         'breakdown': {
             'weighted_score': round(weighted_score, 2),
+            'source_diversity_bonus': round(source_diversity_bonus, 2),
+            'social_corroboration_bonus': round(social_corroboration_bonus, 2),
+            'unique_sources': unique_sources,
+            'social_signal_count': social_signal_count,
+            'non_social_signal_count': non_social_signal_count,
+            'pressure_signal_count': pressure_signal_count,
             'recent_articles_48h': recent_count,
             'older_articles': older_count,
             'deescalation_count': deesc_count,
@@ -1818,6 +1906,8 @@ def calculate_threat_probability(articles, days=7, target=None):
                 'source': c['source'],
                 'contribution': round(c['contribution'], 2),
                 'severity': c['severity'],
+                'pressure_signals': c.get('pressure_signals', []),
+                'is_social_source': c.get('is_social_source', False),
                 'source_weight': c['source_weight'],
                 'time_decay': round(c['time_decay'], 2),
                 'deescalation': c['deescalation'],
