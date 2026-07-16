@@ -2210,6 +2210,7 @@ def _write_crosstheater_fingerprint(outbound_score, outbound_max, inbound_max,
 SPOKE_READ_KEYS_CHINA = {
     'kazakhstan': 'spoke:china:kazakhstan',   # first China-wheel spoke (hedge integrity, dual-track)
     'dprk':       'spoke:china:dprk',          # second spoke (leverage integrity, client dependency)
+    'russia':     'spoke:china:russia',        # third spoke (Jul 16 2026 -- succession positioning; Beijing's behavior on the Russia rim)
     # Future China-rim spokes slot in here (Pakistan/CPEC, Myanmar, Laos, ...):
 }
 
