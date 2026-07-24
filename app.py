@@ -1422,9 +1422,42 @@ def fetch_brave_articles(query, days=7, count=20):
 _GDELT_COOLDOWN = {}  # language -> unix_timestamp_when_ok_to_retry
 _GDELT_COOLDOWN_SECONDS = 15 * 60  # 15 minutes
 
+# ── Shared GDELT gateway (Jul 23 2026) ────────────────────────────────
+# All Asia trackers previously called GDELT directly from concurrent threads
+# on one IP, tripping GDELT's soft-block and reading it as an outage. The
+# gateway serialises and paces every GDELT call on this backend behind one
+# semaphore, with its own circuit breaker and 15-min response cache. If the
+# gateway file is absent, the original direct-call path below still works.
+try:
+    from gdelt_gateway import gdelt_fetch as _gw_fetch
+    _GDELT_GATEWAY = True
+except ImportError:
+    print("[Asia GDELT] gdelt_gateway not available -- using direct GDELT calls")
+    _GDELT_GATEWAY = False
+
 
 def fetch_gdelt_articles(query, days=7, language='eng'):
     """Fetch articles from GDELT API. Hardened against soft-blocks and non-JSON."""
+    if _GDELT_GATEWAY:
+        # Route through the shared gateway; adapt its canonical article shape
+        # back into this file's own NewsAPI-style dialect (source is a DICT,
+        # publishedAt, content, short language codes). Shape preserved exactly.
+        _lang_map_gw = {
+            'eng': 'en', 'zho': 'zh', 'kor': 'ko',
+            'urd': 'ur', 'prs': 'fa', 'jpn': 'ja',
+        }
+        raw = _gw_fetch(query, language=language, timespan=f'{days}d',
+                        maxrecords=30, label=f'asia/{language}')
+        return [{
+            'title':       a.get('title', ''),
+            'description': a.get('title', ''),
+            'url':         a.get('url', ''),
+            'publishedAt': a.get('published', ''),
+            'source':      {'name': f"GDELT ({language})"},
+            'content':     a.get('title', ''),
+            'language':    _lang_map_gw.get(language, language),
+        } for a in raw]
+
     # ── v1.1.0 — Respect per-language cooldown ──
     now = time.time()
     cooldown_until = _GDELT_COOLDOWN.get(language, 0)
