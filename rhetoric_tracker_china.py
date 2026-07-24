@@ -1450,8 +1450,36 @@ def _fetch_rss(url, source_name, weight=0.85, max_items=20):
     return articles
 
 
+# ── Shared GDELT gateway (Jul 23 2026) ────────────────────────────────
+# Same fix as the WHA/Europe/ME backends: one serialised, paced GDELT lane
+# per process instead of every tracker thread racing the same IP into a
+# soft-block. Original direct call preserved below as the fallback.
+try:
+    from gdelt_gateway import gdelt_fetch as _gw_gdelt_fetch
+    _GDELT_GATEWAY = True
+except ImportError:
+    print("[China GDELT] gdelt_gateway not available -- using direct GDELT calls")
+    _GDELT_GATEWAY = False
+
+
 def _fetch_gdelt(query, language='eng', days=3, max_records=25):
     """Fetch from GDELT."""
+    if _GDELT_GATEWAY:
+        # Adapt the gateway's canonical shape into this tracker's own dialect:
+        # source is a DICT carrying the domain, publishedAt, content=title.
+        _lang_map_gw = {'eng': 'en', 'zho': 'zh', 'jpn': 'ja', 'kor': 'ko'}
+        raw = _gw_gdelt_fetch(query, language=language, timespan=f'{days}d',
+                              maxrecords=max_records, label=f'china/{language}')
+        return [{
+            'title':       a.get('title', ''),
+            'description': a.get('title', ''),
+            'url':         a.get('url', ''),
+            'publishedAt': a.get('published', ''),
+            'source':      {'name': a.get('source') or f'GDELT ({language})'},
+            'content':     a.get('title', ''),
+            'language':    _lang_map_gw.get(language, language),
+        } for a in raw]
+
     articles = []
     try:
         params = {
