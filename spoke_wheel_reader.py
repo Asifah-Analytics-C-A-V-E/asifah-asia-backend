@@ -1,7 +1,7 @@
 """
 spoke_wheel_reader.py
 Asifah Analytics -- SHARED MODULE (deploy byte-identical to ALL backends)
-v1.0.2 -- July 25, 2026
+v1.0.4 -- July 25, 2026
 
 One reader for the whole spoke-and-wheel architecture. Give it a hub and it
 returns that hub's rim; give it a country list and it returns what those
@@ -88,7 +88,7 @@ import json
 import requests
 from datetime import datetime, timezone
 
-__version__ = '1.0.2'
+__version__ = '1.0.4'
 
 # ============================================================
 # CONFIG
@@ -140,6 +140,7 @@ HUB_REGISTRY = {
         'title': 'IRAN WHEEL',
         'icon': '\U0001F1EE\U0001F1F7',
         'node_classes': {
+            'israel': 'adversary',
             'yemen': 'proxy', 'lebanon': 'proxy', 'iraq': 'proxy', 'gaza': 'proxy',
             'syria': 'ruptured', 'oman': 'mediation', 'qatar': 'mediation',
             'azerbaijan': 'friction', 'saudi_arabia': 'friction',
@@ -147,17 +148,56 @@ HUB_REGISTRY = {
             'russia': 'peer', 'china': 'peer',
         },
     },
+    # China runs the LARGEST wheel on the platform -- BRI corridors reach three
+    # continents. Populated Jul 25 2026 when Asia went live.
     'china': {
         'title': 'CHINA WHEEL',
         'icon': '\U0001F1E8\U0001F1F3',
         'node_classes': {
+            # First-island-chain / near abroad
+            'taiwan': 'adversary', 'philippines': 'adversary',
+            'japan': 'adversary', 'india': 'adversary',
+            'vietnam': 'friction', 'south_korea': 'friction',
+            'australia': 'friction',
+            # BRI corridors
             'kazakhstan': 'bri_corridor', 'pakistan': 'bri_corridor',
-            'taiwan': 'adversary', 'russia': 'peer', 'iran': 'peer',
-            'dprk': 'client',
+            'myanmar': 'bri_corridor', 'laos': 'bri_corridor',
+            'cambodia': 'bri_corridor', 'sri_lanka': 'bri_corridor',
+            'afghanistan': 'bri_corridor',
+            # Resource / influence clients
+            'iran': 'peer', 'russia': 'peer', 'dprk': 'client',
+            'venezuela': 'resource_client', 'sudan': 'resource_client',
+            'drc': 'resource_client', 'zimbabwe': 'resource_client',
+            'solomon_islands': 'pacific_client', 'kiribati': 'pacific_client',
         },
     },
-    'israel': {'title': 'ISRAEL WHEEL', 'icon': '\U0001F1EE\U0001F1F1', 'node_classes': {}},
-    'dprk':   {'title': 'DPRK WHEEL',   'icon': '\U0001F1F0\U0001F1F5', 'node_classes': {}},
+    # Israel runs a SMALLER wheel than Iran -- fewer spokes, but a real one.
+    # Populated Jul 25 2026 when ME went live with two resident hubs.
+    'israel': {
+        'title': 'ISRAEL WHEEL',
+        'icon': '\U0001F1EE\U0001F1F1',
+        'node_classes': {
+            'iran': 'adversary', 'lebanon': 'adversary', 'yemen': 'adversary',
+            'gaza': 'adversary', 'syria': 'ruptured',
+            'azerbaijan': 'aligned_multiplier',
+            'uae': 'normalisation_track', 'bahrain': 'normalisation_track',
+            'morocco': 'normalisation_track', 'saudi_arabia': 'normalisation_track',
+            'somaliland': 'recognition_wildcard', 'somalia': 'recognition_wildcard',
+            'turkey': 'friction', 'egypt': 'cold_peace', 'jordan': 'cold_peace',
+        },
+    },
+    # DPRK runs a SMALL wheel -- a handful of relationships, but real ones.
+    # Its Russia link inverted from client to supplier after Kursk.
+    'dprk': {
+        'title': 'DPRK WHEEL',
+        'icon': '\U0001F1F0\U0001F1F5',
+        'node_classes': {
+            'russia': 'expeditionary_supplier',   # troops to Kursk -- inverted
+            'china': 'patron', 'south_korea': 'adversary',
+            'japan': 'adversary', 'us': 'adversary',
+            'iran': 'proliferation_peer', 'syria': 'proliferation_client',
+        },
+    },
     'us':     {'title': 'US WHEEL',     'icon': '\U0001F1FA\U0001F1F8', 'node_classes': {}},
 }
 

@@ -39,6 +39,14 @@ import traceback
 from datetime import datetime, timezone
 import requests
 
+# ── Shared spoke-and-wheel reader (v1.0.4, Jul 25 2026) ──────────────
+try:
+    from spoke_wheel_reader import build_convergence_panel as _build_wheel_panel
+    _WHEEL_READER = True
+except ImportError:
+    _WHEEL_READER = False
+    print("[Asia BLUF] spoke_wheel_reader not available -- convergence panel disabled")
+
 
 # ============================================================
 # CONFIG
@@ -1011,6 +1019,200 @@ def _build_bluf_blocks(posture, trackers):
     return blocks
 
 
+# ══════════════════════════════════════════════════════════════════════
+# SHAPE-DERIVED FIELD READERS  (ported from europe_regional_bluf v3.5.x)
+# ══════════════════════════════════════════════════════════════════════
+# Trackers disagree on field names for the same concepts. Reading one name
+# renders a blank banner for every tracker that chose differently -- which
+# looks like a Redis failure and is really a vocabulary mismatch. Oman is the
+# ME case: a dual-axis stability anchor with NO theatre_score, NO alert_level,
+# NO theatre_label, and articles under `articles_scanned`.
+def _extract_article_count(raw):
+    """Article count across every field name in the wild."""
+    if not isinstance(raw, dict):
+        return 0
+    for field in ('article_count', 'total_articles', 'articles_scanned',
+                  'articles_analyzed', 'articles_count', 'total_signals'):
+        v = raw.get(field)
+        if isinstance(v, int) and v > 0:
+            return v
+    for holder in ('articles_by_source', 'source_counts'):
+        d = raw.get(holder)
+        if isinstance(d, dict):
+            tot = sum(v for v in d.values() if isinstance(v, int))
+            if tot:
+                return tot
+    arts = raw.get('articles')
+    if isinstance(arts, list):
+        return len(arts)
+    return 0
+
+
+_BAND_TO_LEVEL = {
+    'quiet': 0, 'off': 0, 'none': 0, 'dormant': 0, 'baseline': 0, 'normal': 0,
+    'low': 0, 'stable': 0, 'holding': 0, 'alignment': 0, 'unknown': 0,
+    'inactive': 0,
+    'watch': 1, 'rhetorical': 1, 'tilting': 1, 'drifting': 1, 'friction': 1,
+    'approaching': 1,
+    'contested': 2, 'simmering': 2, 'elevated': 2, 'warning': 2, 'strained': 2,
+    'high': 3, 'active': 3, 'fracturing': 3, 'eroding': 3,
+    'acute': 4, 'severe': 4, 'critical': 4, 'breached': 4, 'rupture': 4,
+    'surge': 5, 'conflict': 5, 'war': 5,
+}
+
+_LEVEL_FIELDS_INT   = ('level', 'escalation_level', 'rung', 'threat_level')
+_LEVEL_FIELDS_BAND  = ('band', 'threat_band', 'posture', 'state',
+                       'relationship', 'class', 'tier', 'mode')
+_LEVEL_FIELDS_STAGE = ('stage', 'chain_stage')
+
+_NON_VECTOR_KEYS = {
+    'so_what', 'red_lines', 'green_lines', 'diplomatic_track', 'delta',
+    'interpretation', 'articles_by_source', 'source_counts', 'actor_summaries',
+    'actors', 'rumint', 'dyad_read', 'cross_theater_fingerprints',
+    'cross_theater_signals', 'cross_theater_boosts', 'contradiction_flags',
+    'corpus_health', 'compound_layers', 'compound_convergence', 'levels',
+    'spoke_reads', 'wheel_convergence', 'patron_subtags', 'raw',
+}
+
+# Calendar / clock / window vectors are MULTIPLIERS, never standalone signals
+# (Black Swan master plan, canonical). They may render as pills but must not
+# lift a theatre's level on their own.
+_MULTIPLIER_SUFFIXES = ('_clock', '_calendar', '_window', '_season')
+_MULTIPLIER_NAMES = {'election_clock', 'referendum_clock', 'winter_calendar',
+                     'ramadan_calendar', 'anniversary_window'}
+
+
+def _is_multiplier_vector(name):
+    n = str(name).lower()
+    return n in _MULTIPLIER_NAMES or n.endswith(_MULTIPLIER_SUFFIXES)
+
+
+def _level_from_vector_obj(v):
+    """Read a vector object's level across every dialect. None if it has none."""
+    if not isinstance(v, dict):
+        return None
+    for f in _LEVEL_FIELDS_INT:
+        x = v.get(f)
+        if isinstance(x, bool):
+            continue
+        if isinstance(x, (int, float)):
+            return max(0, min(5, int(x)))
+    candidates = []
+    for f in _LEVEL_FIELDS_BAND:
+        x = v.get(f)
+        if isinstance(x, str) and x.strip():
+            mapped = _BAND_TO_LEVEL.get(x.strip().lower())
+            if mapped is not None:
+                candidates.append(mapped)
+    for f in _LEVEL_FIELDS_STAGE:
+        x = v.get(f)
+        if isinstance(x, (int, float)) and not isinstance(x, bool):
+            candidates.append(max(0, min(5, int(x))))
+        elif isinstance(x, str):
+            digits = ''.join(c for c in x if c.isdigit())
+            if digits:
+                candidates.append(max(0, min(5, int(digits[0]))))
+    act = v.get('active')
+    if isinstance(act, bool):
+        candidates.append(2 if act else 0)
+    return max(candidates) if candidates else None
+
+
+def _extract_vector_levels(raw):
+    """Vector levels from a tidy dict, else derived from payload shape."""
+    if not isinstance(raw, dict):
+        return {}
+    vl = raw.get('vector_levels')
+    if isinstance(vl, dict) and vl:
+        return vl
+    derived = {}
+    for k, v in raw.items():
+        if k in _NON_VECTOR_KEYS or not isinstance(v, dict):
+            continue
+        lvl = _level_from_vector_obj(v)
+        if lvl is not None:
+            derived[k] = lvl
+    if derived:
+        return derived
+
+    # LAST RESORT -- actor-model trackers. Oman, Yemen and the Gulf trio carry
+    # no top-level vector objects at all; their reads live inside `actors`, one
+    # escalation_level per actor. For those trackers the actors ARE the vectors,
+    # so decompose rather than reporting a tracker with nothing to say. Only
+    # reached when no other shape yielded anything.
+    actors = raw.get('actors')
+    if isinstance(actors, dict):
+        for k, v in actors.items():
+            if not isinstance(v, dict):
+                continue
+            lvl = _level_from_vector_obj(v)
+            if lvl is not None:
+                derived[k] = lvl
+    return derived
+
+
+def _peak_signal_level(vector_levels):
+    """Highest level among SIGNAL vectors, excluding calendar multipliers."""
+    sig = {k: v for k, v in (vector_levels or {}).items()
+           if not _is_multiplier_vector(k)}
+    return max(sig.values()) if sig else 0
+
+
+def _extract_display_label(raw):
+    """A tracker's own headline label, across dialects.
+
+    Oman (dual-axis stability anchor) emits `banner_label` / `banner_mode`
+    rather than `theatre_label`, so the hub rendered its default '---' even on
+    a clean 200. Returns '' when the tracker publishes none, letting the
+    canonical ladder supply the word.
+    """
+    if not isinstance(raw, dict):
+        return ''
+    for f in ('theatre_label', 'banner_label', 'scenario', 'alert_label',
+              'composite_label', 'banner_mode', 'alert_level'):
+        v = raw.get(f)
+        if isinstance(v, str) and v.strip():
+            return v.strip()
+    return ''
+
+
+# ============================================================
+# CONVERGENCE PANEL  (spoke & wheel -- TWO resident hubs)
+# ============================================================
+# Asia hosts the platform's LARGEST wheel and one of its smallest.
+#
+#   CHINA -- first-island-chain adversaries (Taiwan, Philippines, Japan,
+#            India), BRI corridors reaching three continents (Pakistan,
+#            Kazakhstan, Myanmar, Laos, Cambodia, Sri Lanka, Afghanistan),
+#            resource clients (Venezuela, Sudan, DRC) and Pacific clients.
+#            Most of that rim lives on OTHER backends -- shared Redis is what
+#            makes reading it from here possible at all.
+#
+#   DPRK  -- a small wheel, Israel-sized. Its Russia link INVERTED after
+#            Kursk: client became expeditionary supplier. That polarity flip
+#            is the read, and it is why DPRK earns a hub rather than sitting
+#            as a spoke on China's.
+#
+# Meanwhile Asian countries feed hubs living ELSEWHERE -- Iran's touch in
+# Pakistan, Russia's in Afghanistan. Those EMANATE outward to the global read.
+RESIDENT_HUBS = ['china', 'dprk']
+
+
+def _build_convergence_panel():
+    """Bidirectional wheel read for the Asia payload. Never raises."""
+    if not _WHEEL_READER:
+        return None
+    try:
+        return _build_wheel_panel(
+            resident_hubs=RESIDENT_HUBS,
+            local_countries=list(TRACKER_KEYS.keys()),
+            region='asia',
+        )
+    except Exception as e:
+        print(f"[Asia BLUF] Convergence panel failed (non-fatal): {str(e)[:140]}")
+        return None
+
+
 def build_regional_bluf(force=False):
     """
     Build the Asia regional BLUF. Reads China + Taiwan caches, synthesizes,
@@ -1071,6 +1273,12 @@ def build_regional_bluf(force=False):
                 'score':            data.get('score', 0),
                 'flag':             data.get('flag', THEATRE_FLAGS.get(t, '')),
                 'timestamp':        data.get('scanned_at', ''),
+                # Hub-render fields (Jul 25 2026) -- let the regional page draw
+                # a full banner without calling each tracker's own /summary.
+                'display':          THEATRE_DISPLAY.get(t, t.replace('_', ' ').title()),
+                'article_count':    _extract_article_count(data.get('raw', {}) or {}),
+                'vector_levels':    _extract_vector_levels(data.get('raw', {}) or {}),
+                'tracker_label':    _extract_display_label(data.get('raw', {}) or {}),
                 # Dual-axis fields:
                 'threat_level':     threat_lvl,
                 'influence_level':  infl_lvl,
@@ -1112,6 +1320,7 @@ def build_regional_bluf(force=False):
             'theatres_live':      trackers_live,         # canonical alias
             'theatres_at_l3plus': theatres_at_l3plus,    # canonical
             'trackers_total':     len(TRACKER_KEYS),
+            'convergence_panel':  _build_convergence_panel(),
             'theatre_summary':    theatre_summary,       # canonical
             'generated_at':       datetime.now(timezone.utc).isoformat(),
             'version':            '2.1.0',
