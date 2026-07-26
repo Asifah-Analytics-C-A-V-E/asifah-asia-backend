@@ -206,6 +206,16 @@ except Exception as e:
     print(f"[Asia Backend] ⚠️ Commodity proxy not available — {type(e).__name__}: {e}")
     traceback.print_exc()
 
+try:
+    from asia_market_quotes import register_asia_market_endpoints
+    ASIA_MARKET_AVAILABLE = True
+    print("[Asia Backend] ✅ Asia market quotes module loaded")
+except Exception as e:
+    import traceback
+    ASIA_MARKET_AVAILABLE = False
+    print(f"[Asia Backend] ⚠️ Asia market quotes not available — {type(e).__name__}: {e}")
+    traceback.print_exc()
+
 # Absorption proxy — forwards detection requests to ME backend's /api/absorption/detect.
 # Used by rhetoric_tracker_india.py (and future absorber-class trackers) to fire
 # absorption signatures via the shared ME-hosted absorption_detector + catalog.
@@ -3333,6 +3343,9 @@ if CONVERGENCE_PROXY_AVAILABLE:
 
 if COMMODITY_PROXY_AVAILABLE:
     register_commodity_proxy(app)
+
+if ASIA_MARKET_AVAILABLE:
+    register_asia_market_endpoints(app)
 
 if ABSORPTION_PROXY_AVAILABLE:
     register_absorption_proxy(app)
