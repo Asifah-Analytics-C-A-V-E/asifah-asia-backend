@@ -1,6 +1,6 @@
 """
-Asifah Analytics — Asia Backend v1.0.0
-March 2026
+Asifah Analytics — Asia Backend v1.2.0
+March 2026 (v1.0.0)  |  September 21, 2026 (v1.2.0)
 
 Asia-Pacific Conflict Probability Dashboard Backend
 Targets: Afghanistan, China, India, Japan, North Korea, Pakistan, South Korea, Taiwan
@@ -13,6 +13,15 @@ Adapted for Asia-Pacific geopolitical monitoring with:
   - NOTAM monitoring (FAA NOTAM API — ICAO regions)
   - Flight disruption tracking
   - Military posture integration hooks
+
+v1.2.0 — September 21, 2026
+  - ONE version constant (ASIA_BACKEND_VERSION). Seven hardcoded version
+    strings had drifted: the scan said 1.1.0 while /health, /, the dashboard,
+    NOTAMs, flights and advisories all still said 1.0.0. Every payload now
+    reads the same constant, so a deploy is identifiable from any endpoint.
+  - Reddit: search.json -> search.rss, one request per subreddit instead of
+    three (~504 -> ~168 per sweep), 30-min cooldown kept, per-target outcome
+    counts surfaced on /health under 'reddit'.
 
 v1.0.0 — Initial build
   - All threat/NOTAM/flight data cached in memory with 4-hour TTL
@@ -35,6 +44,9 @@ import math
 import xml.etree.ElementTree as ET
 import threading
 import json
+
+# v1.2.0 — the ONE place the backend version lives. Bump this, nothing else.
+ASIA_BACKEND_VERSION = '1.2.0'
 
 try:
     from telegram_signals_asia import fetch_asia_telegram_signals
@@ -1064,7 +1076,7 @@ NOTAM_REGIONS = {
 # ========================================
 # REDDIT CONFIGURATION — ASIA-PACIFIC
 # ========================================
-REDDIT_USER_AGENT = "AsifahAnalytics-Asia/1.0.0 (OSINT monitoring tool)"
+REDDIT_USER_AGENT = f"AsifahAnalytics-Asia/{ASIA_BACKEND_VERSION} (OSINT monitoring tool)"
 REDDIT_SUBREDDITS = {
     # -------------------------------------------------------
     # AFGHANISTAN — Taliban ops, TTP, ISIS-K, Pak cross-border
@@ -1620,90 +1632,148 @@ def fetch_direct_rss(url, source_name, weight=0.85, max_items=15):
 _REDDIT_COOLDOWN_UNTIL = 0  # unix timestamp
 _REDDIT_COOLDOWN_SECONDS = 30 * 60
 
+# v1.2.0 (Sep 21 2026) — per-target Reddit outcome, surfaced on /health.
+REDDIT_HEALTH = {'mechanism': 'search.rss', 'targets': {}, 'last_run': None,
+                 'cooldown_until': None}
+
 
 def fetch_reddit_posts(target, keywords, days=7):
-    """Fetch Reddit posts from relevant subreddits."""
+    """Fetch Reddit posts via search.rss (Atom). v1.2.0 — Sep 21, 2026.
+
+    Two changes from v1.1.0:
+      1. search.json -> search.rss. No OAuth, no UA games; verified live
+         Sep 20 while the JSON path was failing platform-wide.
+      2. ONE request per subreddit instead of THREE. v1.1.0 searched each
+         of the first 3 keywords separately: 168 subreddits x 3 = ~504
+         requests per sweep, which is a 429 waiting to happen. The same 3
+         keywords now go in one query as (a) OR (b) OR (c) -- parentheses
+         keep a multi-word keyword like 'china military' meaning what it
+         meant before (both words), not 'china' OR 'military'.
+    Kept from v1.1.0: the 30-minute platform-wide cooldown on 429.
+    Added: every outcome is counted in REDDIT_HEALTH, never silent.
+    """
     global _REDDIT_COOLDOWN_UNTIL
+    from html import unescape as _unescape
 
     articles = []
     subreddits = REDDIT_SUBREDDITS.get(target, [])
     if not subreddits:
+        REDDIT_HEALTH['targets'][target] = {
+            'status': 'no_subreddits_configured',
+            'at': datetime.now(timezone.utc).isoformat()}
         return []
 
-    # ── v1.1.0 — Respect cooldown ──
+    # ── Respect cooldown ──
     now_ts = time.time()
     if _REDDIT_COOLDOWN_UNTIL > now_ts:
         remaining = int(_REDDIT_COOLDOWN_UNTIL - now_ts)
         print(f"[Asia Reddit] In cooldown ({remaining}s remaining) — skipping all subs")
+        REDDIT_HEALTH['targets'][target] = {
+            'status': 'skipped_cooldown', 'cooldown_remaining_sec': remaining,
+            'at': datetime.now(timezone.utc).isoformat()}
         return []
 
     since = datetime.now(timezone.utc) - timedelta(days=days)
-    total_fetched = 0
-    sub_successes = 0
-    sub_failures = 0
+    if days <= 1:
+        time_filter = 'day'
+    elif days <= 7:
+        time_filter = 'week'
+    elif days <= 30:
+        time_filter = 'month'
+    else:
+        time_filter = 'year'
 
-    for subreddit in subreddits:
-        sub_article_count = 0
-        for keyword in keywords[:3]:
+    query = ' OR '.join(f'({k})' for k in keywords[:3])
+    atom = '{http://www.w3.org/2005/Atom}'
+    counts = {'ok': 0, 'empty': 0, 'forbidden': 0, 'http_error': 0,
+              'rate_limited': 0, 'timeout': 0, 'parse_error': 0,
+              'exception': 0, 'skipped_after_429': 0}
+
+    for i, subreddit in enumerate(subreddits):
+        try:
+            response = requests.get(
+                f"https://www.reddit.com/r/{subreddit}/search.rss",
+                params={'q': query, 'sort': 'new', 'limit': 25,
+                        't': time_filter, 'restrict_sr': 'on'},
+                timeout=10,
+                headers={"User-Agent": REDDIT_USER_AGENT}
+            )
+
+            if response.status_code == 429:
+                counts['rate_limited'] += 1
+                counts['skipped_after_429'] = len(subreddits) - i - 1
+                _REDDIT_COOLDOWN_UNTIL = time.time() + _REDDIT_COOLDOWN_SECONDS
+                REDDIT_HEALTH['cooldown_until'] = datetime.fromtimestamp(
+                    _REDDIT_COOLDOWN_UNTIL, tz=timezone.utc).isoformat()
+                print(f"[Asia Reddit] 429 rate-limited on r/{subreddit} — "
+                      f"cooling down {_REDDIT_COOLDOWN_SECONDS // 60}min")
+                break
+            if response.status_code == 403:
+                counts['forbidden'] += 1
+                print(f"[Asia Reddit] 403 forbidden (r/{subreddit}) — skipping")
+                continue
+            if response.status_code != 200:
+                counts['http_error'] += 1
+                print(f"[Asia Reddit] r/{subreddit} HTTP {response.status_code} — skipping")
+                continue
+
             try:
-                url = f"https://www.reddit.com/r/{subreddit}/search.json"
-                params = {
-                    'q': keyword,
-                    'sort': 'new',
-                    'limit': 10,
-                    't': 'week',
-                    'restrict_sr': 'true'
-                }
-                response = requests.get(
-                    url, params=params, timeout=10,
-                    headers={"User-Agent": REDDIT_USER_AGENT}
-                )
-
-                # ── v1.1.0 — Observable failure handling ──
-                if response.status_code == 429:
-                    print(f"[Asia Reddit] 429 rate-limited — cooling down {_REDDIT_COOLDOWN_SECONDS // 60}min")
-                    _REDDIT_COOLDOWN_UNTIL = time.time() + _REDDIT_COOLDOWN_SECONDS
-                    # Bail entirely — don't hammer other subs during cooldown
-                    print(f"[Asia Reddit] Summary: {total_fetched} posts fetched before cooldown ({sub_successes}/{len(subreddits)} subs)")
-                    return articles
-                if response.status_code == 403:
-                    print(f"[Asia Reddit] 403 forbidden (r/{subreddit}) — skipping")
-                    break
-                if response.status_code != 200:
-                    print(f"[Asia Reddit] r/{subreddit} HTTP {response.status_code} — skipping")
-                    break
-
-                posts = response.json().get('data', {}).get('children', [])
-                for post in posts:
-                    post_data = post.get('data', {})
-                    created = post_data.get('created_utc', 0)
-                    post_time = datetime.fromtimestamp(created, tz=timezone.utc)
-                    if post_time >= since:
-                        articles.append({
-                            'title': post_data.get('title', ''),
-                            'description': post_data.get('selftext', '')[:500],
-                            'url': f"https://www.reddit.com{post_data.get('permalink', '')}",
-                            'publishedAt': post_time.isoformat(),
-                            'source': {'name': f"r/{subreddit}"},
-                            'content': post_data.get('selftext', '')[:500],
-                            'language': 'en',
-                        })
-                        sub_article_count += 1
-                time.sleep(0.5)
-            except requests.Timeout:
-                print(f"[Asia Reddit] r/{subreddit} timeout on '{keyword}' — skipping keyword")
-                continue
-            except Exception as e:
-                print(f"[Asia Reddit] r/{subreddit} error: {str(e)[:80]}")
+                root = ET.fromstring(response.content)
+            except ET.ParseError:
+                counts['parse_error'] += 1
+                print(f"[Asia Reddit] r/{subreddit} unparseable feed "
+                      f"({len(response.content)} bytes)")
                 continue
 
-        total_fetched += sub_article_count
-        if sub_article_count > 0:
-            sub_successes += 1
-        else:
-            sub_failures += 1
+            sub_count = 0
+            for entry in root.findall(f'{atom}entry'):
+                published = (entry.findtext(f'{atom}published')
+                             or entry.findtext(f'{atom}updated') or '')
+                try:
+                    post_time = datetime.fromisoformat(published.replace('Z', '+00:00'))
+                    if post_time.tzinfo is None:
+                        post_time = post_time.replace(tzinfo=timezone.utc)
+                except ValueError:
+                    post_time = None
+                if post_time is not None and post_time < since:
+                    continue
 
-    print(f"[Asia Reddit] {target}: {total_fetched} posts from {sub_successes}/{len(subreddits)} subs")
+                link_el = entry.find(f'{atom}link')
+                link = link_el.get('href', '') if link_el is not None else ''
+                text = _unescape(re.sub(r'<[^>]+>', ' ', entry.findtext(f'{atom}content') or ''))
+                text = re.sub(r'\s+', ' ', text).strip()
+                text = re.sub(r'submitted by\s+/u/\S+.*$', '', text).strip()
+
+                articles.append({
+                    'title': (entry.findtext(f'{atom}title') or '').strip(),
+                    'description': text[:500],
+                    'url': link,
+                    'publishedAt': post_time.isoformat() if post_time else published,
+                    'source': {'name': f"r/{subreddit}"},
+                    'content': text[:500],
+                    'language': 'en',
+                })
+                sub_count += 1
+
+            if sub_count:
+                counts['ok'] += 1
+            else:
+                counts['empty'] += 1
+        except requests.Timeout:
+            counts['timeout'] += 1
+            print(f"[Asia Reddit] r/{subreddit} timeout — skipping")
+        except Exception as e:
+            counts['exception'] += 1
+            print(f"[Asia Reddit] r/{subreddit} error: {str(e)[:80]}")
+        finally:
+            time.sleep(1.0)
+
+    REDDIT_HEALTH['targets'][target] = dict(
+        counts, posts=len(articles), subreddits=len(subreddits),
+        at=datetime.now(timezone.utc).isoformat())
+    REDDIT_HEALTH['last_run'] = datetime.now(timezone.utc).isoformat()
+    print(f"[Asia Reddit] {target}: {len(articles)} posts from "
+          f"{counts['ok']}/{len(subreddits)} subs | {counts}")
     return articles
 
 
@@ -2123,7 +2193,7 @@ def _run_travel_advisory_scan():
         'success': True,
         'timestamp': datetime.now(timezone.utc).isoformat(),
         'advisories': results,
-        'version': '1.0.0-asia'
+        'version': f'{ASIA_BACKEND_VERSION}-asia'
     }
 
 
@@ -2685,7 +2755,7 @@ def _run_threat_scan(target, days=7):
                               a.get('source', {}).get('name', '').startswith('Telegram @')][:20],
         'days_analyzed': days,
         'cached_at': datetime.now(timezone.utc).isoformat(),
-        'version': '1.1.0-asia',  # v1.1.0 — Phase A + Phase B fixes applied
+        'version': f'{ASIA_BACKEND_VERSION}-asia',
     }
 
     # ============================================
@@ -2726,7 +2796,7 @@ def _run_notam_scan():
         'notams': notams,
         'regions_scanned': list(NOTAM_REGIONS.keys()),
         'data_source': 'FAA NOTAM API',
-        'version': '1.0.0-asia',
+        'version': f'{ASIA_BACKEND_VERSION}-asia',
         'cached': False,
     }
 
@@ -2783,7 +2853,7 @@ def _run_flight_scan():
         'total_disruptions': len(disruptions),
         'disruptions': disruptions,
         'cancellations': disruptions,
-        'version': '1.0.0-asia',
+        'version': f'{ASIA_BACKEND_VERSION}-asia',
         'cached': False,
     }
 
@@ -2953,7 +3023,7 @@ def api_asia_dashboard():
         dashboard = {
             'success': True,
             'timestamp': datetime.now(timezone.utc).isoformat(),
-            'version': '1.0.0-asia',
+            'version': f'{ASIA_BACKEND_VERSION}-asia',
             'countries': {},
             'cache_cold': False
         }
@@ -3146,8 +3216,8 @@ def favicon():
 def home():
     return jsonify({
         'status': 'Backend is running',
-        'message': 'Asifah Analytics — Asia API v1.0.0',
-        'version': '1.0.0',
+        'message': f'Asifah Analytics — Asia API v{ASIA_BACKEND_VERSION}',
+        'version': ASIA_BACKEND_VERSION,
         'region': 'asia',
         'features': [
             'In-memory response caching (4-hour TTL)',
@@ -3263,10 +3333,11 @@ def military_posture_target(target):
 def health():
     return jsonify({
         'status': 'healthy',
-        'version': '1.0.0-asia',
+        'version': f'{ASIA_BACKEND_VERSION}-asia',
         'region': 'asia',
         'timestamp': datetime.now(timezone.utc).isoformat(),
         'cache_entries': len(_cache),
+        'reddit': REDDIT_HEALTH,
         'targets': list(TARGET_KEYWORDS.keys()),
     })
 
