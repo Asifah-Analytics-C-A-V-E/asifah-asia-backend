@@ -14,6 +14,17 @@ Adapted for Asia-Pacific geopolitical monitoring with:
   - Flight disruption tracking
   - Military posture integration hooks
 
+v1.3.0 — September 27, 2026
+  - Brave routed through the shared brave_gateway (was calling the API
+    directly, so Asia spent from the 6,000/month plan without appearing in
+    any budget and without standing down on a 402 — the same gap Africa
+    had). Direct path kept as the fallback.
+  - RSS feeds report to feed_health: a retired feed now announces itself
+    instead of quietly shrinking the corpus. Both RSS fetchers also had NO
+    else branch on status_code == 200, so every 403/429/503 vanished in
+    silence; they are recorded now.
+  - /health carries 'feeds', 'brave_budget' and which gateways loaded.
+
 v1.2.0 — September 21, 2026
   - ONE version constant (ASIA_BACKEND_VERSION). Seven hardcoded version
     strings had drifted: the scan said 1.1.0 while /health, /, the dashboard,
@@ -45,8 +56,30 @@ import xml.etree.ElementTree as ET
 import threading
 import json
 
+# ── Shared gateways + feed health (Sep 27 2026) ──────────────────────
+# Optional imports: a missing module changes nothing except the honesty of
+# the /health payload, which says so rather than implying all is well.
+try:
+    from brave_gateway import brave_fetch as _gw_brave, brave_stats as _gw_brave_stats
+    _BRAVE_GATEWAY = True
+    print("[Asia Brave] Shared Brave gateway loaded (daily budget enforced)")
+except ImportError:
+    _gw_brave = None
+    _gw_brave_stats = None
+    _BRAVE_GATEWAY = False
+    print("[Asia Brave] brave_gateway not available -- direct calls, NO shared budget")
+
+try:
+    from feed_health import record_fetch as _feed_record, feed_report as _feed_report
+    _FEED_HEALTH = True
+except ImportError:
+    _feed_record = None
+    _feed_report = None
+    _FEED_HEALTH = False
+    print("[Asia RSS] feed_health not available -- feed deaths will stay silent")
+
 # v1.2.0 — the ONE place the backend version lives. Bump this, nothing else.
-ASIA_BACKEND_VERSION = '1.2.0'
+ASIA_BACKEND_VERSION = '1.3.0'
 
 try:
     from telegram_signals_asia import fetch_asia_telegram_signals
@@ -1388,6 +1421,32 @@ def fetch_brave_articles(query, days=7, count=20):
     come back thin (GDELT soft-block / NewsAPI quota). Key in BRAVE_API_KEY env var."""
     if not BRAVE_API_KEY:
         return []
+    # v1.3.0 -- through the shared gateway when present: one daily budget
+    # across every repo, spend attributed to 'asia/brave', and a 402 stands
+    # the whole platform down instead of each module rediscovering it.
+    if _BRAVE_GATEWAY and _gw_brave:
+        raw = _gw_brave(query[:380], count=min(count, 50),
+                        freshness=('pw' if days <= 7 else 'pm'),
+                        label='asia/brave') or []
+        out = []
+        for r in raw:
+            # The gateway already returns source as {'name': host}, which is
+            # this file's own shape -- pass it through, do not re-wrap.
+            src = r.get('source')
+            if not isinstance(src, dict):
+                src = {'name': src or 'Brave News'}
+            out.append({
+                'title':       (r.get('title') or '')[:200],
+                'description': (r.get('description') or '')[:500],
+                'url':         r.get('url') or '',
+                'publishedAt': r.get('publishedAt') or r.get('published') or '',
+                'source':      src,
+                'content':     (r.get('description') or '')[:500],
+                'language':    'en',
+            })
+        if out:
+            print(f"[Asia Brave] {len(out)} articles (via gateway)")
+        return out
     try:
         headers = {
             'Accept': 'application/json',
@@ -1569,7 +1628,16 @@ def fetch_google_news_rss(query, source_name, lang='en', gl='US'):
         encoded_query = requests.utils.quote(query)
         ceid = f"{lang.upper()}-{gl}"
         url = f"https://news.google.com/rss/search?q={encoded_query}&hl={lang}&gl={gl}&ceid={ceid}"
+        _t0 = time.time()
         response = requests.get(url, timeout=(5, 15), headers={'User-Agent': 'Mozilla/5.0'})
+        if response.status_code != 200:
+            # v1.3.0 -- this branch did not exist: every 403/429/503 fell
+            # through in silence and the caller saw an empty list.
+            print(f"[Asia RSS] {source_name}: HTTP {response.status_code}")
+            if _feed_record:
+                _feed_record('asia', url, items=0, label=f'gnews:{source_name}',
+                             http_status=response.status_code,
+                             duration_ms=(time.time() - _t0) * 1000)
         if response.status_code == 200:
             root = ET.fromstring(response.content)
             items = root.findall('.//item')
@@ -1587,8 +1655,15 @@ def fetch_google_news_rss(query, source_name, lang='en', gl='US'):
                         'content': title_elem.text or '',
                         'language': lang,
                     })
+            if _feed_record:
+                _feed_record('asia', url, items=len(articles),
+                             label=f'gnews:{source_name}', http_status=200,
+                             duration_ms=(time.time() - _t0) * 1000)
     except Exception as e:
         print(f"[Asia RSS] {source_name} error: {str(e)[:100]}")
+        if _feed_record:
+            _feed_record('asia', f'gnews:{source_name}', items=0,
+                         label=f'gnews:{source_name}', error=e)
     return articles
 
 
@@ -1596,7 +1671,14 @@ def fetch_direct_rss(url, source_name, weight=0.85, max_items=15):
     """Fetch articles directly from an RSS feed URL (not Google News)."""
     articles = []
     try:
+        _t0 = time.time()
         response = requests.get(url, timeout=(5, 15), headers={'User-Agent': 'Mozilla/5.0'})
+        if response.status_code != 200:
+            print(f"[Direct RSS] {source_name}: HTTP {response.status_code}")
+            if _feed_record:
+                _feed_record('asia', url, items=0, label=source_name,
+                             http_status=response.status_code,
+                             duration_ms=(time.time() - _t0) * 1000)
         if response.status_code == 200:
             root = ET.fromstring(response.content)
             items = root.findall('.//item')
@@ -1615,8 +1697,14 @@ def fetch_direct_rss(url, source_name, weight=0.85, max_items=15):
                         'content': title_elem.text.strip(),
                         'source_weight_override': weight,
                     })
+            if _feed_record:
+                _feed_record('asia', url, items=len(articles), label=source_name,
+                             http_status=200,
+                             duration_ms=(time.time() - _t0) * 1000)
     except Exception as e:
         print(f"[Direct RSS] {source_name} error: {str(e)[:100]}")
+        if _feed_record:
+            _feed_record('asia', url, items=0, label=source_name, error=e)
     return articles
 
 
@@ -3338,6 +3426,15 @@ def health():
         'timestamp': datetime.now(timezone.utc).isoformat(),
         'cache_entries': len(_cache),
         'reddit': REDDIT_HEALTH,
+        # v1.3.0 -- feeds report their own silence; gateways report their spend.
+        'gateways': {'gdelt': _GDELT_GATEWAY, 'brave': _BRAVE_GATEWAY,
+                     'feed_health': _FEED_HEALTH},
+        'feeds': (_feed_report('asia') if _feed_report else
+                  {'state': 'could_not_assess',
+                   'reason': 'feed_health module not installed'}),
+        'brave_budget': (_gw_brave_stats() if _gw_brave_stats else
+                         {'note': 'brave_gateway not installed -- '
+                                  'spend is uncapped and unattributed'}),
         'targets': list(TARGET_KEYWORDS.keys()),
     })
 
