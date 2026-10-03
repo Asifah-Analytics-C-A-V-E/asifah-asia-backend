@@ -134,6 +134,26 @@ ESCALATION_COLORS = {
     5: '#dc2626',
 }
 
+# ── PLAIN-LANGUAGE STATE VOCABULARY (Oct 3 2026) ─────────────────────
+# ESCALATION_LABELS above is CHIP language -- it labels a pill next to a
+# legend. It is wrong for PROSE, where "peak escalation L4" tells a reader
+# who has never seen this platform precisely nothing.
+#
+# theatre_state.py carries the axis-aware vocabulary (a magnitude-9
+# earthquake is a legitimate L5, and calling it "active war footing" is not
+# imprecise, it is false). Rule: the state phrase LEADS, the level follows
+# in parentheses. Fails soft -- missing module keeps the old shape rather
+# than blanking the page.
+try:
+    from theatre_state import state_with_level as _ts_level, named_state as _ts_named
+except ImportError:
+    def _ts_level(level, category=None, pressure_type=None, upper=False):
+        return 'L%s' % level
+    def _ts_named(name, level, category=None, pressure_type=None):
+        return '%s (L%s)' % (name, level)
+
+
+
 # v2.1: forward-compat for future Asia stability anchors (e.g. Singapore as
 # diplomatic mediator pattern). Currently no Asia trackers use influence axis.
 INFLUENCE_LABELS = {
@@ -467,7 +487,7 @@ def _synthesize_top_signals_legacy(theatre, raw_data, threat_int, score, so_what
             'short_text': raw_data.get('signal_text_short') or
                           f'{flag} {display} L{effective_level} — {tracker_label}',
             'long_text':  raw_data.get('signal_text_long') or
-                          f'{flag} {display} at L{effective_level} {tracker_label} (score {score}/100)',
+                          f'{flag} {display} at {_ts_level(effective_level)} -- {tracker_label} (score {score}/100)',
         })
 
     # ---- 3. CHINA-SPECIFIC: kinetic + economic vectors ----
@@ -487,7 +507,7 @@ def _synthesize_top_signals_legacy(theatre, raw_data, threat_int, score, so_what
                 'icon':       '⚔️',
                 'color':      '#ef4444',
                 'short_text': f'{flag} CHINA: Kinetic vector L{kinetic} (PLA L{pla_lvl})',
-                'long_text':  f'CHINA kinetic pressure L{kinetic} — PLA operational level L{pla_lvl}; cross-strait coercion active.',
+                'long_text':  f'CHINA kinetic pressure at {_ts_level(kinetic)} — PLA operational level {_ts_level(pla_lvl)}; cross-strait coercion active.',
             })
         if econ >= 3:
             signals.append({
@@ -498,7 +518,7 @@ def _synthesize_top_signals_legacy(theatre, raw_data, threat_int, score, so_what
                 'icon':       '💰',
                 'color':      '#f97316',
                 'short_text': f'{flag} CHINA: Economic coercion L{econ}',
-                'long_text':  f'CHINA economic coercion L{econ} — trade/investment pressure tools active.',
+                'long_text':  f'CHINA economic coercion at {_ts_level(econ, pressure_type="economic")} — trade/investment pressure tools active.',
             })
         if domestic_fracture >= 3:
             signals.append({
@@ -509,7 +529,7 @@ def _synthesize_top_signals_legacy(theatre, raw_data, threat_int, score, so_what
                 'icon':       '🏚️',
                 'color':      '#a855f7',
                 'short_text': f'{flag} CHINA: Domestic fracture L{domestic_fracture}',
-                'long_text':  f'CHINA domestic fracture indicators L{domestic_fracture} — internal stress accelerates external posturing risk.',
+                'long_text':  f'CHINA domestic fracture indicators at {_ts_level(domestic_fracture)} — internal stress accelerates external posturing risk.',
             })
         if coalition_pushback >= 3:
             signals.append({
@@ -520,7 +540,7 @@ def _synthesize_top_signals_legacy(theatre, raw_data, threat_int, score, so_what
                 'icon':       '🛡️',
                 'color':      '#10b981',
                 'short_text': f'{flag} CHINA: Coalition pushback L{coalition_pushback}',
-                'long_text':  f'CHINA-facing coalition activity L{coalition_pushback} — US/Japan/Australia coordinated signaling detected.',
+                'long_text':  f'CHINA-facing coalition activity at {_ts_level(coalition_pushback, pressure_type="diplomatic")} — US/Japan/Australia coordinated signaling detected.',
             })
 
     # ---- 4. TAIWAN-SPECIFIC: deterrence gap + coalition strength ----
@@ -541,7 +561,7 @@ def _synthesize_top_signals_legacy(theatre, raw_data, threat_int, score, so_what
                 'icon':       '⚠️',
                 'color':      '#dc2626',
                 'short_text': f'{flag} TAIWAN: Deterrence gap L{gap}',
-                'long_text':  f'TAIWAN deterrence gap L{gap} — inbound pressure L{inbound} exceeds coalition response L{deterrence_str}. Coercion-into-weakness pattern.',
+                'long_text':  f'TAIWAN deterrence gap L{gap} — inbound pressure at {_ts_level(inbound)} exceeds coalition response at {_ts_level(deterrence_str)}. Coercion-into-weakness pattern.',
             })
         elif gap >= 2:
             signals.append({
