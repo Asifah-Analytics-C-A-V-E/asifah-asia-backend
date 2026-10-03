@@ -79,7 +79,7 @@ except ImportError:
     print("[Asia RSS] feed_health not available -- feed deaths will stay silent")
 
 # v1.2.0 — the ONE place the backend version lives. Bump this, nothing else.
-ASIA_BACKEND_VERSION = '1.3.0'
+ASIA_BACKEND_VERSION = '1.3.1'
 
 try:
     from telegram_signals_asia import fetch_asia_telegram_signals
@@ -1110,6 +1110,22 @@ NOTAM_REGIONS = {
 # REDDIT CONFIGURATION — ASIA-PACIFIC
 # ========================================
 REDDIT_USER_AGENT = f"AsifahAnalytics-Asia/{ASIA_BACKEND_VERSION} (OSINT monitoring tool)"
+
+# v1.3.1 (Oct 3 2026) -- the same treatment v1.2.0 gave the version strings,
+# now for the User-Agent. Reddit was fixed in v1.2.0 and three call sites were
+# missed: GDELT still announced version 1.1 (two releases stale, the exact
+# drift v1.2.0 set out to end), and the two RSS fetchers sent a bare
+# 'Mozilla/5.0' that identifies nothing at all.
+#
+# A bare 'Mozilla/5.0' is not a disguise -- it is too minimal to pass as a
+# browser and too vague to be allow-listed. It gets the worst of both.
+#
+# WATCH AFTER DEPLOY: fetch_direct_rss() is the one to watch. It fetches
+# arbitrary publisher feeds, so if any publisher refuses identified bots this
+# is where it will show. feed_health will name the feed. The fix then is a
+# documented exception at that feed, not a retreat to anonymity.
+ASIA_USER_AGENT = (f"AsifahAnalytics-Asia/{ASIA_BACKEND_VERSION} "
+                   f"(OSINT monitoring tool; +https://asifahanalytics.com)")
 REDDIT_SUBREDDITS = {
     # -------------------------------------------------------
     # AFGHANISTAN — Taliban ops, TTP, ISIS-K, Pak cross-border
@@ -1560,7 +1576,7 @@ def fetch_gdelt_articles(query, days=7, language='eng'):
         headers = {
             # v1.1.1 — Add explicit UA. Render's default urllib3 UA may trigger
             # GDELT's soft-block heuristics. A real-looking UA reduces false 429s.
-            'User-Agent': 'AsifahAnalytics/1.1 (+https://asifahanalytics.com; research)',
+            'User-Agent': ASIA_USER_AGENT,
             'Accept': 'application/json,text/plain',
         }
         for attempt in range(2):
@@ -1629,7 +1645,7 @@ def fetch_google_news_rss(query, source_name, lang='en', gl='US'):
         ceid = f"{lang.upper()}-{gl}"
         url = f"https://news.google.com/rss/search?q={encoded_query}&hl={lang}&gl={gl}&ceid={ceid}"
         _t0 = time.time()
-        response = requests.get(url, timeout=(5, 15), headers={'User-Agent': 'Mozilla/5.0'})
+        response = requests.get(url, timeout=(5, 15), headers={'User-Agent': ASIA_USER_AGENT})
         if response.status_code != 200:
             # v1.3.0 -- this branch did not exist: every 403/429/503 fell
             # through in silence and the caller saw an empty list.
