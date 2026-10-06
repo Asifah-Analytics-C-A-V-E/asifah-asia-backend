@@ -1237,6 +1237,46 @@ def _extract_display_label(raw):
 RESIDENT_HUBS = ['china', 'dprk']
 
 
+def _fetch_commodity_pressure_asia(commodity_id):
+    """Commodity pressure for a Layer 2 commodity gate.
+
+    Asia has no local commodity_tracker -- commodity data has exactly one
+    producer, on the ME backend, and this backend reads it through the shared
+    Redis bus rather than keeping a second copy. One writer, many readers.
+
+    Returns None when the bundle cannot be read, and None is NOT 'normal':
+    convergence_layer2 reports an unreadable commodity as unreadable rather
+    than letting it pass as quiet.
+
+    No Asia registry entry is commodity-driven today, so this is unused on this
+    backend right now. It exists because the day a commodity-driven Asia entry
+    is written -- rice is the obvious one -- the gate must already work, rather
+    than failing in a way that looks like the commodity is calm.
+    """
+    if not commodity_id:
+        return None
+    try:
+        bundle = _redis_get('commodity_tracker_cache')
+        if not isinstance(bundle, dict):
+            return None
+        summaries = bundle.get('commodity_summaries') or {}
+        if isinstance(summaries, list):
+            summaries = {c.get('id') or c.get('commodity'): c
+                         for c in summaries if isinstance(c, dict)}
+        entry = summaries.get(commodity_id)
+        if not isinstance(entry, dict):
+            return None
+        return {
+            'alert_level':  entry.get('alert_level', 'normal'),
+            'signal_count': entry.get('signal_count', 0),
+            'source':       'ME commodity bundle via shared Redis',
+        }
+    except Exception as e:
+        print('[Asia BLUF] commodity read failed for %s: %s'
+              % (commodity_id, str(e)[:120]))
+        return None
+
+
 def _build_convergence_panel():
     """Bidirectional wheel read for the Asia payload. Never raises."""
     if not _WHEEL_READER:
@@ -1294,6 +1334,42 @@ def build_regional_bluf(force=False):
         # v2.3.0: signals collector returns full pool; cap separately for display
         all_signals = _build_signals(posture, trackers)            # full pool — for GPI axis aggregation
         all_signals = _tag_signal_axes(all_signals)                # Jun 13 2026: multi-axis pills
+
+        # ── LAYER 2 CONVERGENCE ENRICHMENT (v3.3.0 -- Oct 6 2026) ──────
+        # Asia has carried four registry entries since May and has never had a
+        # Layer 2, so none of them could ever fire: the GPI's Layer 1 looks for
+        # an `{id}_active` flag that nothing on this backend was setting.
+        #
+        # It is NOT a port of the ME implementation. All four Asia entries are
+        # regime-axis (commodity: None), and ME's Layer 2 begins by fetching a
+        # commodity and skipping when there isn't one -- so copying it here
+        # would have produced a function that considers four convergences,
+        # enriches zero, and says nothing. convergence_layer2 carries both
+        # gates: commodity threshold where there is a commodity, trigger-signal
+        # level where there is not.
+        #
+        # Runs on the FULL pool before the display cap, so a convergence can be
+        # triggered by a signal that does not make the top five.
+        #
+        # Soft import: no module, no enrichment, no crash. A BLUF that fails to
+        # publish is worse than one that publishes without convergence flags.
+        try:
+            from convergence_layer2 import enrich_signals, log_report
+            _l2 = enrich_signals(
+                all_signals, 'asia',
+                commodity_fetch=_fetch_commodity_pressure_asia,
+                redis_get=_redis_get, redis_set=_redis_set,
+            )
+            log_report(_l2, 'Asia BLUF Layer2')
+        except ImportError:
+            print('[Asia BLUF] convergence_layer2 not deployed -- no convergence '
+                  'flags set this cycle. Registry entries for Asia cannot fire '
+                  'until it is.')
+            _l2 = None
+        except Exception as _l2_err:
+            print('[Asia BLUF] Layer 2 error (non-fatal): %s' % str(_l2_err)[:200])
+            _l2 = None
+
         top_signals = all_signals[:TOP_SIGNALS_COUNT]                # capped for display
         bluf_blocks = _build_bluf_blocks(posture, trackers)         # approach B structured blocks
 
