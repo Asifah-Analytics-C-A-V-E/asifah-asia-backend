@@ -189,9 +189,19 @@ def enrich_signals(signals, region, commodity_fetch=None,
     try:
         if registry is None:
             from convergence_registry import CONVERGENCE_REGISTRY as registry
+            try:
+                from convergence_registry import registry_identity
+                report['registry'] = registry_identity()
+            except ImportError:
+                report['registry'] = {'version': 'pre-1.2.0', 'as_of': 'unknown',
+                                      'entries': len(registry),
+                                      'fingerprint': 'no identity marker'}
         from convergence_registry import alert_meets_threshold, format_enrichment_text
     except Exception as e:
-        report['error'] = 'registry unavailable: %s' % str(e)[:120]
+        report['error'] = ('convergence_registry not importable on this backend '
+                           '(%s). THIS IS THE DEPENDENCY: convergence_layer2 is '
+                           'the engine, the registry is the fuel, and the engine '
+                           'alone does nothing.' % str(e)[:100])
         return report
 
     for entry in registry:
@@ -310,7 +320,17 @@ def log_report(report, tag='Layer2'):
     region = report.get('region', '?')
     if report.get('error'):
         print('[%s %s] ERROR: %s' % (tag, region, report['error']))
+        print('[%s %s] No convergence flags set. Every registry entry for this '
+              'region is inert until the registry is deployed here.'
+              % (tag, region))
         return
+    ident = report.get('registry')
+    if ident:
+        # Printed every cycle on every backend. Two copies that disagree now
+        # disagree VISIBLY, in the log, on the first scan after the fork.
+        print('[%s %s] registry v%s (%s) -- %d entries, fingerprint %s'
+              % (tag, region, ident.get('version'), ident.get('as_of'),
+                 ident.get('entries'), ident.get('fingerprint')))
     act, skip = report.get('activated', []), report.get('skipped', [])
     print('[%s %s] %d/%d convergence(s) activated'
           % (tag, region, len(act), report.get('entries_considered', 0)))
