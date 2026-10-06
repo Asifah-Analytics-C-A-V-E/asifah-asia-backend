@@ -1421,6 +1421,24 @@ def build_regional_bluf(force=False):
             'bluf_v2':            bluf_blocks,           # Jun 13 2026: structured paragraph blocks (approach B)
             'signals':            all_signals,           # v2.3.0: FULL signal pool — for GPI axis aggregation
             'top_signals':        top_signals,           # v2.3.0: capped — for display + prose synthesis
+            # v3.3.0 (Oct 6 2026) -- THE LAYER 2 REPORT, ON THE PAYLOAD.
+            #
+            # It was stdout-only for about twenty minutes, and in that time
+            # Render ate one of its five lines: the first scan logged "0/4
+            # convergence(s) activated" above exactly THREE dark entries, with
+            # pla_pressure_japan_response missing. The code emits four; five
+            # lines hit stdout in the same millisecond and one did not survive
+            # the transport.
+            #
+            # Which is the whole argument. A diagnostic that lives only in a log
+            # is a diagnostic you cannot verify is complete, and this platform
+            # has already lost months to audits wired to a print() -- the ME
+            # convergence audit, cluster_status, trigger_confirmed. Putting the
+            # report on the payload makes "four entries are waiting on an
+            # emitter" a thing you can query, count and render, rather than a
+            # thing you have to catch scrolling past.
+            'layer2':             _l2,
+
             'posture_label':      posture['label'],
             'posture_color':      posture['color'],
             'peak_level':         posture['peak_level'], # legacy alias
