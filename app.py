@@ -45,13 +45,12 @@ v1.0.0 — Initial build
 """
 
 from flask import Flask, jsonify, request
-from flask_cors import CORS, cross_origin
+from flask_cors import CORS
 import requests
 from datetime import datetime, timezone, timedelta
 import os
 import time
 import re
-import math
 import xml.etree.ElementTree as ET
 import threading
 import json
@@ -79,7 +78,7 @@ except ImportError:
     print("[Asia RSS] feed_health not available -- feed deaths will stay silent")
 
 # v1.2.0 — the ONE place the backend version lives. Bump this, nothing else.
-ASIA_BACKEND_VERSION = '1.3.1'
+ASIA_BACKEND_VERSION = '1.4.0'
 
 try:
     from telegram_signals_asia import fetch_asia_telegram_signals
@@ -118,9 +117,9 @@ except Exception as e:
     import traceback
     TAIWAN_RHETORIC_AVAILABLE = False
     print(f"[Asia Backend] ⚠️ Taiwan rhetoric tracker not available — {type(e).__name__}: {e}")
-    print(f"[Asia Backend] === FULL TAIWAN IMPORT TRACEBACK ===")
+    print("[Asia Backend] === FULL TAIWAN IMPORT TRACEBACK ===")
     traceback.print_exc()
-    print(f"[Asia Backend] === END TAIWAN IMPORT TRACEBACK ===")
+    print("[Asia Backend] === END TAIWAN IMPORT TRACEBACK ===")
 
 try:
     from rhetoric_tracker_afghanistan import register_afghanistan_rhetoric_endpoints
@@ -521,34 +520,8 @@ def is_threat_cache_fresh_redis(target, days=7):
     return False, None
 
 
-def is_notam_cache_fresh():
-    """Check if Redis NOTAM cache is fresh."""
-    result = _redis_request('GET', f"/get/{NOTAM_REDIS_KEY}")
-    if result and result.get('result'):
-        try:
-            data = json.loads(result['result'])
-            cached_at = data.get('timestamp', '')
-            if cached_at:
-                age = (datetime.now(timezone.utc) - datetime.fromisoformat(
-                    cached_at.replace('Z', '+00:00'))).total_seconds()
-                if age < NOTAM_CACHE_TTL:
-                    return True, data
-        except Exception:
-            pass
-    return False, None
 
 
-def save_notam_cache_redis(data):
-    """Save NOTAM cache to Redis."""
-    try:
-        payload = json.dumps(data)
-        _redis_request('POST', f"/set/{NOTAM_REDIS_KEY}",
-                       data=payload,
-                       params={'EX': NOTAM_CACHE_TTL},
-                       headers={"Authorization": f"Bearer {UPSTASH_REDIS_TOKEN}",
-                                "Content-Type": "application/json"})
-    except Exception as e:
-        print(f"[Redis] NOTAM save error: {str(e)[:100]}")
 
 
 def is_flight_cache_fresh():
@@ -639,13 +612,7 @@ def _refresh_all_caches():
                 print(f"[Background Refresh] ✗ {target} failed: {e}")
             time.sleep(2)
 
-        try:
-            print("[Background Refresh] Refreshing NOTAMs via FAA...")
-            notam_data = _run_notam_scan()
-            cache_set('notams', notam_data)
-            print(f"[Background Refresh] ✓ NOTAMs cached ({notam_data.get('total_notams', 0)} alerts)")
-        except Exception as e:
-            print(f"[Background Refresh] ✗ NOTAMs failed: {e}")
+        # (Nov 1 2026) NOTAM refresh removed -- airspace_watch.py runs its own loop.
 
         time.sleep(5)
 
@@ -663,7 +630,7 @@ def _refresh_all_caches():
             print("[Background Refresh] Refreshing travel advisories...")
             ta_data = _run_travel_advisory_scan()
             cache_set('travel_advisories', ta_data)
-            print(f"[Background Refresh] ✓ Travel advisories cached")
+            print("[Background Refresh] ✓ Travel advisories cached")
         except Exception as e:
             print(f"[Background Refresh] ✗ Travel advisories failed: {e}")
 
@@ -1072,44 +1039,29 @@ TARGET_KEYWORDS = {
 # ========================================
 # NOTAM REGIONS — ASIA-PACIFIC ICAO CODES
 # ========================================
-NOTAM_REGIONS = {
-    'taiwan_strait': {
-        'name': 'Taiwan Strait / East China Sea',
-        'icao_codes': ['RCTP', 'RCSS', 'ZGGG'],  # Taipei, Songshan, Guangzhou
-        'fir': ['RJJJ', 'RCFIR'],
-    },
-    'korean_peninsula': {
-        'name': 'Korean Peninsula',
-        'icao_codes': ['RKSI', 'RKSS', 'ZKPY'],  # Incheon, Gimpo, Pyongyang
-        'fir': ['RKRR', 'ZKKP'],
-    },
-    'south_china_sea': {
-        'name': 'South China Sea',
-        'icao_codes': ['WMKK', 'RPLL', 'VVTS'],  # Kuala Lumpur, Manila, Ho Chi Minh
-        'fir': ['WSJC', 'RPHI'],
-    },
-    'japan': {
-        'name': 'Japan / Okinawa',
-        'icao_codes': ['RJTT', 'RJBB', 'ROAH'],  # Tokyo, Osaka, Naha (Okinawa)
-        'fir': ['RJJJ', 'RJTT'],
-    },
-    'south_asia': {
-        'name': 'South Asia (India/Pakistan/Afghanistan)',
-        'icao_codes': ['VIDP', 'OPKC', 'OAKB'],  # Delhi, Karachi, Kabul
-        'fir': ['VIDF', 'OPLR', 'OAKX'],
-    },
-    'vietnam': {
-        'name': 'Vietnam / SCS Coast',
-        'icao_codes': ['VVNB', 'VVTS', 'VVDN'],  # Hanoi (Noi Bai), Ho Chi Minh (Tan Son Nhat), Da Nang
-        'fir': ['VVTS', 'VVNB'],  # Ho Chi Minh FIR, Hanoi FIR
-    },
-}
 
 
 # ========================================
 # REDDIT CONFIGURATION — ASIA-PACIFIC
 # ========================================
 REDDIT_USER_AGENT = f"AsifahAnalytics-Asia/{ASIA_BACKEND_VERSION} (OSINT monitoring tool)"
+
+# ── v1.4.0 (Nov 1 2026) public ?force gate ─────────────────────────────
+# ?force=true on a public endpoint ran a live scan for anyone on the internet.
+# Now: one forced rescan per endpoint path per 15 minutes (Upstash SET NX EX).
+# Inside the window the request gets the cache. No Redis -> allowed (fail-open).
+def _public_force_allowed(key):
+    _url = os.environ.get('UPSTASH_REDIS_URL')
+    _tok = os.environ.get('UPSTASH_REDIS_TOKEN')
+    if not (_url and _tok):
+        return True
+    try:
+        _r = requests.get(f"{_url}/set/force_gate:asia:{key.strip('/').replace('/', ':')}/1/NX/EX/900",
+                          headers={'Authorization': f'Bearer {_tok}'}, timeout=4)
+        return _r.json().get('result') == 'OK'
+    except Exception:
+        return True
+
 
 # v1.3.1 (Oct 3 2026) -- the same treatment v1.2.0 gave the version strings,
 # now for the User-Agent. Reddit was fixed in v1.2.0 and three call sites were
@@ -1126,6 +1078,9 @@ REDDIT_USER_AGENT = f"AsifahAnalytics-Asia/{ASIA_BACKEND_VERSION} (OSINT monitor
 # documented exception at that feed, not a retreat to anonymity.
 ASIA_USER_AGENT = (f"AsifahAnalytics-Asia/{ASIA_BACKEND_VERSION} "
                    f"(OSINT monitoring tool; +https://asifahanalytics.com)")
+# Nov 1 2026: crawler form for direct RSS (was a bare 'Mozilla/5.0' at the call site)
+ASIA_FEED_USER_AGENT = (f"Mozilla/5.0 (compatible; AsifahAnalytics-Asia/{ASIA_BACKEND_VERSION}; "
+                        f"+https://asifahanalytics.com)")
 REDDIT_SUBREDDITS = {
     # -------------------------------------------------------
     # AFGHANISTAN — Taliban ops, TTP, ISIS-K, Pak cross-border
@@ -1678,7 +1633,7 @@ def fetch_direct_rss(url, source_name, weight=0.85, max_items=15):
     articles = []
     try:
         _t0 = time.time()
-        response = requests.get(url, timeout=(5, 15), headers={'User-Agent': 'Mozilla/5.0'})
+        response = requests.get(url, timeout=(5, 15), headers={'User-Agent': ASIA_FEED_USER_AGENT})
         if response.status_code != 200:
             print(f"[Direct RSS] {source_name}: HTTP {response.status_code}")
             if _feed_record:
@@ -2159,47 +2114,6 @@ def scan_asian_flight_disruptions(articles):
 # NOTAM SCANNING — FAA API
 # ========================================
 
-def scan_asia_notams():
-    """Scan FAA NOTAM API for Asia-Pacific regions."""
-    notams = []
-    FAA_NOTAM_URL = "https://notams.aim.faa.gov/notamSearch/search"
-
-    for region_key, region in NOTAM_REGIONS.items():
-        icao_codes = region.get('icao_codes', [])[:3]
-        for icao in icao_codes:
-            try:
-                params = {
-                    'searchType': 0,
-                    'designatorsForLocation': icao,
-                    'radiusWithDesignator': 100,
-                    'pageSize': 10,
-                    'pageOffset': 0,
-                }
-                response = requests.get(
-                    FAA_NOTAM_URL, params=params,
-                    headers={'Accept': 'application/json'},
-                    timeout=15
-                )
-                if response.status_code == 200:
-                    data = response.json()
-                    items = data.get('notamList', [])
-                    for item in items:
-                        text = (item.get('traditionalMessage', '')
-                                or item.get('icaoMessage', '')
-                                or item.get('plainLanguage', ''))
-                        notams.append({
-                            'icao': icao,
-                            'region': region['name'],
-                            'id': item.get('notamNumber', ''),
-                            'text': text[:500],
-                            'effectiveStart': item.get('startDate', ''),
-                            'effectiveEnd': item.get('endDate', ''),
-                        })
-            except Exception as e:
-                print(f"[Asia NOTAM] {icao} error: {str(e)[:80]}")
-            time.sleep(0.3)
-
-    return notams
 
 
 # ========================================
@@ -2872,31 +2786,6 @@ def _run_threat_scan(target, days=7):
     return result
 
 
-def _run_notam_scan():
-    """Run a full NOTAM scan. Returns the complete response dict."""
-    is_fresh, cached = is_notam_cache_fresh()
-    if is_fresh and cached:
-        cached['cached'] = True
-        cached['cache_source'] = 'redis'
-        return cached
-
-    print("[NOTAM Scan] Running fresh Asia NOTAM scan from FAA...")
-    notams = scan_asia_notams()
-
-    result = {
-        'success': True,
-        'timestamp': datetime.now(timezone.utc).isoformat(),
-        'total_notams': len(notams),
-        'notams': notams,
-        'regions_scanned': list(NOTAM_REGIONS.keys()),
-        'data_source': 'FAA NOTAM API',
-        'version': f'{ASIA_BACKEND_VERSION}-asia',
-        'cached': False,
-    }
-
-    save_notam_cache_redis(result)
-    cache_set('notams', result)
-    return result
 
 
 def _run_flight_scan():
@@ -3011,7 +2900,7 @@ def api_asia_threat(target):
     Returns cached data by default. Pass ?force=true to trigger a fresh OSINT scan.
     """
     try:
-        force = request.args.get('force', 'false').lower() == 'true'
+        force = (request.args.get('force', 'false').lower() == 'true' and _public_force_allowed(request.path))
         days = int(request.args.get('days', 7))
 
         if target not in TARGET_KEYWORDS:
@@ -3180,45 +3069,13 @@ def api_asia_dashboard():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/asia/notams', methods=['GET'])
-def api_asia_notams():
-    """Asia-Pacific NOTAMs endpoint. Redis-cached with ?force=true override."""
-    try:
-        force = request.args.get('force', 'false').lower() == 'true'
-
-        if not force:
-            cached = cache_get('notams')
-            if cached:
-                cached['cached'] = True
-                cached['cache_source'] = 'memory'
-                cached['cache_age_seconds'] = int(cache_age('notams') or 0)
-                return jsonify(cached)
-
-            is_fresh, redis_cached = is_notam_cache_fresh()
-            if is_fresh and redis_cached:
-                redis_cached['cached'] = True
-                redis_cached['cache_source'] = 'redis'
-                cache_set('notams', redis_cached)
-                return jsonify(redis_cached)
-
-        if not check_rate_limit():
-            return jsonify({'error': 'Rate limit exceeded'}), 429
-
-        data = _run_notam_scan()
-        return jsonify(data)
-
-    except Exception as e:
-        return jsonify({
-            'success': False, 'error': str(e),
-            'notams': [], 'total_notams': 0
-        }), 500
 
 
 @app.route('/api/asia/flights', methods=['GET'])
 def api_asia_flights():
     """Asia-Pacific flight disruptions endpoint. Redis-cached with ?force=true override."""
     try:
-        force = request.args.get('force', 'false').lower() == 'true'
+        force = (request.args.get('force', 'false').lower() == 'true' and _public_force_allowed(request.path))
 
         if not force:
             cached = cache_get('flights')
@@ -3251,7 +3108,7 @@ def api_asia_flights():
 def api_asia_travel_advisories():
     """State Dept travel advisories for Asia-Pacific targets."""
     try:
-        force = request.args.get('force', 'false').lower() == 'true'
+        force = (request.args.get('force', 'false').lower() == 'true' and _public_force_allowed(request.path))
 
         if not force:
             cached = cache_get('travel_advisories')
@@ -3285,7 +3142,7 @@ def api_asia_cache_status():
         'timestamp': datetime.now(timezone.utc).isoformat(),
         'cache_ttl_hours': CACHE_TTL / 3600,
         'targets': status,
-        'notams': {'cached': cache_get('notams') is not None},
+        'airspace': 'see /api/airspace/health',
         'flights': {'cached': cache_get('flights') is not None},
     })
 
@@ -3376,7 +3233,7 @@ def military_posture():
         return '', 200
     try:
         days = int(request.args.get('days', 7))
-        force = request.args.get('force', 'false').lower() == 'true'
+        force = (request.args.get('force', 'false').lower() == 'true' and _public_force_allowed(request.path))
         me_url = f'{ME_BACKEND_URL}/api/military-posture?days={days}&refresh={force}'
         r = requests.get(me_url, timeout=30)  # longer timeout — full scan
         if r.status_code != 200:
@@ -3533,6 +3390,16 @@ if INDIA_RHETORIC_AVAILABLE:
 
 # On Render with gunicorn, this runs once per worker.
 start_background_refresh()
+
+
+# ── Airspace Watch (shared module, Nov 1 2026) ─────────────────────────
+# Replaces the old FAA NOTAM code (dead: FAA NOTAM website form, HTTP 403). Same file on all five
+# backends; this backend sees only its own regions.
+try:
+    from airspace_watch import register_airspace_endpoints
+    register_airspace_endpoints(app, 'asia', legacy_route='/api/asia/notams')
+except Exception as _e:
+    print(f"[Asia] ⚠️ Airspace Watch unavailable: {_e}")
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
