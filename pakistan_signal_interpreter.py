@@ -1,7 +1,18 @@
 """
 ========================================
-PAKISTAN SIGNAL INTERPRETER (v1.0.0 — April 2026)
+PAKISTAN SIGNAL INTERPRETER (v1.1.0 — Nov 1 2026; v1.0.0 April 2026)
 ========================================
+
+v1.1.0 (Nov 1 2026) -- the mediation precedent was frozen at April 2026
+("Witkoff-Kushner trip, since cancelled"), so Pakistan's most important role
+this autumn was invisible on its own page. The current precedent is now the
+Oct 26 2026 joint delegation to Tehran (Saudi Defence Minister, Field Marshal
+Munir, Turkiye's intelligence chief Kalin) carrying a US-Iran proposal, with
+the Mecca Pact states and Qatar floated as guarantors -- while Pakistani
+troops are present in Saudi Arabia under the pact (DG ISPR, Oct 2026). April
+is kept as the earlier precedent, labelled as history. The cross-member pact
+reading lives in mecca_pact_watch.py (ME backend); the Pakistan page shows it
+through resources/asifah-mecca-pact-card.js.
 
 Pakistan-specific signal interpretation:
 - Red lines (severity-3 thresholds across all 7 vectors)
@@ -164,19 +175,32 @@ def _match_historical(scan_data):
                        'unprecedented strikes inside Afghanistan March 2024 and beyond.'),
     })
 
-    # ── Pakistan as Iran-US Mediator (Apr 2026 — current) ──
+    # ── Pakistan as Iran-US channel AND Mecca Pact guarantor (Oct 2026 — current) ──
     med_score = 0
     if mediation >= 3: med_score += 40
     if mediation >= 4: med_score += 35
     if scan_data.get('pakistan_mediating_iran_us'): med_score += 15
     matches.append({
-        'event':      'Pakistan as Iran-US Mediation Channel',
-        'date':       'April 2026',
+        'event':      'Mecca Pact delegation to Tehran: Pakistan as guarantor and channel',
+        'date':       'Oct 26 2026',
         'similarity': min(med_score, 90),
-        'lesson':     ('Pakistan hosting Witkoff-Kushner trip (since cancelled by Trump) '
-                       'positioned Islamabad as primary Iran-US back-channel alongside '
-                       'Oman. Mediation cancellation shifted leverage to Moscow channel. '
-                       'Watch for Pakistan re-activation if Russia track stalls.'),
+        'lesson':     ('Field Marshal Munir flew to Tehran with the Saudi Defence Minister and '
+                       "Turkiye's intelligence chief on a Saudi aircraft, carrying a proposal for "
+                       'Washington and Tehran; the pact states and Qatar were floated as guarantors '
+                       'of a US-Iran deal. At the same time Pakistani troops are present in Saudi '
+                       'Arabia under the Mecca Pact (DG ISPR), with more "depending on developments". '
+                       'Islamabad is both a shield on Saudi soil and the channel to Tehran -- watch '
+                       'which role grows if the US-Iran ceasefire frays.'),
+    })
+    # ── Earlier precedent (history, not current) ──
+    matches.append({
+        'event':      'Pakistan as Iran-US back-channel (earlier round)',
+        'date':       'April 2026',
+        'similarity': min(med_score // 2, 45),
+        'lesson':     ('Pakistan hosted a planned Witkoff-Kushner trip that was later cancelled, '
+                       'and leverage shifted to other channels. The October pact delegation '
+                       'revived the role; the April round is the precedent for how quickly it can '
+                       'be switched off.'),
     })
 
     matches.sort(key=lambda m: m['similarity'], reverse=True)
