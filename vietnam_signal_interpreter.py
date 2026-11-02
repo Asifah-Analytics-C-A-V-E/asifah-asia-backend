@@ -2,7 +2,14 @@
 """
 vietnam_signal_interpreter.py
 Asifah Analytics -- Asia Backend Module
-v1.0.0 -- June 2026
+v1.1.0 -- Nov 2 2026  (v1.0.0 June 2026)
+
+v1.1.0: red lines obey the platform corroboration rule. BREACHED needs the
+breach language in 2+ distinct outlets; one outlet reads APPROACHING; an
+elevated actor with no breach language no longer reads APPROACHING at all. Mention-
+only keywords removed (the 2023 Comprehensive Strategic Partnership is in the
+background paragraph of every US-Vietnam story; an annual fishing-ban
+ANNOUNCEMENT is not enforcement; "Ca Rong Do" is a place name, not a blockade).
 
 Signal interpretation engine for the Vietnam South China Sea Tracker.
 
@@ -193,7 +200,10 @@ RED_LINES = [
 # HELPERS
 # ============================================================
 def _scan_actor_articles(actor_results, actor_keys, keywords):
-    """Scan top_articles across the given actor(s) for any keyword match."""
+    """Distinct outlets (by source name) whose top_articles carry any keyword.
+    v1.1.0: returns the outlet SET, not a bool, so callers can apply the
+    two-outlet corroboration rule."""
+    outlets = set()
     for aid in actor_keys:
         actor_data = actor_results.get(aid, {})
         for art in actor_data.get('top_articles', []):
@@ -201,8 +211,8 @@ def _scan_actor_articles(actor_results, actor_keys, keywords):
             desc  = (art.get('description') or '').lower()
             text  = f"{title} {desc}"
             if any(kw.lower() in text for kw in keywords):
-                return True
-    return False
+                outlets.add(art.get('source') or art.get('url') or title[:40])
+    return outlets
 
 
 def _rl(rl_id):
@@ -233,7 +243,7 @@ def check_red_lines(articles, actor_results):
         'china_oil_gas_blockade': [
             'vietnam suspends oil', 'vietnam halts gas', 'vietnam shelves block',
             'rosneft withdraws', 'exxon withdraws vietnam', 'red emperor suspended',
-            'ca rong do', 'block 06-01 standoff', 'china blocks vietnam oil',
+            'ca rong do suspended', 'block 06-01 standoff', 'china blocks vietnam oil',
         ],
         'ccg_ramming_casualty': [
             'china rams vietnamese', 'vietnamese fishermen killed', 'vietnamese vessel sunk',
@@ -245,8 +255,8 @@ def check_red_lines(articles, actor_results):
         ],
         'us_vietnam_strategic_upgrade': [
             'us carrier vietnam', 'carrier visits da nang', 'coast guard cutter vietnam',
-            'us vietnam defense', 'comprehensive strategic partnership', 'us vietnam security',
-            'maritime domain awareness vietnam',
+            'us vietnam defense agreement', 'us vietnam security agreement',
+            'maritime domain awareness vietnam', 'arms sale to vietnam',
         ],
         'asean_coc_collapse': [
             'asean no statement', 'asean split south china sea', 'code of conduct collapse',
@@ -261,12 +271,12 @@ def check_red_lines(articles, actor_results):
             'vietnam anti-china demonstration', 'hanoi protest china',
         ],
         'china_nine_dash_enforcement': [
-            'south china sea adiz', 'scs adiz', 'nine-dash line law', 'ten-dash line',
-            'china coast guard law', 'ccg law detain', 'china detains vietnamese',
+            'south china sea adiz', 'scs adiz', 'nine-dash line law',
+            'ccg law detain', 'china detains vietnamese',
         ],
         'china_fishing_ban_enforcement': [
-            'china fishing ban', 'fishing moratorium south china sea', 'china seizes fishing boat',
-            'vietnamese fishermen detained', 'china sinks fishing boat',
+            'china seizes fishing boat', 'vietnamese fishermen detained', 'china sinks fishing boat',
+            'fishing ban seiz', 'fishing ban detain',
         ],
     }
 
@@ -289,21 +299,33 @@ def check_red_lines(articles, actor_results):
         if not template:
             continue
         scope = rl_actor_scope.get(rl_id, list(actor_results.keys()))
-        hit = _scan_actor_articles(actor_results, scope, kws)
-        if hit:
+        outlets = _scan_actor_articles(actor_results, scope, kws)
+        # v1.1.0: top_articles holds only each actor's top 5, so a second story
+        # (survey ship) was crowded out by a louder one (water cannon). Read
+        # the full corpus too -- breach phrases are specific enough on their own.
+        for art in articles or []:
+            text = f"{art.get('title') or ''} {art.get('description') or ''}".lower()
+            if any(kw.lower() in text for kw in kws):
+                src = art.get('source')
+                src = (src or {}).get('name') if isinstance(src, dict) else src
+                outlets.add(src or art.get('url') or text[:40])
+        if len(outlets) >= 2:
             entry = dict(template)
             entry['status'] = 'BREACHED'
+            entry['outlets'] = len(outlets)
             triggered.append(entry)
             continue
-        # APPROACHING: the relevant inbound/outbound actor is already elevated (L3+)
-        # even if the specific breach keyword has not appeared yet
-        elevated = any(
-            actor_results.get(a, {}).get('level', 0) >= 3 for a in scope
-        )
-        if elevated and template['color'] != '#22c55e':
+        # One outlet is a report, not a corroborated breach.
+        if len(outlets) == 1 and template['color'] != '#22c55e':
             entry = dict(template)
             entry['status'] = 'APPROACHING'
+            entry['outlets'] = 1
             triggered.append(entry)
+            continue
+        # v1.1.0: no evidence, no status. The old rule marked a red line
+        # APPROACHING whenever ANY actor in its scope was L3+, so one busy CCG
+        # week lit seven unrelated red lines (riots, ADIZ, fishing ban...).
+        # APPROACHING now means one outlet carried the breach language (above).
 
     return triggered
 

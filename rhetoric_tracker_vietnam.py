@@ -1,7 +1,20 @@
 # -*- coding: utf-8 -*-
 """
 Asifah Analytics -- Vietnam South China Sea & Sovereignty Tracker
-v1.0.0 -- June 2026
+v1.2.0 -- Nov 2 2026  (v1.1.0 co-occurrence matcher; v1.0.0 June 2026)
+
+v1.2.0 (Nov 2 2026) -- the Philippines v1.1 fixes, ported:
+  * VOLUME CANNOT CLIMB ABOVE EVIDENCE. The level was a weighted article SUM
+    (>=28 -> L5), so a busy news week of L2 stories printed "Active Conflict".
+    An actor's level is now capped at the highest trigger any article carried.
+  * L3+ needs two outlets (platform corroboration rule). One outlet tops at L2.
+  * Tripwires force L4 only when 2+ outlets carry them (one blog is not a tripwire).
+  * Per-actor ceilings (L5 assertion rule, Oct 6 2026): only the kinetic ladders
+    (China at sea, Vietnam maritime posture) may assert L5 Active Conflict.
+  * /history read a Redis LIST with GET and always came back empty -> LRANGE.
+  * GDELT and NewsAPI go through the shared gateways (budget + honest "not
+    sensed" probes); Reddit search.json -> search.rss, one request per sub.
+  * One TRACKER_VERSION constant feeds every payload.
 
 ANALYTICAL FRAME:
 This tracker is the South China Sea mirror of rhetoric_tracker_taiwan.py. The
@@ -117,8 +130,31 @@ except ImportError:
 # ============================================
 UPSTASH_REDIS_URL   = os.environ.get('UPSTASH_REDIS_URL') or os.environ.get('UPSTASH_REDIS_REST_URL')
 UPSTASH_REDIS_TOKEN = os.environ.get('UPSTASH_REDIS_TOKEN') or os.environ.get('UPSTASH_REDIS_REST_TOKEN')
-NEWSAPI_KEY         = os.environ.get('NEWSAPI_KEY')
-GDELT_BASE_URL      = 'https://api.gdeltproject.org/api/v2/doc/doc'
+TRACKER_VERSION     = '1.2.0-vietnam'
+# Honest, identifiable UA (same string as the Philippines tracker), not a spoofed browser.
+_UA = {'User-Agent': 'Mozilla/5.0 (compatible; AsifahAnalytics/1.0; +https://asifahanalytics.com)'}
+
+# v1.2.0: shared gateways. No direct GDELT / NewsAPI calls from this file --
+# the gateways hold the shared budget, cache and the honest "not sensed" probe.
+try:
+    from gdelt_gateway import gdelt_fetch_probed as _gw_gdelt
+    _GDELT_GATEWAY = True
+except Exception:
+    _GDELT_GATEWAY = False
+    print("[Vietnam Rhetoric] gdelt_gateway not available -- GDELT skipped (no direct calls)")
+try:
+    from newsapi_gateway import newsapi_fetch as _gw_newsapi
+    _NEWSAPI_GATEWAY = True
+except Exception:
+    _NEWSAPI_GATEWAY = False
+
+# L5 assertion rule (Oct 6 2026): Active Conflict only where the ladder measures
+# hostilities. Everyone else tops out at L4.
+ACTOR_LEVEL_CAP = {
+    'china_scs_pressure': 5, 'maritime_posture': 5,
+    'cpv_state': 4, 'mofa_diplomacy': 4, 'us_partnership': 4, 'regional_partners': 4,
+    'beijing_coercion': 4, 'economic_pressure': 4,
+}
 
 try:
     from telegram_signals_asia import fetch_asia_telegram_signals
@@ -740,6 +776,30 @@ def _redis_set(key, value):
     return False
 
 
+def _redis_lrange(key, n=120):
+    """v1.2.0: the history is a LIST (LPUSH, newest first). GET on a list
+    returns WRONGTYPE, which is why /history was always empty."""
+    if not UPSTASH_REDIS_URL or not UPSTASH_REDIS_TOKEN:
+        return []
+    try:
+        resp = requests.post(
+            UPSTASH_REDIS_URL,
+            headers={"Authorization": f"Bearer {UPSTASH_REDIS_TOKEN}",
+                     "Content-Type": "application/json"},
+            json=["LRANGE", key, 0, max(0, int(n) - 1)],
+            timeout=5)
+        out = []
+        for item in (resp.json() or {}).get('result') or []:
+            try:
+                out.append(json.loads(item))
+            except Exception:
+                pass
+        return out
+    except Exception as e:
+        print(f"[Vietnam Rhetoric] Redis LRANGE error: {str(e)[:80]}")
+        return []
+
+
 def _redis_lpush_trim(key, value, max_len=336):
     if not UPSTASH_REDIS_URL or not UPSTASH_REDIS_TOKEN:
         return
@@ -905,7 +965,7 @@ def _parse_pub_date(pub_str):
 def _fetch_rss(url, source_name, weight=0.85, max_items=20):
     articles = []
     try:
-        resp = requests.get(url, timeout=12, headers={'User-Agent': 'Mozilla/5.0'})
+        resp = requests.get(url, timeout=12, headers=_UA)
         if resp.status_code != 200:
             print(f"[Vietnam RSS] {source_name}: HTTP {resp.status_code}")
             return []
@@ -937,75 +997,55 @@ def _fetch_rss(url, source_name, weight=0.85, max_items=20):
 
 
 def _fetch_gdelt(query, language='eng', days=3, max_records=25):
-    articles = []
+    """GDELT through the shared gateway (v1.2.0). Vietnamese now really filters:
+    GDELT reads sourcelang only inside the query text, which the gateway handles
+    (the old direct call passed it as a URL parameter, which GDELT ignores)."""
+    if not _GDELT_GATEWAY:
+        return []
+    lang_map = {'eng': 'en', 'zho': 'zh', 'jpn': 'ja', 'vie': 'vi'}
     try:
-        params = {
-            'query':      query,
-            'mode':       'artlist',
-            'maxrecords': max_records,
-            'timespan':   f'{days}d',
-            'format':     'json',
-            'sourcelang': language,
-        }
-        resp = requests.get(GDELT_BASE_URL, params=params, timeout=(5, 15))
-        if resp.status_code == 200:
-            # 'vie' -> 'vi' added for Vietnamese-language GDELT articles
-            lang_map = {'eng': 'en', 'zho': 'zh', 'jpn': 'ja', 'vie': 'vi'}
-            for art in resp.json().get('articles', []):
-                articles.append({
-                    'title':       art.get('title', ''),
-                    'description': art.get('title', ''),
-                    'url':         art.get('url', ''),
-                    'publishedAt': art.get('seendate', ''),
-                    'source':      {'name': art.get('domain', f'GDELT ({language})')},
-                    'content':     art.get('title', ''),
-                    'language':    lang_map.get(language, language),
-                })
-            print(f"[Vietnam GDELT] {language}: {len(articles)} articles")
-        else:
-            print(f"[Vietnam GDELT] {language}: HTTP {resp.status_code}")
+        raw, probe = _gw_gdelt(query, language=language, timespan=f'{days}d',
+                               maxrecords=max_records, label=f'asia/vietnam/{language}')
+        out = [{
+            'title':       a.get('title', ''),
+            'description': a.get('title', ''),
+            'url':         a.get('url', ''),
+            'publishedAt': a.get('published', ''),
+            'source':      {'name': a.get('source') or f'GDELT ({language})'},
+            'content':     a.get('title', ''),
+            'language':    lang_map.get(language, language),
+        } for a in (raw or [])]
+        sensed = (probe or {}).get('sensed')
+        print(f"[Vietnam GDELT] {language}: {len(out)} articles"
+              + ('' if sensed else f" (NOT SENSED: {(probe or {}).get('reason')})"))
+        return out
     except Exception as e:
         print(f"[Vietnam GDELT] {language}: {str(e)[:80]}")
-    return articles
+        return []
 
 
-def _fetch_newsapi(query, days=3, max_results=30):
-    """NewsAPI fallback when GDELT is rate-limited or timing out."""
-    articles = []
-    if not NEWSAPI_KEY:
-        print("[Vietnam NewsAPI] No API key configured -- skipping")
+def _fetch_newsapi(query, days=3, max_results=30, have=None):
+    """NewsAPI fallback through the shared gateway (v1.2.0). The gateway decides
+    whether the fallback gate is open; with no key it skips and says so."""
+    if not _NEWSAPI_GATEWAY:
         return []
     try:
-        from_date = (datetime.now(timezone.utc) - timedelta(days=days)).strftime('%Y-%m-%d')
-        resp = requests.get(
-            'https://newsapi.org/v2/everything',
-            params={
-                'q':        query,
-                'from':     from_date,
-                'sortBy':   'publishedAt',
-                'language': 'en',
-                'pageSize': max_results,
-                'apiKey':   NEWSAPI_KEY,
-            },
-            timeout=(5, 15)
-        )
-        if resp.status_code == 200:
-            for a in resp.json().get('articles', []):
-                articles.append({
-                    'title':       a.get('title', ''),
-                    'description': a.get('description', '') or '',
-                    'url':         a.get('url', ''),
-                    'publishedAt': a.get('publishedAt', ''),
-                    'source':      {'name': a.get('source', {}).get('name', 'NewsAPI')},
-                    'content':     a.get('content', '') or a.get('description', '') or '',
-                    'language':    'en',
-                })
-            print(f"[Vietnam NewsAPI] '{query[:40]}': {len(articles)} articles")
-        else:
-            print(f"[Vietnam NewsAPI] HTTP {resp.status_code}")
+        out = []
+        for a in _gw_newsapi(query, days=days, language='en', page_size=max_results,
+                             label='asia/vietnam', have=have) or []:
+            out.append({
+                'title':       a.get('title', ''),
+                'description': a.get('description', '') or '',
+                'url':         a.get('url', ''),
+                'publishedAt': a.get('publishedAt', ''),
+                'source':      {'name': (a.get('source') or {}).get('name', 'NewsAPI')},
+                'content':     a.get('content', '') or a.get('description', '') or '',
+                'language':    'en',
+            })
+        return out
     except Exception as e:
-        print(f"[Vietnam NewsAPI] Error: {str(e)[:80]}")
-    return articles
+        print(f"[Vietnam NewsAPI] {str(e)[:80]}")
+        return []
 
 
 def _fetch_google_news_rss(query, label, lang='en', gl='US', max_items=15):
@@ -1013,7 +1053,7 @@ def _fetch_google_news_rss(query, label, lang='en', gl='US', max_items=15):
     try:
         encoded = urllib.parse.quote(query)
         url = f"https://news.google.com/rss/search?q={encoded}&hl={lang}&gl={gl}&ceid={gl}:{lang}"
-        resp = requests.get(url, timeout=12, headers={'User-Agent': 'Mozilla/5.0'})
+        resp = requests.get(url, timeout=12, headers=_UA)
         if resp.status_code == 200:
             root = ET.fromstring(resp.content)
             for item in root.findall('.//item')[:max_items]:
@@ -1021,12 +1061,21 @@ def _fetch_google_news_rss(query, label, lang='en', gl='US', max_items=15):
                 link_el  = item.find('link')
                 pub_el   = item.find('pubDate')
                 if title_el is not None and title_el.text:
+                    # v1.2.0: attribute to the REAL publisher (Google's <source>
+                    # element, else the " - Outlet" title suffix). Every item used
+                    # to carry the query label, so Reuters + AP + VnExpress counted
+                    # as ONE outlet -- fatal under the two-outlet rule.
+                    src_el = item.find('source')
+                    publisher = (src_el.text or '').strip() if src_el is not None and src_el.text else ''
+                    if not publisher and ' - ' in title_el.text:
+                        publisher = title_el.text.rsplit(' - ', 1)[1].strip()
                     articles.append({
                         'title':       title_el.text.strip(),
                         'description': title_el.text.strip(),
                         'url':         link_el.text if link_el is not None else '',
                         'publishedAt': pub_el.text if pub_el is not None else '',
-                        'source':      {'name': label},
+                        'source':      {'name': publisher or label},
+                        'feed':        label,
                         'content':     title_el.text.strip(),
                         'language':    lang,
                     })
@@ -1037,36 +1086,53 @@ def _fetch_google_news_rss(query, label, lang='en', gl='US', max_items=15):
 
 
 def _fetch_reddit(subreddits, keywords, days=3, max_per_sub=8):
+    """Reddit via search.rss (Atom), one request per subreddit (v1.2.0).
+    search.json has failed platform-wide since Sep 2026; app.py moved Sep 21."""
+    from html import unescape as _unescape
     articles = []
     since = datetime.now(timezone.utc) - timedelta(days=days)
+    atom = '{http://www.w3.org/2005/Atom}'
+    query = ' OR '.join(f'({k})' for k in keywords[:3])
     for sub in subreddits:
-        for kw in keywords[:2]:
-            try:
-                resp = requests.get(
-                    f"https://www.reddit.com/r/{sub}/search.json",
-                    params={'q': kw, 'sort': 'new', 't': 'week',
-                            'limit': max_per_sub, 'restrict_sr': 'true'},
-                    headers={'User-Agent': REDDIT_USER_AGENT},
-                    timeout=10
-                )
-                if resp.status_code == 200:
-                    for post in resp.json().get('data', {}).get('children', []):
-                        p = post.get('data', {})
-                        created  = p.get('created_utc', 0)
-                        pub_time = datetime.fromtimestamp(created, tz=timezone.utc)
-                        if pub_time >= since:
-                            articles.append({
-                                'title':       p.get('title', '')[:200],
-                                'description': (p.get('selftext', '') or '')[:400],
-                                'url':         f"https://www.reddit.com{p.get('permalink', '')}",
-                                'publishedAt': pub_time.isoformat(),
-                                'source':      {'name': f"r/{sub}"},
-                                'content':     (p.get('selftext', '') or '')[:400],
-                                'language':    'en',
-                            })
-                time.sleep(0.5)
-            except Exception as e:
-                print(f"[Vietnam Reddit] r/{sub}: {str(e)[:60]}")
+        try:
+            resp = requests.get(
+                f"https://www.reddit.com/r/{sub}/search.rss",
+                params={'q': query, 'sort': 'new', 't': 'week',
+                        'limit': max_per_sub, 'restrict_sr': 'on'},
+                headers={'User-Agent': REDDIT_USER_AGENT},
+                timeout=10
+            )
+            if resp.status_code == 429:
+                print("[Vietnam Reddit] 429 -- stopping for this scan")
+                break
+            if resp.status_code != 200:
+                print(f"[Vietnam Reddit] r/{sub}: HTTP {resp.status_code}")
+                continue
+            root = ET.fromstring(resp.content)
+            for entry in root.findall(f'{atom}entry'):
+                published = entry.findtext(f'{atom}published') or entry.findtext(f'{atom}updated') or ''
+                try:
+                    pub_time = datetime.fromisoformat(published.replace('Z', '+00:00'))
+                    if pub_time.tzinfo is None:
+                        pub_time = pub_time.replace(tzinfo=timezone.utc)
+                except ValueError:
+                    continue
+                if pub_time < since:
+                    continue
+                link = entry.find(f'{atom}link')
+                title = _unescape(entry.findtext(f'{atom}title') or '')[:200]
+                articles.append({
+                    'title':       title,
+                    'description': title,
+                    'url':         link.get('href', '') if link is not None else '',
+                    'publishedAt': pub_time.isoformat(),
+                    'source':      {'name': f"r/{sub}"},
+                    'content':     title,
+                    'language':    'en',
+                })
+            time.sleep(0.5)
+        except Exception as e:
+            print(f"[Vietnam Reddit] r/{sub}: {str(e)[:60]}")
     print(f"[Vietnam Reddit] {len(articles)} posts")
     return articles
 
@@ -1204,19 +1270,33 @@ def _score_actor(actor_key, articles):
     else:
         level = 5
 
-    # Tripwire override
+    # v1.2.0: VOLUME CANNOT CLIMB ABOVE EVIDENCE. The sum above sets the level
+    # only up to the highest trigger an article actually carried.
+    if top_articles:
+        level = min(level, max(t['level'] for t in top_articles))
+
+    # Tripwire override -- v1.2.0: only when 2+ outlets carry it
+    tripwire_hit = False
     for tripwire in actor.get('tripwires', []):
-        for article in articles:
-            text = (
-                (article.get('title', '') or '') + ' ' +
-                (article.get('description', '') or '')
-            ).lower()
-            if tripwire in text:
-                level = max(level, 4)
-                if tripwire not in matched_triggers:
-                    matched_triggers.append(f"TRIPWIRE: {tripwire}")
-                print(f"[Vietnam Rhetoric] TRIPWIRE: {actor_key} -> {tripwire}")
-                break
+        outlets = {(a.get('source') or {}).get('name', '') for a in articles
+                   if tripwire in ((a.get('title', '') or '') + ' ' +
+                                   (a.get('description', '') or '')).lower()}
+        outlets.discard('')
+        if len(outlets) >= 2:
+            level = max(level, 4)
+            tripwire_hit = True
+            if f"TRIPWIRE: {tripwire}" not in matched_triggers:
+                matched_triggers.append(f"TRIPWIRE: {tripwire}")
+            print(f"[Vietnam Rhetoric] TRIPWIRE: {actor_key} -> {tripwire} ({len(outlets)} outlets)")
+
+    # v1.2.0: platform corroboration rule -- L3+ needs 2+ outlets at L3+
+    if level >= 3 and not tripwire_hit:
+        hi = {t['source'] for t in top_articles if t['level'] >= 3 and t['source']}
+        if len(hi) < 2:
+            level = 2
+
+    # v1.2.0: per-actor ceiling (L5 assertion rule)
+    level = min(level, ACTOR_LEVEL_CAP.get(actor_key, 4))
 
     top_articles.sort(key=lambda x: x['contribution'], reverse=True)
 
@@ -1234,6 +1314,7 @@ def _score_actor(actor_key, articles):
         'level_color':      ESCALATION_LEVELS[level]['color'],
         'weighted_score':   round(weighted_score, 2),
         'article_count':    article_count,
+        'outlet_count':     len({t['source'] for t in top_articles if t.get('source')}),
         'matched_triggers': matched_triggers[:10],
         'top_articles':     top_articles[:5],
     }
@@ -1317,6 +1398,56 @@ def _compute_inbound_score(actor_results, china_fp=None):
 
 
 # ============================================
+# TOP INDICATOR (v1.2.0) -- the one plain-language line
+# ============================================
+PLAIN_ACTOR = {
+    'china_scs_pressure': 'Chinese coast guard and militia pressure on Vietnamese vessels and features',
+    'beijing_coercion':   "Beijing's political and legal pressure on Hanoi over the South China Sea",
+    'economic_pressure':  'Chinese economic pressure on Vietnam',
+    'maritime_posture':   "Vietnam's coast guard, navy and fisheries-surveillance activity",
+    'mofa_diplomacy':     "Hanoi's diplomatic and legal response (MOFA)",
+    'cpv_state':          'Party and state leadership statements on sovereignty',
+    'us_partnership':     'US-Vietnam security activity',
+    'regional_partners':  'Japan, Philippines, India and other partners\' activity with Vietnam',
+}
+ACTIVITY_ACTORS = {'maritime_posture', 'mofa_diplomacy', 'cpv_state', 'us_partnership', 'regional_partners'}
+ACTIVITY_WORDS = {0: 'quiet', 1: 'routine', 2: 'active', 3: 'heightened', 4: 'surging', 5: 'surging'}
+
+
+def _build_top_indicator(result):
+    """One sentence for the stability card and the Asia BLUF. Order: a
+    corroborated red line, else the highest actor (China at sea wins ties),
+    else an honest baseline line."""
+    for rl in result.get('red_lines') or []:
+        if rl.get('status') == 'BREACHED' and rl.get('color') != '#22c55e':
+            n = rl.get('outlets')
+            return f"{rl.get('label', 'Red line')} -- reported by {n} outlets." if n else f"{rl.get('label', 'Red line')}."
+    a = result.get('actors') or {}
+    order = ['china_scs_pressure', 'beijing_coercion', 'economic_pressure', 'maritime_posture',
+             'us_partnership', 'mofa_diplomacy', 'cpv_state', 'regional_partners']
+    order = [k for k in order if k in a]
+    if not order:
+        return ''
+    best = max(order, key=lambda k: (a[k].get('level', 0), -order.index(k)))
+    lv = a[best].get('level', 0)
+    if lv < 2:
+        if (result.get('total_articles') or 0) < 15:
+            return f"Thin read this cycle ({result.get('total_articles', 0)} articles) -- low levels are not a calm sea."
+        return 'Nothing corroborated above routine in the South China Sea this cycle.'
+    word = ACTIVITY_WORDS.get(lv, 'active') if best in ACTIVITY_ACTORS else ESCALATION_LEVELS[lv]['label']
+    n_out = a[best].get('outlet_count') or len({t.get('source') for t in a[best].get('top_articles') or []
+                                                 if t.get('source')})
+    s = f"{PLAIN_ACTOR[best]} is at L{lv} ({word})"
+    if n_out:
+        s += f", reported by {n_out} outlet{'s' if n_out != 1 else ''}"
+    tops = a[best].get('top_articles') or []
+    if tops and tops[0].get('title'):
+        t = tops[0]['title'].rsplit(' - ', 1)[0].strip()[:140]
+        s += f'. Latest: \u201c{t}\u201d'
+    return s + '.'
+
+
+# ============================================
 # MAIN SCAN
 # ============================================
 
@@ -1385,12 +1516,12 @@ def run_vietnam_rhetoric_scan():
                 all_articles.extend(gdelt_results)
             elif lang == 'eng':
                 print(f"[Vietnam GDELT] {query_key}: empty -- trying NewsAPI fallback")
-                all_articles.extend(_fetch_newsapi(query, days=3))
+                all_articles.extend(_fetch_newsapi(query, days=3, have=len(all_articles)))
             time.sleep(0.5)
         except Exception as e:
             print(f"[Vietnam GDELT] {query_key}: {str(e)[:60]}")
             if lang == 'eng':
-                all_articles.extend(_fetch_newsapi(query, days=3))
+                all_articles.extend(_fetch_newsapi(query, days=3, have=len(all_articles)))
 
     # Reddit
     reddit_keywords = ['Vietnam South China Sea', 'Vietnam coast guard', 'Vanguard Bank', 'Vietnam China']
@@ -1465,6 +1596,14 @@ def run_vietnam_rhetoric_scan():
                     print(f"[Vietnam Rhetoric] cooc raise {_aid}: L{_r['before']} -> L{_r['after']}")
         except Exception as _e:
             print(f"[Vietnam Rhetoric] cooc error: {str(_e)[:80]}")
+
+    # v1.2.0: ceilings apply after the co-occurrence pass too
+    for _aid, _r in actor_results.items():
+        _cap = ACTOR_LEVEL_CAP.get(_aid, 4)
+        if _r.get('level', 0) > _cap:
+            _r['level'] = _cap
+            _r['level_label'] = ESCALATION_LEVELS[_cap]['label']
+            _r['level_color'] = ESCALATION_LEVELS[_cap]['color']
 
     # Composite scores
     outbound_score, outbound_max = _compute_outbound_score(actor_results)
@@ -1577,7 +1716,7 @@ def run_vietnam_rhetoric_scan():
 
         'escalation_levels': ESCALATION_LEVELS,
         'crosstheater_amplifiers': crosstheater_amplifiers,
-        'version':           '1.1.0-vietnam',  # v1.1: co-occurrence matcher
+        'version':           TRACKER_VERSION,
     }
 
     # Build top_signals (needs the assembled result), then BLUF + Watch from it
@@ -1599,6 +1738,8 @@ def run_vietnam_rhetoric_scan():
             print(f"[Vietnam Rhetoric] build_bluf/watch error: {e}")
             result['bluf'] = ''
             result['watch_indicators'] = ''
+
+    result['top_indicator'] = _build_top_indicator(result)
 
     # ── Butterfly proxy: upstream stressors from ME via Asia proxy ──
     if _BUTTERFLY_AVAILABLE:
@@ -1748,6 +1889,7 @@ def register_vietnam_rhetoric_endpoints(app):
             'total_articles':     cached.get('total_articles', 0),
             # Gold Standard card native fields
             'bluf':               cached.get('bluf', ''),
+            'top_indicator':      cached.get('top_indicator', ''),
             'watch_indicators':   cached.get('watch_indicators', ''),
             # Interpreter summary
             'red_lines_count':    len(cached.get('red_lines', [])),
@@ -1758,19 +1900,22 @@ def register_vietnam_rhetoric_endpoints(app):
             'inbound_pressure':   (cached.get('so_what') or {}).get('inbound_pressure', 0),
             'partner_strength':   (cached.get('so_what') or {}).get('partner_strength', 0),
             'coercion_gap':       cached.get('coercion_gap', 0),
-            'version':            '1.0.0-vietnam',
+            'version':            TRACKER_VERSION,
         })
 
     @app.route('/api/rhetoric/vietnam/history', methods=['GET'])
     def api_vietnam_rhetoric_history():
         """Return rhetoric history for chart rendering."""
-        history = _redis_get(HISTORY_KEY)
-        if not isinstance(history, list):
-            history = []
+        try:
+            limit = max(1, min(336, int(request.args.get('limit', 120))))
+        except (TypeError, ValueError):
+            limit = 120
+        history = _redis_lrange(HISTORY_KEY, limit)   # newest first
         return jsonify({
             'success': True,
             'count':   len(history),
-            'history': history[:120],
+            'order':   'newest_first',
+            'history': history,
         })
 
     # Start background refresh thread -- staggered after China + Taiwan (200s)
