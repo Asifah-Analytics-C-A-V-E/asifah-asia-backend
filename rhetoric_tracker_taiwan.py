@@ -103,6 +103,13 @@ import os
 import json
 import threading
 import time
+
+# ── Co-occurrence matcher (Nov 2 2026): fixes exact-phrase silence ──
+try:
+    from asia_signal_matcher import apply_actor_cooccurrence as _asia_cooc
+except Exception as _e:  # never let a missing helper break the scan
+    print(f"[asia_signal_matcher] unavailable: {_e}")
+    _asia_cooc = None
 import requests
 import xml.etree.ElementTree as ET
 import urllib.parse
@@ -1685,6 +1692,18 @@ def run_taiwan_rhetoric_scan():
                    ['name', 'flag', 'icon', 'color', 'dashboard', 'role', 'description']},
             }
 
+
+    # ── Co-occurrence pass (Nov 2 2026) — only ever RAISES an actor level ──
+    cooccurrence_report = None
+    if _asia_cooc:
+        try:
+            cooccurrence_report = _asia_cooc('taiwan', all_articles, actor_results, ESCALATION_LEVELS)
+            for _aid, _r in cooccurrence_report['actors'].items():
+                if _r['after'] > _r['before']:
+                    print(f"[Taiwan Rhetoric] cooc raise {_aid}: L{_r['before']} -> L{_r['after']}")
+        except Exception as _e:
+            print(f"[Taiwan Rhetoric] cooc error: {str(_e)[:80]}")
+
     # Compute outbound score
     outbound_score, outbound_max = _compute_outbound_score(actor_results)
 
@@ -1756,6 +1775,7 @@ def run_taiwan_rhetoric_scan():
 
     result = {
         'success':           True,
+        'cooccurrence':      cooccurrence_report,
         'scanned_at':        datetime.now(timezone.utc).isoformat(),
         'scan_time_seconds': scan_time,
         'total_articles':    len(all_articles),
@@ -1813,7 +1833,7 @@ def run_taiwan_rhetoric_scan():
             'amplifier_actor_deltas': japan_amplifiers if japan_amplifiers else {},
         },
 
-        'version':           '2.1.0-taiwan',  # v2.1: commodity + alliance convergence injection
+        'version':           '2.2.0-taiwan',  # v2.2: co-occurrence matcher  # v2.1: commodity + alliance convergence injection
     }
 
     # v2.0: Build top_signals AFTER result dict (needs overall_level + so_what)

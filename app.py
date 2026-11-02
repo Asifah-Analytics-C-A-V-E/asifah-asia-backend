@@ -78,7 +78,7 @@ except ImportError:
     print("[Asia RSS] feed_health not available -- feed deaths will stay silent")
 
 # v1.2.0 — the ONE place the backend version lives. Bump this, nothing else.
-ASIA_BACKEND_VERSION = '1.6.0'   # Nov 2 2026: Asia Actor Matrix | Nov 1 2026: Flight Watch
+ASIA_BACKEND_VERSION = '1.7.0'   # Nov 2 2026 (pm): Philippines tracker + co-occurrence sensors | Nov 2 2026: Asia Actor Matrix | Nov 1 2026: Flight Watch
 
 try:
     from telegram_signals_asia import fetch_asia_telegram_signals
@@ -157,6 +157,16 @@ except Exception as e:
     import traceback
     VIETNAM_RHETORIC_AVAILABLE = False
     print(f"[Asia Backend] ⚠️ Vietnam rhetoric tracker not available — {type(e).__name__}: {e}")
+    traceback.print_exc()
+
+try:
+    from rhetoric_tracker_philippines import register_philippines_rhetoric_endpoints
+    PHILIPPINES_RHETORIC_AVAILABLE = True
+    print("[Asia Backend] ✅ Philippines rhetoric tracker loaded")
+except Exception as e:
+    import traceback
+    PHILIPPINES_RHETORIC_AVAILABLE = False
+    print(f"[Asia Backend] ⚠️ Philippines rhetoric tracker not available — {type(e).__name__}: {e}")
     traceback.print_exc()
 
 # DPRK Leverage Tracker (v1.0 -- Jul 13, 2026)
@@ -409,15 +419,14 @@ def _get_rhetoric_level(target):
         result = _redis_request('GET', f'/get/{key}')
         if result and result.get('result'):
             fingerprints = json.loads(result['result'])
-            if target == 'china':
-                return fingerprints.get('china', {}).get('level', 0)
-            elif target == 'taiwan':
-                return fingerprints.get('taiwan', {}).get('level', 0)
-            # Stubs for when trackers go live
-            elif target == 'north_korea':
-                return fingerprints.get('north_korea', {}).get('level', 0)
-            elif target in ('india', 'pakistan'):
-                return fingerprints.get(target, {}).get('level', 0)
+            # Nov 2 2026: one generic read. Vietnam and Japan had live trackers
+            # but were never wired here, so their cards got no rhetoric boost;
+            # Japan writes 'overall_level' rather than 'level'.
+            fp_key = {'north_korea': 'north_korea'}.get(target, target)
+            if fp_key in ('china', 'taiwan', 'north_korea', 'india', 'pakistan',
+                          'japan', 'vietnam', 'philippines'):
+                fp = fingerprints.get(fp_key, {}) or {}
+                return int(fp.get('level', fp.get('overall_level', 0)) or 0)
     except Exception as e:
         print(f"[Rhetoric Boost] Redis read error: {str(e)[:80]}")
     return 0
@@ -629,6 +638,7 @@ TRAVEL_ADVISORY_CODES = {
     'south_korea': ['KS'],
     'taiwan':      ['TW'],
     'vietnam':     ['VM'],
+    'philippines': ['RP'],
 }
 
 # State Dept country name slug for direct advisory links
@@ -642,6 +652,7 @@ TRAVEL_ADVISORY_SLUGS = {
     'south_korea': 'south-korea-republic-of-korea',
     'taiwan':      'taiwan',
     'vietnam':     'vietnam',
+    'philippines': 'philippines',
 }
 
 TRAVEL_ADVISORY_LEVELS = {
@@ -721,6 +732,7 @@ TARGET_BASELINES = {
     'india':       {'base_adjustment': +6,  'description': 'Kashmir LoC; China LAC tensions; Level 2 advisory'},
     'japan':       {'base_adjustment': +4,  'description': 'NK missile overflights; China ADIZ pressure; Level 1'},
     'vietnam':     {'base_adjustment': +5,  'description': 'SCS sovereignty disputes (Vanguard Bank/Paracels); China Coast Guard friction; stable one-party state; Level 1 advisory'},
+    'philippines': {'base_adjustment': +7,  'description': 'West Philippine Sea: China Coast Guard water cannon/ramming at Second Thomas and Scarborough; US treaty ally (MDT); Mindanao insurgency residue; Level 2 advisory'},
 }
 
 # ========================================
@@ -1001,6 +1013,28 @@ TARGET_KEYWORDS = {
             'spratly', 'CredibleDefense',
         ],
     },
+
+    'philippines': {
+        'keywords': [
+            # Top 8 form the NewsAPI/GDELT query (keywords[:8]) - keep them sharp
+            'west philippine sea', 'second thomas shoal',
+            'scarborough shoal', 'china coast guard philippines',
+            'ayungin shoal', 'sabina shoal',
+            'philippines mutual defense treaty', 'philippine coast guard',
+            # Incidents
+            'water cannon philippine', 'sierra madre resupply',
+            'bajo de masinloc', 'pag-asa island', 'chinese maritime militia',
+            # Alliance / partners
+            'edca', 'balikatan', 'typhon philippines', 'nmesis',
+            'japan philippines reciprocal access', 'brahmos philippines',
+            # Domestic
+            'sara duterte impeachment', 'mindanao', 'bangsamoro',
+        ],
+        'reddit_keywords': [
+            'west philippine sea', 'scarborough', 'philippines china',
+            'CredibleDefense',
+        ],
+    },
 }
 
 
@@ -1233,6 +1267,17 @@ REDDIT_SUBREDDITS = {
         'navy', 'WarshipPorn',
         # Conflict footage
         'CombatFootage',
+    ],
+
+    # -------------------------------------------------------
+    # PHILIPPINES - West Philippine Sea, MDT, Duterte rupture
+    # -------------------------------------------------------
+    'philippines': [
+        'geopolitics', 'CredibleDefense', 'worldnews', 'LessCredibleDefence',
+        'NCD', 'OSINT',
+        'Philippines', 'phinvest', 'Sino',
+        'southeast_asia', 'AsiaPacific',
+        'navy', 'CombatFootage',
     ],
 }
 
@@ -2278,6 +2323,20 @@ def _run_threat_scan(target, days=7):
         except Exception as e:
             print(f"Tuoi Tre RSS error: {e}")
 
+    if target == 'philippines':
+        try:
+            rss_articles.extend(fetch_google_news_rss(
+                '"West Philippine Sea" OR Ayungin OR Scarborough OR "China Coast Guard" Philippines',
+                'Philippines News', lang='en', gl='PH'))
+        except Exception as e:
+            print(f"Philippines RSS error: {e}")
+        try:
+            rss_articles.extend(fetch_direct_rss(
+                'https://globalnation.inquirer.net/feed',
+                'Inquirer Global Nation', weight=0.85))
+        except Exception as e:
+            print(f"Inquirer RSS error: {e}")
+
     if target == 'north_korea':
         try:
             rss_articles.extend(fetch_google_news_rss(
@@ -3229,6 +3288,9 @@ if JAPAN_RHETORIC_AVAILABLE:
 
 if VIETNAM_RHETORIC_AVAILABLE:
     register_vietnam_rhetoric_endpoints(app)
+
+if PHILIPPINES_RHETORIC_AVAILABLE:
+    register_philippines_rhetoric_endpoints(app)
 
 # DPRK leverage tracker -- endpoints + 12h background scanner (cross-worker locked)
 if DPRK_RHETORIC_AVAILABLE:

@@ -53,6 +53,13 @@ import os
 import json
 import threading
 import time
+
+# ── Co-occurrence matcher (Nov 2 2026): fixes exact-phrase silence ──
+try:
+    from asia_signal_matcher import vector_cooccurrence as _asia_vec
+except Exception as _e:  # never let a missing helper break the scan
+    print(f"[asia_signal_matcher] unavailable: {_e}")
+    _asia_vec = None
 import requests
 import xml.etree.ElementTree as ET
 import urllib.parse
@@ -2642,6 +2649,29 @@ def run_india_rhetoric_scan():
     for actor_key in ACTORS:
         actor_results[actor_key] = _score_actor(actor_key, articles)
 
+    # ── Step 3b (Nov 2 2026): co-occurrence VECTORS ──
+    # 'adversary_crossreads' blends China, Pakistan, the US and others into
+    # one actor, and its ladder wants exact phrases -- it read 0 during a
+    # live LAC standoff. Three named vectors let the Asia Actor Matrix read
+    # China -> India separately from Pakistan <-> India. The strongest of
+    # china_lac / pakistan_loc also RAISES adversary_crossreads (never lowers).
+    vector_levels, cooccurrence_report = {}, None
+    if _asia_vec:
+        try:
+            vector_levels, cooccurrence_report = _asia_vec('india', articles)
+            _adv = actor_results.get('adversary_crossreads')
+            _peak = max(vector_levels.get('china_lac', 0), vector_levels.get('pakistan_loc', 0))
+            if _adv is not None and _peak > (_adv.get('level') or 0):
+                cooccurrence_report['adversary_crossreads_raised'] = {'before': _adv.get('level') or 0, 'after': _peak}
+                _adv['level'] = _peak
+                _adv['level_label'] = ESCALATION_LEVELS[_peak]['label']
+                _adv['level_color'] = ESCALATION_LEVELS[_peak]['color']
+                if isinstance(_adv.get('matched_triggers'), list):
+                    _adv['matched_triggers'].insert(0, f"cooc:L{_peak}:vector")
+            print(f"[India Rhetoric] cooc vectors: {vector_levels}")
+        except Exception as _e:
+            print(f"[India Rhetoric] cooc error: {str(_e)[:80]}")
+
     # ── Step 4: Apply amplifier deltas
     _apply_amplifier_deltas(actor_results, reads['amplifier_actor_deltas'])
 
@@ -2739,6 +2769,8 @@ def run_india_rhetoric_scan():
         },
 
         'actors':              actor_results,
+        'vector_levels':       vector_levels,
+        'cooccurrence':        cooccurrence_report,
         'own_signals':         own_signals,
         'bidirectional_flags': bidirectional_flags,
 

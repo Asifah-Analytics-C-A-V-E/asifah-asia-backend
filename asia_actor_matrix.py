@@ -1,17 +1,18 @@
 """
-Asifah Analytics -- Asia Actor Matrix v1.0.0
-November 2, 2026
+Asifah Analytics -- Asia Actor Matrix v1.1.0
+November 2, 2026  (v1.1: Philippines rows + a clean China -> India LAC row)
 
 The Asia sibling of the ME and Africa actor matrices. A READER, NOT A SCANNER:
 every cell comes from a rhetoric tracker that already runs on the Asia backend
-(asia_regional_bluf TRACKER_KEYS: China, Taiwan, Japan, Vietnam, India,
-Pakistan, Afghanistan, DPRK).
+(asia_regional_bluf TRACKER_KEYS: China, Taiwan, Japan, Vietnam, Philippines,
+India, Pakistan, Afghanistan, DPRK).
 
 THE QUESTION THIS BOARD ANSWERS
   Asia's defining question is not "who is pressing whom" in general. It is:
   IS BEIJING PRESSING ON SEVERAL FRONTS AT ONCE, OR ONE AT A TIME?
-  China -> Taiwan, China -> Japan (Senkaku / Okinawa), China -> Vietnam (South
-  China Sea) and China's economic coercion are read side by side. Simultaneous
+  China -> Taiwan, China -> Japan (Senkaku / Okinawa), China -> the Philippines and
+  China -> Vietnam (South China Sea), China -> India (the LAC) and China's
+  economic coercion are read side by side. Simultaneous
   pressure stretches US and allied attention; rotating pressure probes for the
   weakest response. Either way, the reader sees the pattern -- no single-country
   card can show it.
@@ -43,17 +44,16 @@ HOW A CELL IS READ
   Keyword counts never assert L5.
 
   No tracker -> 'unread'. Tracker read but the actor/vector absent -> 'not
-  sensed'. Neither is ever L0. No tracker yet for the Philippines or South Korea,
-  and the India tracker's 'adversary voices' actor blends Pakistan, China,
-  Khalistan and US voices -- so there is no clean China -> India (LAC) row yet.
-  Those gaps are named in the payload, not hidden.
+  sensed'. Neither is ever L0. No tracker yet for South Korea -- named in the
+  payload, not hidden. (v1.1: China -> India now reads the India tracker's
+  china_lac VECTOR, so Pakistan voices no longer blend into the LAC row.)
 
 ENDPOINTS
   /api/asia/actor-matrix                  all pairs + headline + So What lines
   /api/asia/actor-matrix?actor=taiwan     pairs touching one card
   /api/asia/actor-matrix/debug            per tracker: actors, vectors, which pairs read them
 
-Cost: Redis reads only (8 trackers), cached 15 min. No external fetch, ever.
+Cost: Redis reads only (9 trackers), cached 15 min. No external fetch, ever.
 """
 
 import os
@@ -63,7 +63,7 @@ from datetime import datetime, timezone
 
 import requests
 
-MATRIX_VERSION = '1.0.0'
+MATRIX_VERSION = '1.1.0'   # Nov 2 2026 (pm): Philippines + China->India (LAC) rows
 CACHE_KEY = 'actor_matrix:asia:latest'
 PREV_KEY = 'actor_matrix:asia:previous_levels'
 CACHE_SEC = 15 * 60
@@ -85,6 +85,7 @@ DEFAULT_TRACKER_KEYS = {
     'pakistan': 'rhetoric:pakistan:latest', 'japan': 'rhetoric:japan:latest',
     'india': 'rhetoric:india:latest', 'vietnam': 'rhetoric:vietnam:latest',
     'afghanistan': 'rhetoric:afghanistan:latest', 'dprk': 'rhetoric:dprk:latest',
+    'philippines': 'rhetoric:philippines:latest',
 }
 # Trackers whose ACTOR levels are article counts unless a tripwire fired.
 VOLUME_ACTOR_TRACKERS = {'japan', 'dprk', 'afghanistan'}
@@ -92,6 +93,7 @@ VOLUME_ACTOR_TRACKERS = {'japan', 'dprk', 'afghanistan'}
 CN, TW, JP, VN, US, IN, PK, AF, KP, KR, RU, IR = (
     '🇨🇳', '🇹🇼', '🇯🇵', '🇻🇳', '🇺🇸', '🇮🇳', '🇵🇰', '🇦🇫', '🇰🇵', '🇰🇷', '🇷🇺', '🇮🇷')
 GULF, GROUP = '🌐', '🏴'
+PH = '🇵🇭'
 
 
 def _P(pid, kind, actor, a_flag, target, t_flag, keys, sources, theatre, note=''):
@@ -99,9 +101,9 @@ def _P(pid, kind, actor, a_flag, target, t_flag, keys, sources, theatre, note=''
             'target_flag': t_flag, 'keys': keys, 'sources': sources, 'theatre': theatre, 'note': note}
 
 
-CHINA_FRONTS = ['china>taiwan', 'china>japan', 'china>vietnam', 'china>economic']
-FRONT_LABELS = {'china>taiwan': 'Taiwan', 'china>japan': 'Japan', 'china>vietnam': 'the South China Sea',
-                'china>economic': 'economic coercion'}
+CHINA_FRONTS = ['china>taiwan', 'china>japan', 'china>philippines', 'china>vietnam', 'china>india', 'china>economic']
+FRONT_LABELS = {'china>taiwan': 'Taiwan', 'china>japan': 'Japan', 'china>philippines': 'the Philippines',
+                'china>vietnam': 'Vietnam', 'china>india': 'India (LAC)', 'china>economic': 'economic coercion'}
 
 PAIRS = [
     # ---------------- CHINA'S FRONTS (the core question) ----------------
@@ -111,12 +113,19 @@ PAIRS = [
     _P('china>japan', 'pressure', 'China (PLA / Coast Guard)', CN, 'Japan (Senkaku · Okinawa)', JP, ['china', 'japan'],
        [('actor', 'japan', 'china_threat'), ('actor', 'japan', 'senkaku_intrusion'),
         ('actor', 'japan', 'okinawa_pressure')], 'japan'),
+    _P('china>philippines', 'pressure', 'China (Coast Guard / militia)', CN, 'Philippines (West Philippine Sea)', PH,
+       ['china', 'philippines'],
+       [('actor', 'philippines', 'china_scs_pressure'), ('actor', 'philippines', 'beijing_coercion')], 'philippines',
+       note='The South China Sea front with a US treaty attached: Second Thomas, Scarborough, Sabina.'),
     _P('china>vietnam', 'pressure', 'China (South China Sea)', CN, 'Vietnam', VN, ['china', 'vietnam'],
        [('actor', 'vietnam', 'china_scs_pressure'), ('actor', 'vietnam', 'beijing_coercion')], 'vietnam'),
-    _P('china>economic', 'pressure', 'China (economic coercion)', CN, 'Taiwan · Vietnam · region', '🌏',
-       ['china', 'taiwan', 'vietnam'],
+    _P('china>india', 'pressure', 'China (PLA on the LAC)', CN, 'India (Ladakh · Arunachal)', IN, ['china', 'india'],
+       [('vector', 'india', 'china_lac')], 'india',
+       note='Read from the India tracker\'s China-on-the-LAC vector (co-occurrence, 2-outlet rule), separate from Pakistan.'),
+    _P('china>economic', 'pressure', 'China (economic coercion)', CN, 'Region (trade · rare earths · tourism)', '🌏',
+       ['china', 'taiwan', 'vietnam', 'philippines'],
        [('actor', 'china', 'economic_coercion'), ('actor', 'taiwan', 'economic_pressure'),
-        ('actor', 'vietnam', 'economic_pressure')], 'china'),
+        ('actor', 'vietnam', 'economic_pressure'), ('actor', 'philippines', 'economic_pressure')], 'china'),
 
     # ---------------- RESPONSES ----------------
     _P('taiwan>china', 'response', 'Taiwan (defence & resilience)', TW, 'China', CN, ['taiwan', 'china'],
@@ -125,6 +134,8 @@ PAIRS = [
     _P('japan>china', 'response', 'Japan (cabinet & JSDF posture)', JP, 'China', CN, ['japan', 'china'],
        [('actor', 'japan', 'pm_cabinet'), ('actor', 'japan', 'mod_jsdf'), ('actor', 'china', 'japan_regional')],
        'japan', note='Includes Takaichi-era Taiwan-contingency and counter-strike language.'),
+    _P('philippines>china', 'response', 'Philippines (AFP / Coast Guard / DFA)', PH, 'China', CN, ['philippines', 'china'],
+       [('actor', 'philippines', 'afp_pcg'), ('actor', 'philippines', 'marcos_state')], 'philippines'),
     _P('vietnam>china', 'response', 'Vietnam (maritime posture)', VN, 'China', CN, ['vietnam', 'china'],
        [('actor', 'vietnam', 'maritime_posture')], 'vietnam'),
 
@@ -133,6 +144,9 @@ PAIRS = [
        [('actor', 'taiwan', 'us_partnership'), ('actor', 'china', 'us_commitment')], 'taiwan'),
     _P('us>japan', 'patron', 'United States', US, 'Japan (alliance)', JP, ['japan'],
        [('actor', 'japan', 'us_alliance')], 'japan'),
+    _P('us>philippines', 'patron', 'United States (treaty ally)', US, 'Philippines (MDT · EDCA)', PH, ['philippines'],
+       [('actor', 'philippines', 'us_alliance')], 'philippines',
+       note='The only South China Sea claimant with a US defence treaty.'),
     _P('us>vietnam', 'patron', 'United States', US, 'Vietnam (partnership)', VN, ['vietnam'],
        [('actor', 'vietnam', 'us_partnership')], 'vietnam'),
     _P('china>pakistan', 'patron', 'China (CPEC, arms)', CN, 'Pakistan', PK, ['pakistan', 'china'],
@@ -153,8 +167,8 @@ PAIRS = [
        [('pct', 'dprk', None), ('actor', 'japan', 'dprk_threat')], 'dprk',
        note='DPRK reads INVERTED: Pyongyang escalates when its leverage decays, so a quiet tracker is not a calm one.'),
     _P('india<>pakistan', 'dyad', 'India', IN, 'Pakistan', PK, ['india', 'pakistan'],
-       [('actor', 'pakistan', 'india_pakistan'), ('actor', 'india', 'adversary_crossreads')], 'pakistan',
-       note='Read from Pakistan\'s India actor and India\'s adversary-voices actor; neither splits the direction.'),
+       [('vector', 'india', 'pakistan_loc'), ('actor', 'pakistan', 'india_pakistan')], 'pakistan',
+       note='Read from India\'s LoC/Pakistan vector and Pakistan\'s India actor; the higher of the two shows.'),
     _P('pakistan<>afghanistan', 'dyad', 'Pakistan', PK, 'Afghanistan (Taliban)', AF, ['pakistan', 'afghanistan'],
        [('actor', 'pakistan', 'afghanistan_pakistan'), ('actor', 'afghanistan', 'pakistan_state')], 'pakistan'),
     _P('ttp>pakistan', 'pressure', 'TTP (Pakistani Taliban)', GROUP, 'Pakistan', PK, ['pakistan', 'afghanistan'],
@@ -164,9 +178,7 @@ PAIRS = [
 ]
 
 COVERAGE_GAPS = [
-    'No tracker yet: Philippines (China -> Philippines is the busiest South China Sea front) and South Korea.',
-    'No clean China -> India (LAC) row: the India tracker\'s adversary-voices actor blends Pakistan, China, '
-    'Khalistan and US voices.',
+    'No tracker yet: South Korea (DPRK pressure on Seoul is read only through the DPRK tracker).',
 ]
 
 CARD_ALIASES = {'dprk': 'north_korea', 'northkorea': 'north_korea', 'southkorea': 'south_korea'}
@@ -368,7 +380,7 @@ def build_lines(cells, prev):
 
     # Pressure vs response on each front
     for p_id, r_id in (('china>taiwan', 'taiwan>china'), ('china>japan', 'japan>china'),
-                       ('china>vietnam', 'vietnam>china')):
+                       ('china>vietnam', 'vietnam>china'), ('china>philippines', 'philippines>china')):
         p, r = by.get(p_id), by.get(r_id)
         if not (p and r and p['state'] == r['state'] == 'read'):
             continue
@@ -379,6 +391,16 @@ def build_lines(cells, prev):
         elif r['level'] - p['level'] >= 2:
             lines.append(f"{tgt}'s posture (L{r['level']}) is running ahead of China's pressure (L{p['level']}) "
                          f"-- watch for Beijing's answer.")
+
+    # The treaty question: contact at sea against the one claimant with a US treaty
+    pp, up = by.get('china>philippines'), by.get('us>philippines')
+    if pp and pp['state'] == 'read' and pp['level'] >= 4:
+        if up and up['state'] == 'read' and up['level'] >= 3:
+            lines.append(f"China is in contact with Philippine vessels (L{pp['level']}) and the US alliance is active "
+                         f"(L{up['level']}) -- this is the band where the Mutual Defense Treaty stops being background.")
+        else:
+            lines.append(f"China is in contact with Philippine vessels (L{pp['level']}) while the US alliance reads quiet "
+                         "-- watch Washington's wording on Article IV.")
 
     u, c = by.get('us>taiwan'), by.get('china>taiwan')
     if u and c and u['state'] == c['state'] == 'read' and u['level'] >= 3 and c['level'] >= 3:

@@ -64,8 +64,9 @@ TRACKER_KEYS = {
     'vietnam':  'rhetoric:vietnam:latest', # Jun 2026 -- SCS coercion-response tracker
     'afghanistan': 'rhetoric:afghanistan:latest',  # Jul 2026 -- four-wheel contested node
     'dprk':     'rhetoric:dprk:latest',   # Jul 2026 -- leverage-integrity tracker (INVERTED read)
+    'philippines': 'rhetoric:philippines:latest',  # Nov 2026 -- WPS coercion + MDT trip-wire tracker
     # Future Asia trackers slot in here:
-    # 'philippines': 'rhetoric:philippines:latest',
+    # 'south_korea': 'rhetoric:south_korea:latest',
 }
 
 THEATRE_FLAGS = {
@@ -77,6 +78,7 @@ THEATRE_FLAGS = {
     'vietnam':  '\U0001f1fb\U0001f1f3',  # VN
     'afghanistan': '\U0001f1e6\U0001f1eb',  # AF
     'dprk':     '\U0001f1f0\U0001f1f5',  # 🇰🇵
+    'philippines': '\U0001f1f5\U0001f1ed',  # PH
 }
 
 THEATRE_DISPLAY = {
@@ -88,6 +90,7 @@ THEATRE_DISPLAY = {
     'vietnam':  'VIETNAM',
     'afghanistan': 'AFGHANISTAN',
     'dprk':     'NORTH KOREA',
+    'philippines': 'PHILIPPINES',
 }
 
 # v2.5 (Jun 2026): one-clause "why this theatre matters regionally" -- used as the
@@ -102,6 +105,7 @@ THEATRE_ROLE = {
     'vietnam':  'a South China Sea claimant tied to the Hormuz energy-import chain, where shocks land as input-cost and sovereignty pressure',
     'afghanistan': 'a four-wheel contested node (Iran friction, Pakistan kinetic, Russia normalization, China extraction) whose instability exports terror risk, refugees, and narcotics pressure across the region',
     'dprk':     'a combatant-tier client of Russia whose leverage decays as the Ukraine war winds down -- and which escalates when sidelined, not when courted, making a quiet Pyongyang a signal rather than a reassurance',
+    'philippines': 'the South China Sea claimant with a US treaty trip-wire built in, where a gray-zone incident at a shoal can become an alliance test for Washington'
 }
 
 # Top-N signals emitted to GPI (matches ME pattern)

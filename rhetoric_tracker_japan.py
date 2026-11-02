@@ -99,6 +99,13 @@ CROSS-THEATER FINGERPRINTS READ:
 import os
 import json
 import time
+
+# ── Co-occurrence matcher (Nov 2 2026): fixes exact-phrase silence ──
+try:
+    from asia_signal_matcher import apply_levels_dict as _asia_cooc
+except Exception as _e:  # never let a missing helper break the scan
+    print(f"[asia_signal_matcher] unavailable: {_e}")
+    _asia_cooc = None
 import hashlib
 import requests
 import feedparser
@@ -1205,6 +1212,26 @@ def scan_japan_rhetoric(force=False, days=7):
         actor_tripwires[actor_key] = tripwires
         actor_article_counts[actor_key] = len(articles_for_this_actor)
 
+    # ── Co-occurrence pass (Nov 2 2026) — reads ALL articles, only RAISES ──
+    # The classifier above files each article under ONE best actor, and the
+    # level ladder wants exact phrases; "Chinese coast guard ships enter
+    # Japan's waters near Senkakus" was landing nowhere. L3+ needs 2 outlets.
+    cooccurrence_report = None
+    if _asia_cooc:
+        try:
+            cooccurrence_report = _asia_cooc('japan', deduped, actor_levels)
+            for _aid, _r in cooccurrence_report['actors'].items():
+                if _r['after'] > _r['before']:
+                    print(f"[Japan Rhetoric] cooc raise {_aid}: L{_r['before']} -> L{_r['after']}")
+                # A 2-outlet co-occurrence read is not an article COUNT -- flag it
+                # so the Asia Actor Matrix does not apply its volume cap to it.
+                if _r['cooc_level'] >= 3 and _r['after'] == _r['cooc_level']:
+                    _tw = actor_tripwires.get(_aid)
+                    if isinstance(_tw, dict):
+                        _tw['cooccurrence_corroborated'] = True
+        except Exception as _e:
+            print(f"[Japan Rhetoric] cooc error: {str(_e)[:80]}")
+
     # ── Apply cross-theater amplifiers ──
     amplifiers = _read_crosstheater_amplifiers()
     for actor_key, delta in amplifiers.items():
@@ -1274,6 +1301,7 @@ def scan_japan_rhetoric(force=False, days=7):
     # ── Build payload ──
     payload = {
         'theatre':              'japan',
+        'cooccurrence':         cooccurrence_report,
         'theatre_score':        theatre_score,
         'overall_level':        overall_level,
         'inbound_max_level':    inbound_max,
@@ -1328,7 +1356,7 @@ def scan_japan_rhetoric(force=False, days=7):
         },
 
         'updated_at':           datetime.now(timezone.utc).isoformat(),
-        'version':              '2.1.0',  # v2.1: canonical top_signals[] + commodity convergences
+        'version':              '2.2.0',  # v2.2: co-occurrence matcher  # v2.1: canonical top_signals[] + commodity convergences
     }
 
     # ── v2.1 — Build top_signals AFTER payload (BLUF/GPI consumable) ──

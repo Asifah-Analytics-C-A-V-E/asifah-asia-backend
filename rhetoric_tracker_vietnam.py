@@ -64,6 +64,13 @@ import os
 import json
 import threading
 import time
+
+# ── Co-occurrence matcher (Nov 2 2026): fixes exact-phrase silence ──
+try:
+    from asia_signal_matcher import apply_actor_cooccurrence as _asia_cooc
+except Exception as _e:  # never let a missing helper break the scan
+    print(f"[asia_signal_matcher] unavailable: {_e}")
+    _asia_cooc = None
 import requests
 import xml.etree.ElementTree as ET
 import urllib.parse
@@ -1447,6 +1454,18 @@ def run_vietnam_rhetoric_scan():
                    ['name', 'flag', 'icon', 'color', 'dashboard', 'role', 'description']},
             }
 
+
+    # ── Co-occurrence pass (Nov 2 2026) — only ever RAISES an actor level ──
+    cooccurrence_report = None
+    if _asia_cooc:
+        try:
+            cooccurrence_report = _asia_cooc('vietnam', all_articles, actor_results, ESCALATION_LEVELS)
+            for _aid, _r in cooccurrence_report['actors'].items():
+                if _r['after'] > _r['before']:
+                    print(f"[Vietnam Rhetoric] cooc raise {_aid}: L{_r['before']} -> L{_r['after']}")
+        except Exception as _e:
+            print(f"[Vietnam Rhetoric] cooc error: {str(_e)[:80]}")
+
     # Composite scores
     outbound_score, outbound_max = _compute_outbound_score(actor_results)
     inbound_score, inbound_max, inbound_source = _compute_inbound_score(actor_results, china_fp)
@@ -1513,6 +1532,7 @@ def run_vietnam_rhetoric_scan():
 
     result = {
         'success':           True,
+        'cooccurrence':      cooccurrence_report,
         'scanned_at':        datetime.now(timezone.utc).isoformat(),
         'scan_time_seconds': scan_time,
         'total_articles':    len(all_articles),
@@ -1557,7 +1577,7 @@ def run_vietnam_rhetoric_scan():
 
         'escalation_levels': ESCALATION_LEVELS,
         'crosstheater_amplifiers': crosstheater_amplifiers,
-        'version':           '1.0.0-vietnam',
+        'version':           '1.1.0-vietnam',  # v1.1: co-occurrence matcher
     }
 
     # Build top_signals (needs the assembled result), then BLUF + Watch from it
