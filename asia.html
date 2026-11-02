@@ -1,0 +1,2474 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-Z9114D1Z5C"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-Z9114D1Z5C');
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asifah Analytics - Regional Pressure Index: Asia & The Pacific</title>
+    <link rel="icon" href="favicon.png" type="image/png">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-color: #f5f5f5; --container-bg: #ffffff; --card-bg: #ffffff;
+            --card-border: #e1e8ed; --text-primary: #2c3e50;
+            --text-secondary: #7f8c8d; --text-muted: #95a5a6;
+        }
+        [data-theme="dark"] {
+            --bg-color: #1a1a1a; --container-bg: #2d2d2d; --card-bg: #2d2d2d;
+            --card-border: #404040; --text-primary: #e0e0e0;
+            --text-secondary: #b0b0b0; --text-muted: #808080;
+        }
+        body {
+            font-family: 'Times New Roman', Times, serif;
+            font-size: 14px;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            transition: background-color 0.3s ease, color 0.3s ease;
+            line-height: 1.6; padding: 20px;
+            background-image: url('China_on_Fire.png');
+            background-position: center center;
+            background-repeat: no-repeat;
+            background-size: cover;
+            background-attachment: fixed;
+        }
+        body::before {
+            content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(245, 245, 245, 0.78);
+            transition: background-color 0.3s ease;
+            pointer-events: none; z-index: -1;
+        }
+        [data-theme="dark"] body::before { background-color: rgba(26, 26, 26, 0.88); }
+        .container { max-width: 1800px; margin: 0 auto; padding: 0 20px; }
+
+        /* LOADING OVERLAY */
+        .loading-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: url('China_on_Fire.png');
+            background-position: center center;
+            background-repeat: no-repeat;
+            background-size: cover;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.8s ease, visibility 0.8s ease;
+        }
+        .loading-overlay::before {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(26, 39, 68, 0.82);
+            backdrop-filter: blur(4px);
+        }
+        .loading-overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+        .loading-overlay-content {
+            position: relative; z-index: 1;
+            text-align: center; max-width: 500px; padding: 0 20px;
+        }
+        .loading-overlay-logo {
+            width: 100px; height: 100px; border-radius: 50%;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+            animation: logo-pulse 2s ease-in-out infinite;
+        }
+        @keyframes logo-pulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
+            50% { transform: scale(1.05); box-shadow: 0 6px 30px rgba(0,210,255,0.3); }
+        }
+        .loading-overlay-title { font-size: 26px; font-weight: bold; color: white; letter-spacing: 3px; margin-bottom: 8px; text-shadow: 0 2px 8px rgba(0,0,0,0.5); }
+        .loading-overlay-subtitle { font-size: 14px; color: rgba(255,255,255,0.8); letter-spacing: 1px; margin-bottom: 30px; }
+        .loading-spinner-ring { width: 50px; height: 50px; margin: 0 auto 20px; border: 4px solid rgba(255,255,255,0.15); border-top-color: #67e8f9; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-steps { margin-top: 15px; }
+        .loading-step { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 8px 0; font-size: 13px; color: rgba(255,255,255,0.4); transition: all 0.4s ease; }
+        .loading-step.active { color: #67e8f9; }
+        .loading-step.complete { color: rgba(80, 255, 160, 0.9); }
+        .loading-step .step-icon { font-size: 14px; width: 20px; }
+        .loading-error { display: none; margin-top: 20px; padding: 12px 20px; background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 8px; color: #fca5a5; font-size: 12px; }
+
+        /* HEADER */
+        header { background: linear-gradient(135deg, #1a2744 0%, #1e3a5f 50%, #2c5282 100%); color: white; padding: 35px; border-radius: 12px; margin-bottom: 30px; box-shadow: 0 6px 20px rgba(0,0,0,0.15); position: relative; min-height: 140px; }
+        header::after { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,255,0.015) 2px, rgba(0,255,255,0.015) 4px); pointer-events: none; border-radius: 12px; z-index: 1; }
+        .header-content { text-align: center; max-width: 800px; margin: 0 auto; padding-top: 10px; }
+        .header-logo { width: 80px; height: 80px; position: absolute; top: 35px; left: 35px; border-radius: 50%; }
+        h1 { font-size: 28px; font-weight: bold; margin-bottom: 10px; letter-spacing: 2px; text-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        h2 { font-size: 16px; font-weight: normal; opacity: 0.95; letter-spacing: 0.5px; }
+        .home-button { position: absolute; top: 35px; left: 135px; display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.2); padding: 6px 14px; border-radius: 6px; color: white; text-decoration: none; font-family: 'Times New Roman', Times, serif; font-size: 14px; font-weight: bold; border: 2px solid rgba(255,255,255,0.3); backdrop-filter: blur(10px); transition: all 0.2s ease; z-index: 2; }
+        .home-button:hover { background: rgba(255,255,255,0.3); border-color: rgba(255,255,255,0.5); transform: translateY(-2px); }
+        .language-switcher { position: absolute; top: 35px; right: 35px; display: flex; gap: 8px; background: rgba(255,255,255,0.15); padding: 8px 12px; border-radius: 8px; backdrop-filter: blur(10px); }
+        .lang-btn { background: rgba(255,255,255,0.2); border: 2px solid rgba(255,255,255,0.3); color: white; padding: 6px 14px; font-family: 'Times New Roman', Times, serif; font-size: 14px; font-weight: bold; border-radius: 6px; cursor: pointer; transition: all 0.2s ease; }
+        .lang-btn:hover { background: rgba(255,255,255,0.3); border-color: rgba(255,255,255,0.5); }
+        .lang-btn.active { background: white; color: #1e3a5f; border-color: white; }
+        .theme-toggle { position: absolute; top: 90px; right: 35px; display: flex; align-items: center; justify-content: center; gap: 8px; background: rgba(255,255,255,0.15); padding: 8px 12px; border-radius: 8px; backdrop-filter: blur(10px); }
+        .theme-toggle-label { font-size: 11px; color: rgba(255,255,255,0.9); margin-right: 8px; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
+        .theme-toggle-switch { position: relative; width: 50px; height: 26px; background: rgba(255,255,255,0.2); border-radius: 13px; cursor: pointer; transition: all 0.3s ease; border: 2px solid rgba(255,255,255,0.3); }
+        .theme-toggle-switch:hover { background: rgba(255,255,255,0.3); border-color: rgba(255,255,255,0.5); }
+        .theme-toggle-slider { position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; background: white; border-radius: 50%; transition: transform 0.3s ease; display: flex; align-items: center; justify-content: center; font-size: 10px; }
+        .theme-toggle-slider::before { content: '☀️'; }
+        [data-theme="dark"] .theme-toggle-slider { transform: translateX(24px); }
+        [data-theme="dark"] .theme-toggle-slider::before { content: '🌙'; }
+
+        /* GRID */
+        .targets-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 25px; margin-bottom: 30px; flex: 1; min-width: 0; }
+
+        /* CARDS */
+        .target-card { background: var(--card-bg); border-radius: 16px; padding: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 2px solid var(--card-border); transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden; }
+        .target-card:hover { transform: translateY(-8px); box-shadow: 0 12px 24px rgba(0,0,0,0.15); }
+        .target-card.low-threat { background: linear-gradient(to bottom, #ffffff 0%, #f0f9f4 100%); border-color: #a3d9b1; }
+        .target-card.medium-threat { background: linear-gradient(to bottom, #ffffff 0%, #fff9f0 100%); border-color: #f5c99d; }
+        .target-card.high-threat { background: linear-gradient(to bottom, #ffffff 0%, #fff5f5 100%); border-color: #f5a9a3; animation: high-threat-pulse 3s ease-in-out infinite; }
+        @keyframes high-threat-pulse { 0%, 100% { box-shadow: 0 4px 12px rgba(0,0,0,0.08); } 50% { box-shadow: 0 4px 20px rgba(192, 57, 43, 0.25); } }
+        .target-card.collapsed { cursor: pointer; min-height: auto; padding: 20px; }
+        .target-card.collapsed:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+        .target-card.collapsed .card-collapsed-view { display: block; }
+        .target-card.collapsed .card-expanded-view { display: none; }
+        .target-card.expanded .card-collapsed-view { display: none; }
+        .target-card.expanded .card-expanded-view { display: block; }
+        .collapsed-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; }
+        .collapsed-title { font-size: 20px; font-weight: bold; color: #1e3a5f; }
+        .collapse-toggle-btn { background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; transition: all 0.3s ease; white-space: nowrap; }
+        .collapse-toggle-btn:hover { background: linear-gradient(135deg, #2980b9 0%, #1e5a8a 100%); transform: translateY(-2px); }
+        .collapsed-metric { margin-bottom: 12px; }
+        .collapsed-metric-label { font-size: 14px; color: #6b7280; margin-bottom: 8px; }
+        .collapsed-metric-value { display: flex; align-items: center; gap: 12px; }
+        .collapsed-percentage { font-size: 28px; font-weight: bold; color: #1e3a5f; font-family: 'Courier New', monospace; }
+        .collapsed-bar { flex: 1; height: 12px; background: #e5e7eb; border-radius: 6px; overflow: hidden; }
+        .collapsed-bar-fill { height: 100%; border-radius: 6px; transition: width 0.6s ease; }
+        .collapsed-timestamp { font-size: 11px; color: #9ca3af; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+        .collapsed-timestamp::before { content: "📅"; }
+        .expand-instructions { font-size: 12px; color: #6b7280; font-style: italic; margin-top: 8px; }
+
+        /* COLLAPSED TRAVEL ADVISORY */
+        .collapsed-travel-advisory { margin: 12px 0 8px 0; padding: 12px 16px; border-radius: 10px; border: 2px solid #ef4444; display: flex; align-items: center; gap: 14px; transition: all 0.3s ease; text-decoration: none; color: inherit; cursor: pointer; }
+        .collapsed-travel-advisory:hover { border-color: #dc2626; box-shadow: 0 2px 8px rgba(239,68,68,0.15); transform: translateY(-1px); }
+        .collapsed-travel-advisory.level-1 { border-color: #10b981; background: linear-gradient(135deg, #f0fdf4 0%, #fff 100%); }
+        .collapsed-travel-advisory.level-2 { border-color: #f59e0b; background: linear-gradient(135deg, #fffbeb 0%, #fff 100%); }
+        .collapsed-travel-advisory.level-3 { border-color: #f97316; background: linear-gradient(135deg, #fff7ed 0%, #fff 100%); }
+        .collapsed-travel-advisory.level-4 { border-color: #ef4444; background: linear-gradient(135deg, #fef2f2 0%, #fff 100%); }
+        [data-theme="dark"] .collapsed-travel-advisory.level-1 { background: linear-gradient(135deg, #022c22 0%, #0f172a 100%); border-color: #10b981; }
+        [data-theme="dark"] .collapsed-travel-advisory.level-2 { background: linear-gradient(135deg, #422006 0%, #0f172a 100%); border-color: #f59e0b; }
+        [data-theme="dark"] .collapsed-travel-advisory.level-3 { background: linear-gradient(135deg, #431407 0%, #0f172a 100%); border-color: #f97316; }
+        [data-theme="dark"] .collapsed-travel-advisory.level-4 { background: linear-gradient(135deg, #450a0a 0%, #0f172a 100%); border-color: #ef4444; }
+        .ta-level-badge { min-width: 52px; height: 52px; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: bold; color: white; flex-shrink: 0; }
+        .ta-level-badge .ta-level-num { font-size: 22px; line-height: 1; }
+        .ta-level-badge .ta-level-label { font-size: 8px; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+        .ta-level-badge .ta-level-word { font-size: 8px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.9; }
+        .ta-level-badge.level-1 { background: #10b981; }
+        .ta-level-badge.level-2 { background: #f59e0b; }
+        .ta-level-badge.level-3 { background: #f97316; }
+        .ta-level-badge.level-4 { background: #ef4444; }
+        .ta-content { flex: 1; min-width: 0; }
+        .ta-title { font-size: 13px; font-weight: bold; color: var(--text-primary); margin-bottom: 3px; }
+        .ta-title::before { content: "🏛️ "; }
+        .ta-summary { font-size: 11px; color: var(--text-secondary); line-height: 1.4; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+        .ta-arrow { font-size: 18px; color: var(--text-muted); flex-shrink: 0; }
+        .collapsed-travel-advisory.hidden { display: none; }
+
+        /* EXPANDED CARD */
+        .target-card h3 { font-size: 20px; font-weight: bold; color: #1e3a5f; margin-bottom: 20px; text-align: center; border-bottom: 3px solid #1e3a5f; padding-bottom: 12px; letter-spacing: 1px; }
+        .card-scan-controls { background: linear-gradient(to bottom, #f8f9fa 0%, #ffffff 100%); padding: 20px; border-radius: 10px; margin-bottom: 20px; border: 2px solid #e1e8ed; }
+        .card-time-window { display: flex; justify-content: center; gap: 15px; margin-bottom: 15px; flex-wrap: wrap; }
+        .card-time-window label { display: inline-flex; align-items: center; cursor: pointer; font-size: 13px; }
+        .card-time-window input[type="radio"] { margin-right: 6px; cursor: pointer; }
+        .card-scan-button { background: linear-gradient(180deg, #34495e 0%, #2c3e50 100%); color: white; border: none; padding: 12px 30px; font-family: 'Times New Roman', Times, serif; font-size: 14px; font-weight: bold; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.25); transition: all 0.3s ease; position: relative; overflow: hidden; letter-spacing: 0.5px; width: 100%; }
+        .card-scan-button:hover:not(:disabled) { background: linear-gradient(180deg, #2c3e50 0%, #1e3a5f 100%); box-shadow: 0 6px 16px rgba(0,0,0,0.35); transform: translateY(-2px); }
+        .card-scan-button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .card-scan-button.scanning::after { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent); animation: scan-shimmer 1.5s infinite; }
+        @keyframes scan-shimmer { to { left: 100%; } }
+        .loading { display: none; text-align: center; padding: 15px; font-style: italic; color: #7f8c8d; font-size: 13px; }
+        .loading.active { display: block; }
+        .loading-spinner { display: inline-block; width: 18px; height: 18px; border: 3px solid #f3f3f3; border-top: 3px solid #1e3a5f; border-radius: 50%; animation: spin 1s linear infinite; margin-right: 8px; vertical-align: middle; }
+
+        /* GAUGE */
+        .probability-display { text-align: center; margin-bottom: 25px; position: relative; }
+        .probability-label { font-size: 13px; color: #7f8c8d; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 1px; font-weight: bold; }
+        .gauge-container { position: relative; width: 200px; height: 200px; margin: 0 auto 15px; }
+        .gauge-svg { transform: rotate(-90deg); }
+        .gauge-background { fill: none; stroke: #ecf0f1; stroke-width: 18; }
+        .gauge-progress { fill: none; stroke-width: 18; stroke-linecap: round; transition: stroke-dasharray 1s ease-in-out, stroke 0.3s ease; }
+        .gauge-progress.low { stroke: #27ae60; }
+        .gauge-progress.medium { stroke: #f39c12; }
+        .gauge-progress.high { stroke: #c0392b; }
+        .gauge-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 48px; font-weight: bold; font-family: 'Courier New', monospace; }
+        .gauge-text.low { color: #27ae60; }
+        .gauge-text.medium { color: #f39c12; }
+        .gauge-text.high { color: #c0392b; }
+
+        /* TIMELINE */
+        .timeline-display { margin-bottom: 25px; padding: 18px; background-color: #f8f9fa; border-radius: 10px; border: 1px solid #e1e8ed; }
+        .timeline-label { font-size: 12px; color: #7f8c8d; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; font-weight: bold; text-align: center; }
+        .timeline-value { font-size: 15px; font-weight: bold; color: #2c3e50; text-align: center; margin-bottom: 12px; }
+        .timeline-bar { display: flex; height: 28px; border-radius: 8px; overflow: hidden; background-color: #e1e8ed; margin-top: 8px; }
+        .timeline-segment { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; color: #7f8c8d; border-right: 2px solid white; transition: all 0.3s ease; }
+        .timeline-segment:last-child { border-right: none; }
+        .timeline-segment.active { background-color: #1e3a5f; color: white; transform: scaleY(1.1); }
+
+        /* MIL POSTURE */
+        .mil-posture-awaiting { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: rgba(100,116,139,0.08); border: 1px dashed #94a3b8; border-radius: 8px; font-size: 12px; color: #64748b; margin: 20px 0 5px 0; }
+        .mil-page-btn { padding: 6px 14px; background: linear-gradient(135deg, #334155 0%, #1e293b 100%); color: white; border: 1px solid #475569; border-radius: 6px; font-size: 11px; font-weight: bold; text-decoration: none; text-transform: uppercase; letter-spacing: 0.5px; transition: all 0.2s ease; }
+        .mil-page-btn:hover { background: linear-gradient(135deg, #475569 0%, #334155 100%); transform: translateY(-1px); }
+
+        /* HEADLINES */
+        .headlines-section { margin-top: 25px; max-height: 400px; overflow-y: auto; border-top: 2px solid #e1e8ed; padding-top: 18px; }
+        .headlines-section::-webkit-scrollbar { width: 8px; }
+        .headlines-section::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        .headlines-section::-webkit-scrollbar-thumb { background: #bdc3c7; border-radius: 4px; }
+        .headlines-section h4 { font-size: 14px; font-weight: bold; color: #34495e; margin-bottom: 12px; letter-spacing: 0.5px; }
+        .headline-item { padding: 12px; margin-bottom: 12px; background-color: #f8f9fa; border-left: 4px solid #1e3a5f; border-radius: 6px; font-size: 12px; transition: all 0.2s ease; }
+        .headline-item:hover { background-color: #e8f4f8; border-left-width: 6px; transform: translateX(4px); }
+        .headline-item a { color: #2c3e50; text-decoration: none; font-weight: 500; }
+        .headline-item a:hover { color: #1e3a5f; text-decoration: underline; }
+        .headline-item .source { color: #7f8c8d; font-style: italic; font-size: 11px; margin-top: 6px; }
+
+        /* INTELLIGENCE SOURCES STRIP */
+        .intel-sources { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 8px 0; padding: 10px 12px; background: rgba(0,180,255,0.04); border-left: 3px solid rgba(0,180,255,0.3); border-radius: 4px; }
+        .intel-sources-label { font-size: 10px; font-weight: bold; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-right: 4px; align-self: center; font-family: 'Courier New', monospace; }
+        .intel-pill { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: bold; padding: 3px 8px; border-radius: 10px; letter-spacing: 0.5px; transition: all 0.2s ease; cursor: default; }
+        .intel-pill.active { background: rgba(34,197,94,0.12); color: #15803d; border: 1px solid rgba(34,197,94,0.3); }
+        .intel-pill.inactive { background: rgba(148,163,184,0.08); color: #94a3b8; border: 1px solid rgba(148,163,184,0.2); }
+        .intel-pill.active:hover { background: rgba(34,197,94,0.2); transform: translateY(-1px); }
+        [data-theme="dark"] .intel-sources { background: rgba(0,180,255,0.06); border-left-color: rgba(0,210,255,0.4); }
+        [data-theme="dark"] .intel-sources-label { color: #94a3b8; }
+        [data-theme="dark"] .intel-pill.active { background: rgba(34,197,94,0.18); color: #86efac; border-color: rgba(34,197,94,0.4); }
+        [data-theme="dark"] .intel-pill.inactive { background: rgba(148,163,184,0.08); color: #64748b; border-color: rgba(148,163,184,0.15); }
+        .article-weight-badge { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; margin-left: 8px; }
+        .article-weight-badge.high-impact { background-color: #c0392b; color: white; }
+        .article-weight-badge.medium-impact { background-color: #f39c12; color: white; }
+        .article-weight-badge.low-impact { background-color: #27ae60; color: white; }
+        .article-contribution-bar { height: 6px; background-color: #ecf0f1; border-radius: 3px; margin-top: 6px; overflow: hidden; }
+        .article-contribution-fill { height: 100%; background: linear-gradient(90deg, #c0392b 0%, #e74c3c 100%); transition: width 0.5s ease; }
+        .article-contribution-fill.deescalation { background: linear-gradient(90deg, #27ae60 0%, #2ecc71 100%); }
+        .article-scoring-details { font-size: 10px; color: #7f8c8d; margin-top: 6px; display: flex; gap: 12px; flex-wrap: wrap; }
+
+        /* NOTAM WIDGET */
+        .notam-widget { background: var(--card-bg); padding: 25px; border-radius: 12px; margin-top: 40px; margin-bottom: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 2px solid #f59e0b; overflow: hidden; }
+        .notam-widget-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+        .notam-widget-title { font-size: 17px; font-weight: bold; color: #92400e; letter-spacing: 0.5px; }
+        .notam-widget-title::before { content: "⚠️ "; font-size: 20px; margin-right: 8px; }
+        .notam-status-badge { padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: bold; text-transform: uppercase; background: #fef3c7; color: #92400e; border: 1px solid #f59e0b; }
+        .notam-scroll-container { position: relative; overflow: hidden; padding: 10px 0; }
+        .notam-cards-wrapper { display: flex; gap: 20px; animation: scroll-notams 120s linear infinite; width: max-content; }
+        .notam-cards-wrapper:hover { animation-play-state: paused; }
+        @keyframes scroll-notams { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+        .notam-card { min-width: 320px; max-width: 320px; background: linear-gradient(135deg, #fffbeb 0%, #fff 100%); border: 2px solid #fde68a; border-radius: 10px; padding: 18px; transition: all 0.3s ease; flex-shrink: 0; }
+        .notam-card:hover { transform: translateY(-4px); box-shadow: 0 6px 16px rgba(245,158,11,0.2); }
+        .notam-card.type-red { background: linear-gradient(135deg, #fef2f2 0%, #fff 100%); border-color: #fecaca; }
+        .notam-card.type-orange { background: linear-gradient(135deg, #fff7ed 0%, #fff 100%); border-color: #fed7aa; }
+        .notam-card.type-yellow { background: linear-gradient(135deg, #fefce8 0%, #fff 100%); border-color: #fef08a; }
+        .notam-card.type-blue { background: linear-gradient(135deg, #eff6ff 0%, #fff 100%); border-color: #bfdbfe; }
+        .notam-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid rgba(0,0,0,0.06); }
+        .notam-country { font-size: 15px; font-weight: bold; color: #374151; flex: 1; }
+        .notam-type-badge { padding: 4px 10px; border-radius: 12px; font-size: 10px; font-weight: bold; text-transform: uppercase; white-space: nowrap; }
+        .notam-type-badge.type-red { background: #fee2e2; color: #991b1b; }
+        .notam-type-badge.type-orange { background: #ffedd5; color: #9a3412; }
+        .notam-type-badge.type-yellow { background: #fef9c3; color: #854d0e; }
+        .notam-type-badge.type-blue { background: #dbeafe; color: #1e40af; }
+        .notam-summary { font-size: 13px; color: #4b5563; line-height: 1.6; margin-bottom: 12px; min-height: 60px; }
+        .notam-details { font-size: 11px; color: #6b7280; line-height: 1.8; }
+        .no-notams { text-align: center; padding: 40px 20px; color: #6b7280; }
+        .no-notams::before { content: "✓"; display: block; font-size: 48px; color: #10b981; margin-bottom: 15px; }
+
+        /* FLIGHT WIDGET */
+        .flight-widget { background: var(--card-bg); padding: 25px; border-radius: 12px; margin-bottom: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 2px solid #e74c3c; }
+        .flight-widget-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+        .flight-widget-title { font-size: 17px; font-weight: bold; color: #c0392b; letter-spacing: 0.5px; }
+        .flight-widget-title::before { content: "✈️ "; font-size: 20px; margin-right: 8px; }
+        .flight-status-badge { padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
+        .flight-status-badge.normal { background: #d1fae5; color: #065f46; border: 1px solid #10b981; }
+        .flight-status-badge.active { background: #fef3c7; color: #92400e; border: 1px solid #f59e0b; }
+        .flight-cancellations-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; }
+        .cancellation-card { background: linear-gradient(135deg, #fff5f5 0%, #fff 100%); border: 2px solid #fecaca; border-radius: 10px; padding: 18px; transition: all 0.3s ease; }
+        .cancellation-card:hover { border-color: #f87171; transform: translateY(-4px); }
+        .cancellation-airline { font-size: 16px; font-weight: bold; color: #991b1b; margin-bottom: 8px; }
+        .cancellation-details { font-size: 13px; color: #6b7280; line-height: 1.6; }
+        .no-cancellations { text-align: center; padding: 30px; color: #6b7280; font-style: italic; }
+        .no-cancellations::before { content: "✓"; display: block; font-size: 48px; color: #10b981; margin-bottom: 10px; }
+
+        /* RATE LIMIT */
+        .rate-limit-box { background: linear-gradient(to bottom, #fff 0%, #f8f9fa 100%); padding: 25px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 2px solid #e1e8ed; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; }
+        .rate-limit-item { display: flex; flex-direction: column; align-items: center; min-width: 120px; }
+        .rate-limit-label { font-size: 11px; text-transform: uppercase; color: #7f8c8d; margin-bottom: 8px; letter-spacing: 1px; font-weight: bold; }
+        .rate-limit-value { font-size: 24px; font-weight: bold; color: #2c3e50; }
+        .rate-limit-value.success { color: #27ae60; }
+        .rate-limit-value.warning { color: #f39c12; }
+        .rate-limit-value.danger { color: #c0392b; }
+
+        /* FOOTER */
+        .footer-info { font-size: 11.5px; line-height: 1.7; color: var(--text-secondary); }
+        .footer-info p { margin-bottom: 6px; }
+        footer { background: var(--card-bg); padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 2px solid var(--card-border); font-size: 12px; }
+        .footer-content { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 25px; }
+        .footer-section { flex: 1; min-width: 250px; }
+        .footer-section h4 { font-size: 13px; font-weight: bold; color: var(--text-primary); margin-bottom: 10px; }
+        .disclaimer { background-color: #fff3cd; border: 2px solid #ffc107; padding: 18px; border-radius: 10px; margin-top: 25px; font-size: 12px; color: #856404; }
+        .disclaimer strong { display: block; margin-bottom: 8px; font-size: 13px; }
+        .copyright-footer { margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(0,0,0,0.1); text-align: center; color: #606060; font-size: 11px; }
+        .error-message { background-color: #f8d7da; border: 2px solid #f5c6cb; color: #721c24; padding: 18px; border-radius: 10px; margin: 20px 0; display: none; }
+        .error-message.show { display: block; }
+
+        /* WEATHER */
+        .weather-section { margin: 20px 0; padding: 15px; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-radius: 10px; border: 1px solid #bae6fd; }
+        .weather-title { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #0369a1; font-weight: bold; margin-bottom: 12px; text-align: center; }
+        .weather-forecast { display: flex; gap: 6px; justify-content: space-between; overflow-x: auto; }
+        .weather-day { flex: 1; min-width: 55px; text-align: center; padding: 8px 4px; background: rgba(255,255,255,0.7); border-radius: 8px; border: 1px solid rgba(0,0,0,0.05); }
+        .weather-day-name { font-size: 10px; font-weight: bold; color: #475569; margin-bottom: 4px; }
+        .weather-icon { font-size: 22px; margin: 4px 0; }
+        .weather-temps { font-size: 12px; font-weight: 600; }
+        .weather-high { color: #dc2626; }
+        .weather-low { color: #2563eb; margin-left: 4px; }
+        .weather-conditions { font-size: 9px; color: #64748b; margin-top: 3px; }
+        .weather-loading { text-align: center; padding: 20px; color: #7f8c8d; font-style: italic; font-size: 12px; }
+        .weather-strike-note { text-align: center; margin-top: 10px; font-size: 11px; padding: 6px 12px; border-radius: 6px; background: rgba(0,0,0,0.04); font-weight: 500; }
+
+        /* STABILITY BUTTON */
+        .country-stability-btn { display: block; width: fit-content; margin: 0 auto 20px; padding: 10px 24px; background: linear-gradient(180deg, #c0392b 0%, #a93226 100%); color: white; border: 2px solid rgba(255,255,255,0.2); border-radius: 6px; font-family: 'Times New Roman', serif; font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; text-decoration: none; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 3px 8px rgba(192,57,43,0.3); }
+        .country-stability-btn:hover { background: linear-gradient(180deg, #a93226 0%, #922b21 100%); border-color: rgba(255,255,255,0.4); transform: translateY(-2px); box-shadow: 0 5px 12px rgba(192,57,43,0.4); }
+        .country-stability-btn::before { content: "📊 "; }
+        .country-stability-btn .btn-subtitle { display: block; font-size: 10px; font-weight: normal; letter-spacing: 0.5px; margin-top: 4px; opacity: 0.7; text-transform: none; }
+
+        /* TRAVEL ADVISORY EXPANDED */
+        .travel-advisory-widget { margin: 15px 0; padding: 14px 18px; border-radius: 10px; border: 2px solid var(--card-border); display: flex; align-items: center; gap: 14px; transition: all 0.3s ease; position: relative; text-decoration: none; cursor: pointer; }
+        .travel-advisory-widget:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
+        .travel-advisory-widget.level-1 { background: linear-gradient(135deg, #ecfdf5 0%, #fff 100%); border-color: #6ee7b7; }
+        .travel-advisory-widget.level-2 { background: linear-gradient(135deg, #fffbeb 0%, #fff 100%); border-color: #fcd34d; }
+        .travel-advisory-widget.level-3 { background: linear-gradient(135deg, #fff7ed 0%, #fff 100%); border-color: #fb923c; }
+        .travel-advisory-widget.level-4 { background: linear-gradient(135deg, #fef2f2 0%, #fff 100%); border-color: #f87171; animation: ta-pulse 3s ease-in-out infinite; }
+        @keyframes ta-pulse { 0%,100%{box-shadow:0 0 8px rgba(239,68,68,0.1)} 50%{box-shadow:0 0 16px rgba(239,68,68,0.25)} }
+        [data-theme="dark"] .travel-advisory-widget.level-1 { background: rgba(16,185,129,0.08); border-color: rgba(16,185,129,0.3); }
+        [data-theme="dark"] .travel-advisory-widget.level-2 { background: rgba(245,158,11,0.08); border-color: rgba(245,158,11,0.3); }
+        [data-theme="dark"] .travel-advisory-widget.level-3 { background: rgba(249,115,22,0.08); border-color: rgba(249,115,22,0.3); }
+        [data-theme="dark"] .travel-advisory-widget.level-4 { background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.4); }
+        .ta-body { flex: 1; }
+        .ta-title-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex-wrap: wrap; }
+        .ta-recently-changed { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; background: #dbeafe; color: #1e40af; }
+        [data-theme="dark"] .ta-recently-changed { background: rgba(59,130,246,0.2); color: #60a5fa; }
+        .ta-link-icon { font-size: 16px; color: var(--text-muted); }
+        .ta-loading { font-size: 12px; color: var(--text-muted); font-style: italic; padding: 10px 0; }
+        .travel-advisory-container { margin-bottom: 15px; }
+
+        /* DARK MODE */
+        .target-card.expanded { border-color: rgba(0,210,255,0.3); box-shadow: 0 0 20px rgba(0,210,255,0.08), 0 4px 12px rgba(0,0,0,0.08); }
+        [data-theme="dark"] .target-card.expanded { border-color: rgba(0,210,255,0.4); box-shadow: 0 0 30px rgba(0,210,255,0.15); }
+        [data-theme="dark"] body::after { content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-image: linear-gradient(rgba(0,210,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,210,255,0.03) 1px, transparent 1px); background-size: 40px 40px; pointer-events: none; z-index: -1; }
+        [data-theme="dark"] header { background: linear-gradient(135deg, #0f172a 0%, #164e63 50%, #0f172a 100%); border: 1px solid rgba(0,210,255,0.15); }
+        [data-theme="dark"] .target-card { background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%); border-color: #334155; }
+        [data-theme="dark"] .target-card h3 { color: #67e8f9; border-bottom-color: #0891b2; }
+        [data-theme="dark"] .collapsed-title { color: #67e8f9; }
+        [data-theme="dark"] .target-card.low-threat { background: linear-gradient(to bottom, #1e293b 0%, #022c22 100%); border-color: #065f46; }
+        [data-theme="dark"] .target-card.medium-threat { background: linear-gradient(to bottom, #1e293b 0%, #422006 100%); border-color: #92400e; }
+        [data-theme="dark"] .target-card.high-threat { background: linear-gradient(to bottom, #1e293b 0%, #450a0a 100%); border-color: #991b1b; }
+        [data-theme="dark"] .timeline-display { background-color: rgba(15,23,42,0.6); border-color: #334155; }
+        [data-theme="dark"] .headline-item { background-color: rgba(30,41,59,0.8); border-left-color: #0891b2; }
+        [data-theme="dark"] .headline-item:hover { background-color: rgba(30,58,95,0.5); }
+        [data-theme="dark"] .headline-item a { color: #e2e8f0; }
+        [data-theme="dark"] footer { background: #1e293b; border-color: #334155; }
+        [data-theme="dark"] .rate-limit-box { background: linear-gradient(to bottom, #1e293b 0%, #0f172a 100%); border-color: #334155; }
+        [data-theme="dark"] .card-scan-controls { background: rgba(15,23,42,0.6); border-color: #334155; }
+        [data-theme="dark"] .collapse-toggle-btn { background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%); }
+        [data-theme="dark"] .card-scan-button { background: linear-gradient(180deg, #164e63 0%, #0e3a4a 100%); border: 1px solid rgba(0,210,255,0.2); }
+        [data-theme="dark"] .mil-posture-awaiting { background: rgba(100,116,139,0.1); border-color: #475569; color: #94a3b8; }
+        [data-theme="dark"] .disclaimer { background-color: rgba(120,53,15,0.2); border-color: #92400e; color: #fbbf24; }
+        [data-theme="dark"] .weather-section { background: linear-gradient(135deg, rgba(8,145,178,0.1) 0%, rgba(14,116,144,0.05) 100%); border-color: rgba(0,210,255,0.15); }
+        [data-theme="dark"] .weather-title { color: #22d3ee; }
+        [data-theme="dark"] .weather-day { background: rgba(15,23,42,0.5); border-color: rgba(0,210,255,0.1); }
+        [data-theme="dark"] .weather-day-name { color: #94a3b8; }
+        [data-theme="dark"] .weather-conditions { color: #94a3b8; }
+        [data-theme="dark"] .weather-strike-note { background: rgba(0,210,255,0.05); color: #e2e8f0; }
+        [data-theme="dark"] .country-stability-btn { background: linear-gradient(180deg, #991b1b 0%, #7f1d1d 100%); border-color: rgba(239,68,68,0.3); }
+        [data-theme="dark"] .country-stability-btn:hover { background: linear-gradient(180deg, #b91c1c 0%, #991b1b 100%); box-shadow: 0 4px 12px rgba(239,68,68,0.3); }
+        [data-theme="dark"] .notam-widget { background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%); border-color: #92400e; }
+        [data-theme="dark"] .notam-card { background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%) !important; border-color: #334155 !important; }
+        [data-theme="dark"] .notam-card.type-red { background: linear-gradient(145deg, #1e293b 0%, #450a0a 100%) !important; border-color: #991b1b !important; }
+        [data-theme="dark"] .notam-card.type-orange { background: linear-gradient(145deg, #1e293b 0%, #431407 100%) !important; border-color: #92400e !important; }
+        [data-theme="dark"] .notam-card.type-yellow { background: linear-gradient(145deg, #1e293b 0%, #422006 100%) !important; border-color: #854d0e !important; }
+        [data-theme="dark"] .notam-card.type-blue { background: linear-gradient(145deg, #1e293b 0%, #0c1a3d 100%) !important; border-color: #1e40af !important; }
+        [data-theme="dark"] .notam-country { color: #e2e8f0 !important; }
+        [data-theme="dark"] .notam-summary { color: #cbd5e1 !important; }
+        [data-theme="dark"] .notam-details { color: #94a3b8 !important; }
+        [data-theme="dark"] .flight-widget { background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%); border-color: #991b1b; }
+
+        /* CARD ACCENT COLORS */
+        #afghanistan-card h3 { border-bottom-color: #d97706; }
+        #china-card h3 { border-bottom-color: #dc2626; }
+        #india-card h3 { border-bottom-color: #ea580c; }
+        #japan-card h3 { border-bottom-color: #dc2626; }
+        #north_korea-card h3 { border-bottom-color: #7c3aed; }
+        #south_korea-card h3 { border-bottom-color: #2563eb; }
+        #pakistan-card h3 { border-bottom-color: #16a34a; }
+        #taiwan-card h3 { border-bottom-color: #dc2626; }
+        [data-theme="dark"] #afghanistan-card h3 { border-bottom-color: #fbbf24; color: #fbbf24; }
+        [data-theme="dark"] #china-card h3 { border-bottom-color: #f87171; color: #f87171; }
+        [data-theme="dark"] #india-card h3 { border-bottom-color: #fb923c; color: #fb923c; }
+        [data-theme="dark"] #japan-card h3 { border-bottom-color: #f87171; color: #f87171; }
+        [data-theme="dark"] #north_korea-card h3 { border-bottom-color: #a78bfa; color: #a78bfa; }
+        [data-theme="dark"] #south_korea-card h3 { border-bottom-color: #60a5fa; color: #60a5fa; }
+        [data-theme="dark"] #pakistan-card h3 { border-bottom-color: #4ade80; color: #4ade80; }
+        [data-theme="dark"] #taiwan-card h3 { border-bottom-color: #f87171; color: #f87171; }
+
+        @media (max-width: 768px) {
+            header { padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 15px; min-height: auto; }
+            .header-logo { position: static; width: 60px; height: 60px; margin: 0 auto; }
+            .header-content { padding-top: 0; max-width: 100%; }
+            h1 { font-size: 20px; } h2 { font-size: 14px; }
+            .language-switcher, .theme-toggle { position: static; width: 100%; max-width: 300px; justify-content: center; }
+            .home-button { position: static; width: 100%; max-width: 300px; justify-content: center; }
+            .targets-grid { grid-template-columns: 1fr; }
+            .flight-cancellations-grid { grid-template-columns: 1fr; }
+            /* `.nav-sidebar { display: none !important }` was here (removed Aug 31 2026).
+               The hamburger, backdrop and toggleMobileDrawer() were all present and
+               correct, but toggleMobileDrawer() adds `.open`, which carries no
+               !important -- so the drawer could never appear and tapping the button
+               did nothing at all. The drawer block below replaces it. */
+        }
+
+        /* ══════════════════════════════════════════════════════════════
+           MOBILE HAMBURGER + DRAWER (Gold Standard v1.2 -- ported from
+           europe.html, Aug 31 2026). asia.html had the MARKUP and the JS
+           but none of the CSS: no hamburger styling, no backdrop styling,
+           no drawer positioning, and no `.nav-sidebar.open` rule.
+           ══════════════════════════════════════════════════════════════ */
+        .mobile-hamburger { display: none; }
+        .mobile-drawer-backdrop { display: none; }
+
+        @media (max-width: 768px) {
+            .mobile-hamburger {
+                display: flex;
+                position: fixed;
+                top: 16px;
+                left: 16px;
+                width: 44px;
+                height: 44px;
+                background: var(--card-bg, #0d1b2e);
+                border: 1px solid var(--card-border, #1e3a5f);
+                border-radius: 8px;
+                cursor: pointer;
+                z-index: 1001;
+                align-items: center;
+                justify-content: center;
+                font-size: 22px;
+                color: var(--text-primary, #e2f0fb);
+                box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+                transition: transform 0.15s ease;
+                font-family: monospace;
+            }
+            .mobile-hamburger:hover { transform: scale(1.05); }
+            .mobile-hamburger:active { transform: scale(0.95); }
+
+            .nav-sidebar {
+                display: flex !important;
+                position: fixed;
+                top: 0;
+                left: -260px;
+                width: 240px;
+                height: 100vh;
+                background: var(--card-bg, #0d1b2e);
+                border-right: 1px solid var(--card-border, #1e3a5f);
+                padding: 70px 12px 20px 12px;
+                overflow-y: auto;
+                z-index: 1000;
+                transition: left 0.25s ease-in-out;
+                box-shadow: 4px 0 16px rgba(0,0,0,0.4);
+            }
+            .nav-sidebar.open { left: 0; }
+
+            .mobile-drawer-backdrop {
+                display: none;
+                position: fixed;
+                top: 0; left: 0; right: 0; bottom: 0;
+                background: rgba(0,0,0,0.55);
+                z-index: 999;
+                backdrop-filter: blur(2px);
+            }
+            .mobile-drawer-backdrop.open { display: block; }
+
+            header { padding-top: 70px !important; }
+        }
+
+        /* ========================================
+           NAV SIDEBAR
+           ======================================== */
+        .page-with-sidebar {
+            display: flex;
+            flex-direction: row;
+            align-items: flex-start;
+            gap: 20px;
+        }
+
+        /* PARTITIONED Aug 31 2026 (same fix as europe.html).
+           This rule sits AFTER the mobile drawer block above, so leaving it
+           unscoped meant `position: sticky` overrode the drawer's
+           `position: fixed` at equal specificity.
+           Properties describing the LIST ITSELF (direction, gap, padding) stay
+           universal -- the drawer sets `display: flex` but no flex-direction,
+           and without `column` here the nav buttons lay out horizontally and
+           run off a 240px drawer. Only properties placing it as a sticky
+           column IN PAGE FLOW are desktop-scoped. */
+        .nav-sidebar {
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+            padding-top: 4px;
+        }
+
+        @media (min-width: 769px) {
+            .nav-sidebar {
+                display: flex;
+                width: 200px;
+                flex-shrink: 0;
+                position: sticky;
+                top: 20px;
+                height: fit-content;
+                align-self: flex-start;
+            }
+        }
+
+        .nav-sidebar-label {
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: rgba(0,200,255,0.5);
+            font-family: 'Courier New', monospace;
+            margin-bottom: 4px;
+            padding-left: 2px;
+        }
+
+        .nav-btn {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            padding: 10px 14px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-family: 'Times New Roman', Times, serif;
+            font-size: 13px;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            overflow: hidden;
+            border: 1.5px solid rgba(0,200,255,0.2);
+            background: linear-gradient(135deg, rgba(0,180,255,0.06) 0%, rgba(0,120,200,0.04) 100%);
+            color: rgba(255,255,255,0.7);
+        }
+
+        .nav-btn .nav-btn-label {
+            position: relative; z-index: 2;
+            font-size: 12px; line-height: 1.3;
+        }
+
+        .nav-btn .nav-btn-status {
+            position: relative; z-index: 2;
+            font-family: 'Courier New', monospace;
+            font-size: 9px; letter-spacing: 1px;
+            text-transform: uppercase; margin-top: 5px;
+            opacity: 0.7; color: #64dcff;
+        }
+
+        .nav-btn.active-nav {
+            background: linear-gradient(135deg, rgba(0,180,255,0.15) 0%, rgba(0,120,200,0.10) 100%);
+            border-color: rgba(0,200,255,0.5);
+            color: #ffffff;
+            box-shadow: 0 0 14px rgba(0,180,255,0.15), inset 0 0 20px rgba(0,180,255,0.04);
+        }
+
+        .nav-btn.active-nav::after {
+            content: ''; position: absolute; inset: -1px; border-radius: 9px;
+            border: 1px solid rgba(0,200,255,0.25);
+            animation: nav-pulse 3s ease-in-out infinite; z-index: 1;
+        }
+
+        @keyframes nav-pulse {
+            0%, 100% { opacity: 0.25; }
+            50%       { opacity: 0.7; }
+        }
+
+        .nav-btn.active-nav:hover {
+            border-color: rgba(0,220,255,0.8);
+            box-shadow: 0 0 24px rgba(0,180,255,0.3), 0 0 60px rgba(0,180,255,0.08);
+            transform: translateY(-2px);
+        }
+
+        .nav-btn.current-page {
+            background: linear-gradient(135deg, rgba(0,200,255,0.2) 0%, rgba(0,150,200,0.15) 100%);
+            border-color: rgba(0,220,255,0.7);
+            color: #ffffff;
+            box-shadow: 0 0 18px rgba(0,200,255,0.25);
+        }
+        .nav-btn.tracker-btn { border-color: rgba(245,158,11,0.5); background: linear-gradient(135deg, rgba(245,158,11,0.08) 0%, rgba(217,119,6,0.05) 100%); }
+        .nav-btn.tracker-btn .nav-btn-status { color: #f59e0b; }
+        .nav-btn.tracker-btn.current-page { border-color: rgba(245,158,11,0.7); background: linear-gradient(135deg, rgba(245,158,11,0.20) 0%, rgba(217,119,6,0.12) 100%); box-shadow: 0 0 18px rgba(245,158,11,0.22); }
+        .nav-btn.tracker-btn.current-page .nav-btn-status { color: #f59e0b; }
+
+        .nav-btn.current-page .nav-btn-status { color: #00c8d4; }
+
+        .nav-btn.inactive-nav {
+            border-color: rgba(255,255,255,0.08);
+            background: rgba(255,255,255,0.02);
+            color: rgba(255,255,255,0.25);
+            cursor: default;
+        }
+
+        .nav-btn.inactive-nav .nav-btn-status { color: rgba(255,255,255,0.2); }
+        .nav-btn.inactive-nav:hover { transform: none; box-shadow: none; }
+
+        .nav-divider {
+            height: 1px;
+            background: rgba(0,200,255,0.1);
+            margin: 4px 0;
+        }
+
+        .nav-btn.rhetoric-btn {
+            border-color: rgba(249,115,22,0.35);
+            background: linear-gradient(135deg, rgba(249,115,22,0.08) 0%, rgba(220,38,38,0.05) 100%);
+        }
+        .nav-btn.rhetoric-btn:hover {
+            border-color: rgba(249,115,22,0.7);
+            box-shadow: 0 0 18px rgba(249,115,22,0.2);
+            transform: translateY(-2px);
+        }
+        .nav-btn.rhetoric-btn .nav-btn-status { color: #f97316; }
+
+        .nav-btn.military-btn {
+            border-color: rgba(100,116,139,0.4);
+            background: linear-gradient(135deg, rgba(100,116,139,0.08) 0%, rgba(51,65,85,0.05) 100%);
+        }
+        .nav-btn.military-btn:hover {
+            border-color: rgba(148,163,184,0.7);
+            box-shadow: 0 0 18px rgba(100,116,139,0.2);
+            transform: translateY(-2px);
+        }
+        .nav-btn.military-btn .nav-btn-status { color: #94a3b8; }
+
+        .nav-btn.gpi-btn { border-color: rgba(139,92,246,0.4); background: linear-gradient(135deg, rgba(139,92,246,0.08) 0%, rgba(91,33,182,0.05) 100%); }
+        .nav-btn.gpi-btn:hover { border-color: rgba(167,139,250,0.7); box-shadow: 0 0 18px rgba(139,92,246,0.2); transform: translateY(-2px); }
+        .nav-btn.gpi-btn .nav-btn-status { color: #a78bfa; }
+
+        .nav-btn.commodities-btn {
+            border-color: rgba(245,158,11,0.4);
+            background: linear-gradient(135deg, rgba(245,158,11,0.08) 0%, rgba(180,83,9,0.05) 100%);
+        }
+        .nav-btn.commodities-btn:hover {
+            border-color: rgba(251,191,36,0.7);
+            box-shadow: 0 0 18px rgba(245,158,11,0.2);
+            transform: translateY(-2px);
+        }
+        .nav-btn.commodities-btn .nav-btn-status { color: #fbbf24; }
+    
+        /* ── WATERMARK (Jul 23 2026 canonical spec) ──────────────────────
+           Half the page in both themes. LIGHT keeps the logo's own white
+           square backing at 30%. DARK zooms past 100% and clips to a circle,
+           which crops the white surround away entirely so the artwork's dark
+           navy field reads as black while the cyan stays bright.
+           Sits at z-index 0: above the page tint (-1), below content (1). */
+        .watermark {
+            position: fixed; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 50vmin; height: 50vmin;
+            min-width: 340px; min-height: 340px;
+            max-width: 900px; max-height: 900px;
+            background-image: url('https://raw.githubusercontent.com/Asifah-Analytics-C-A-V-E/asifah-analytics/refs/heads/main/Asifah_Analytics_1_25_26_V1_LOGO.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            opacity: 0.30;
+            z-index: 0; pointer-events: none; user-select: none;
+            transition: opacity 0.4s ease;
+        }
+        [data-theme="dark"] .watermark {
+            background-size: 132%;
+            border-radius: 50%;
+            opacity: 0.34;
+        }
+        /* Nov 2 2026: caution banner + shell hamburger on phones */
+        @media (max-width: 768px) {
+            .caution-banner { flex-wrap:wrap !important; padding:14px 16px !important; }
+            .caution-banner > div { min-width:0 !important; flex:1 1 220px !important; }
+            .caution-banner > div:first-child { flex:0 0 auto !important; }
+            .caution-banner a { margin-left:auto; }
+            header { padding-top:70px !important; }
+        }
+</style>
+    <link rel="stylesheet" href="resources/asifah-standard-shell.css">
+</head>
+<body data-asifah-ladder="off">
+<!-- Nov 2 2026: logo watermark removed -- the regional page carries its bespoke background (China_on_Fire.png) -->
+
+    <!-- LOADING OVERLAY -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-overlay-content">
+            <img src="https://raw.githubusercontent.com/Asifah-Analytics-C-A-V-E/asifah-analytics/refs/heads/main/Asifah_Analytics_1_25_26_V1_LOGO.png"
+                 alt="Asifah Analytics" class="loading-overlay-logo">
+            <div class="loading-overlay-title">ASIFAH ANALYTICS</div>
+            <div class="loading-overlay-subtitle">Regional Pressure Index: Asia & The Pacific</div>
+            <div class="loading-spinner-ring"></div>
+            <div class="loading-steps">
+                <div class="loading-step active" id="loadStep1"><span class="step-icon">⏳</span> Connecting to OSINT backend...</div>
+                <div class="loading-step" id="loadStep2"><span class="step-icon">⏳</span> Waking up server (cold starts take ~30s)...</div>
+                <div class="loading-step" id="loadStep3"><span class="step-icon">⏳</span> Loading cached threat scores for 8 countries...</div>
+                <div class="loading-step" id="loadStep4"><span class="step-icon">⏳</span> Fetching NOTAMs & flight disruptions...</div>
+                <div class="loading-step" id="loadStep5"><span class="step-icon">⏳</span> Loading travel advisories & weather...</div>
+                <div class="loading-step" id="loadStep6"><span class="step-icon">⏳</span> Rendering dashboard...</div>
+            </div>
+            <div class="loading-error" id="loadingInfo" style="display:none; background:rgba(0,180,255,0.08); border:1px solid rgba(0,180,255,0.25); color:#67e8f9;">
+                ℹ️ First visit builds your intelligence cache — this takes about 1-2 minutes. Subsequent visits load instantly!
+            </div>
+            <div class="loading-error" id="loadingError" style="background:rgba(0,180,255,0.08); border:1px solid rgba(0,180,255,0.25); color:#67e8f9;">
+                ⏳ Still loading — scanning 8 countries across multiple intelligence sources. This is normal for a first visit. Almost there!
+            <div style="margin-top:20px; font-size:10px; color:rgba(255,255,255,0.35); letter-spacing:2px;">
+                FOR RESEARCH PURPOSES ONLY · CONVERGENCE, NOT PREDICTION
+            </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <header>
+            <img src="https://raw.githubusercontent.com/Asifah-Analytics-C-A-V-E/asifah-analytics/refs/heads/main/Asifah_Analytics_1_25_26_V1_LOGO.png" alt="Asifah Analytics Logo" class="header-logo">
+            <a href="https://asifahanalytics.com" class="home-button home-btn" title="Home">🏠 <span data-i18n="homeButton">HOME</span></a>
+            <div class="language-switcher">
+                <button class="lang-btn active" onclick="switchLanguage('en', this)">EN</button>
+                <button class="lang-btn" onclick="switchLanguage('zh', this)">中文</button>
+                <button class="lang-btn" onclick="switchLanguage('ja', this)">日本語</button>
+                <button class="lang-btn" onclick="switchLanguage('ko', this)">한국어</button>
+            </div>
+            <div class="theme-toggle">
+                <span class="theme-toggle-label" data-i18n="themeToggle">LIGHT / DARK</span>
+                <div class="theme-toggle-switch" onclick="toggleTheme()"><div class="theme-toggle-slider"></div></div>
+            </div>
+            <div class="header-content">
+                <h1 data-i18n="header">ASIFAH ANALYTICS</h1>
+                <h2 data-i18n="subtitle">Regional Pressure Index: Asia & The Pacific</h2>
+            </div>
+        </header>
+
+        <!-- ════════════════════════════════════════════════════════════ -->
+        <!-- WORLDWIDE CAUTION BANNER (canonical, Feb 28 2026 State Dept) -->
+        <!-- ════════════════════════════════════════════════════════════ -->
+        <div class="caution-banner" style="background:linear-gradient(135deg,#7f1d1d 0%,#991b1b 50%,#7f1d1d 100%);border:2px solid #ef4444;border-radius:10px;padding:16px 24px;margin:0 auto 25px auto;display:flex;align-items:center;gap:14px;box-shadow:0 4px 15px rgba(239,68,68,0.3);animation:caution-pulse 3s ease-in-out infinite;position:relative;z-index:10;">
+            <div style="font-size:28px;flex-shrink:0;">🚨</div>
+            <div style="flex:1;">
+                <div style="font-size:13px;font-weight:bold;color:#fca5a5;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:4px;">⚠️ U.S. State Department — Worldwide Caution</div>
+                <div style="font-size:13px;color:#fde8e8;line-height:1.5;">Following the launch of U.S. combat operations in Iran, Americans worldwide and especially in the Middle East should follow the guidance in the latest security alerts issued by the nearest U.S. embassy or consulate. They may experience travel disruptions due to periodic airspace closures. The Department of State advises Americans worldwide to exercise increased caution.</div>
+                <div style="font-size:10px;color:#fca5a5;margin-top:6px;opacity:0.85;letter-spacing:0.5px;">Source: travel.state.gov · Last updated: February 28, 2026</div>
+            </div>
+            <a href="https://travel.state.gov/en/international-travel/travel-advisories/global-events/worldwide-caution.html" target="_blank" rel="noopener" style="flex-shrink:0;padding:8px 16px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);border-radius:6px;color:white;text-decoration:none;font-size:12px;font-weight:bold;white-space:nowrap;" onmouseover="this.style.background='rgba(255,255,255,0.25)'" onmouseout="this.style.background='rgba(255,255,255,0.15)'">VIEW ADVISORY →</a>
+        </div>
+        <style>@keyframes caution-pulse{0%,100%{box-shadow:0 4px 15px rgba(239,68,68,0.3)}50%{box-shadow:0 4px 25px rgba(239,68,68,0.5)}}</style>
+
+        <div id="errorMessage" class="error-message"></div>
+
+        <!-- Page with sidebar wrapper -->
+        <div class="page-with-sidebar">
+
+        <!-- LEFT NAV SIDEBAR -->
+        <!-- Nov 2 2026: page hamburger + backdrop retired -- the shared shell provides the mobile drawer -->
+
+        <nav class="nav-sidebar" id="navSidebar">
+    <div class="nav-sidebar-label">Dashboards</div>
+    <a href="africa.html" class="nav-btn active-nav"><span class="nav-btn-label">&#127757; Africa</span><span class="nav-btn-status">&#9679; Live</span></a>
+    <div class="nav-btn current-page"><span class="nav-btn-label">&#127759; Asia & Pacific</span><span class="nav-btn-status">&#9673; You are here</span></div>
+    <a href="europe.html" class="nav-btn active-nav"><span class="nav-btn-label">&#127757; Europe</span><span class="nav-btn-status">&#9679; Live</span></a>
+    <a href="middle-east.html" class="nav-btn active-nav"><span class="nav-btn-label">&#128332; Middle East</span><span class="nav-btn-status">&#9679; Live</span></a>
+    <a href="wha.html" class="nav-btn active-nav"><span class="nav-btn-label">&#127758; Western Hemisphere</span><span class="nav-btn-status">&#9679; Live</span></a>
+    <div class="nav-divider"></div>
+    <div class="nav-sidebar-label">Global Trackers</div>
+    <a href="commodities.html" class="nav-btn tracker-btn active-nav"><span class="nav-btn-label">&#128738; Commodities</span><span class="nav-btn-status">&#9679; Live</span></a>
+    <a href="gpi.html" class="nav-btn tracker-btn active-nav"><span class="nav-btn-label">&#127760; Global Pressure Index</span><span class="nav-btn-status">&#9679; Live</span></a>
+    <a href="market-watch.html" class="nav-btn tracker-btn active-nav"><span class="nav-btn-label">&#128200; Market Watch</span><span class="nav-btn-status">&#9679; Live</span></a>
+    <a href="military.html" class="nav-btn tracker-btn active-nav"><span class="nav-btn-label">&#127894; Military Tracker</span><span class="nav-btn-status">&#9679; Live</span></a>
+    <div class="nav-divider"></div>
+    <div class="nav-sidebar-label">Regional Rhetoric</div>
+    <a href="rhetoric-africa.html" class="nav-btn rhetoric-btn active-nav"><span class="nav-btn-label">&#128225; Africa</span><span class="nav-btn-status">&#9679; Live</span></a>
+    <a href="rhetoric-asia.html" class="nav-btn rhetoric-btn active-nav"><span class="nav-btn-label">&#128225; Asia</span><span class="nav-btn-status">&#9679; Live</span></a>
+    <a href="rhetoric-europe.html" class="nav-btn rhetoric-btn active-nav"><span class="nav-btn-label">&#128225; Europe</span><span class="nav-btn-status">&#9679; Live</span></a>
+    <a href="rhetoric-index.html" class="nav-btn rhetoric-btn active-nav"><span class="nav-btn-label">&#128225; Middle East</span><span class="nav-btn-status">&#9679; Live</span></a>
+    <a href="rhetoric-wha.html" class="nav-btn rhetoric-btn active-nav"><span class="nav-btn-label">&#128225; Western Hemisphere</span><span class="nav-btn-status">&#9679; Live</span></a>
+</nav>
+
+        <!-- TARGET CARDS (ALPHABETICAL) -->
+        <div class="targets-grid">
+            <section id="actorMatrixPanel" class="amx-panel" style="grid-column:1 / -1;" aria-label="Asia actor matrix"></section>
+
+            <!-- AFGHANISTAN -->
+            <div class="target-card collapsed" id="afghanistan-card" data-target="afghanistan">
+                <div class="card-collapsed-view">
+                    <div class="collapsed-header">
+                        <div class="collapsed-title">🇦🇫 <span data-i18n="targetAfghanistan">AFGHANISTAN</span></div>
+                        <button class="collapse-toggle-btn" onclick="event.stopPropagation(); toggleCard('afghanistan-card');" data-i18n="expandBtn">Expand ▼</button>
+                    </div>
+                    <a class="collapsed-travel-advisory hidden" id="afghanistanCollapsedTA" href="#" target="_blank" onclick="event.stopPropagation();"></a>
+                    <div class="collapsed-metric">
+                        <div class="collapsed-metric-label" data-i18n="conflictProbability">Pressure Index</div>
+                        <div class="collapsed-metric-value">
+                            <div class="collapsed-percentage" id="afghanistanCollapsedScore">--</div>
+                            <div class="collapsed-bar"><div class="collapsed-bar-fill" id="afghanistanCollapsedBar" style="width:0%"></div></div>
+                        </div>
+                    </div>
+                    <div class="collapsed-timestamp" id="afghanistanCollapsedTimestamp">Loading...</div>
+                    <div class="expand-instructions" data-i18n="expandInstructions">Click "Expand" to update data and view full analysis</div>
+                </div>
+                <div class="card-expanded-view">
+                    <h3>🇦🇫 <span data-i18n="targetAfghanistan">AFGHANISTAN</span></h3>
+                    <button class="collapse-toggle-btn" onclick="toggleCard('afghanistan-card')" style="margin-bottom:15px;width:100%;" data-i18n="collapseBtn">Collapse ▲</button>
+                    <a href="afghanistan-stability.html" class="country-stability-btn">🇦🇫 Afghanistan Stability Index<span class="btn-subtitle">Taliban governance, ISIS-K activity & regional dynamics</span></a>
+                    <div class="card-scan-controls">
+                        <div class="card-time-window">
+                            <label><input type="radio" name="afghanistan-timeWindow" value="1"> <span data-i18n="hours24">24h</span></label>
+                            <label><input type="radio" name="afghanistan-timeWindow" value="2"> <span data-i18n="hours48">48h</span></label>
+                            <label><input type="radio" name="afghanistan-timeWindow" value="7" checked> <span data-i18n="days7">7 Days</span></label>
+                            <label><input type="radio" name="afghanistan-timeWindow" value="30"> <span data-i18n="days30">30 Days</span></label>
+                        </div>
+                        <button class="card-scan-button" onclick="scanSingleTarget('afghanistan')"><span data-i18n="scanButton">Scan OSINT — Update Forecast</span></button>
+                        <div class="loading" id="afghanistan-loading"><div class="loading-spinner"></div><span data-i18n="loadingText">Scanning open sources...</span></div>
+                    </div>
+                    <div class="probability-display">
+                        <div class="probability-label" data-i18n="conflictProbability">Pressure Index</div>
+                        <div class="gauge-container">
+                            <svg class="gauge-svg" width="200" height="200" viewBox="0 0 200 200">
+                                <circle class="gauge-background" cx="100" cy="100" r="85"></circle>
+                                <circle class="gauge-progress medium" id="afghanistan-gauge" cx="100" cy="100" r="85" stroke-dasharray="0 534"></circle>
+                            </svg>
+                            <div class="gauge-text medium" id="afghanistan-prob">--</div>
+                        </div>
+                    </div>
+                    <div class="intel-sources" id="afghanistan-intel-sources">
+                        <span class="intel-sources-label">Signals:</span>
+                        <span class="intel-pill inactive">🌐 GDELT</span>
+                        <span class="intel-pill inactive">📰 RSS</span>
+                        <span class="intel-pill inactive">🦋 Bluesky</span>
+                        <span class="intel-pill inactive">✈️ Telegram</span>
+                        <span class="intel-pill inactive">💬 Reddit</span>
+                    </div>
+                    <div class="weather-section" id="afghanistan-weather">
+                        <div class="weather-title">🌤️ 7-Day Forecast — Kabul</div>
+                        <div class="weather-forecast" id="afghanistan-weather-forecast"><div class="weather-loading">Loading weather data...</div></div>
+                    </div>
+                    <div class="timeline-display">
+                        <div class="timeline-label" data-i18n="projectedTimeline">Projected Timeline</div>
+                        <div class="timeline-value" id="afghanistan-timeline" data-i18n="awaitingScan">Awaiting scan...</div>
+                        <div class="timeline-bar" id="afghanistan-bar">
+                            <div class="timeline-segment">0-30d</div><div class="timeline-segment">31-90d</div>
+                            <div class="timeline-segment">91-180d</div><div class="timeline-segment">180+d</div>
+                        </div>
+                    </div>
+                    <div class="travel-advisory-container" id="afghanistan-travel-advisory"><div class="ta-loading">🏛️ Loading State Dept travel advisory...</div></div>
+                    <div class="mil-posture-awaiting" id="afghanistan-mil-posture">
+                        🎖️ <span>Military Posture — <em>Scan OSINT to load</em></span>
+                        <a href="military.html" class="mil-page-btn" style="margin-left:auto;">MIL TRACKER →</a>
+                    </div>
+                    <div class="headlines-section" id="afghanistan-headlines">
+                        <h4 data-i18n="recentHeadlines">Recent Headlines:</h4>
+                        <p style="color:#7f8c8d; font-style:italic;" data-i18n="clickToScan">Click scan to load latest intelligence</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CHINA -->
+            <div class="target-card collapsed" id="china-card" data-target="china">
+                <div class="card-collapsed-view">
+                    <div class="collapsed-header">
+                        <div class="collapsed-title">🇨🇳 <span data-i18n="targetChina">CHINA</span></div>
+                        <button class="collapse-toggle-btn" onclick="event.stopPropagation(); toggleCard('china-card');" data-i18n="expandBtn">Expand ▼</button>
+                    </div>
+                    <a class="collapsed-travel-advisory hidden" id="chinaCollapsedTA" href="#" target="_blank" onclick="event.stopPropagation();"></a>
+                    <div class="collapsed-metric">
+                        <div class="collapsed-metric-label" data-i18n="conflictProbability">Pressure Index</div>
+                        <div class="collapsed-metric-value">
+                            <div class="collapsed-percentage" id="chinaCollapsedScore">--</div>
+                            <div class="collapsed-bar"><div class="collapsed-bar-fill" id="chinaCollapsedBar" style="width:0%"></div></div>
+                        </div>
+                    </div>
+                    <div class="collapsed-timestamp" id="chinaCollapsedTimestamp">Loading...</div>
+                    <div class="expand-instructions" data-i18n="expandInstructions">Click "Expand" to update data and view full analysis</div>
+                </div>
+                <div class="card-expanded-view">
+                    <h3>🇨🇳 <span data-i18n="targetChina">CHINA</span></h3>
+                    <button class="collapse-toggle-btn" onclick="toggleCard('china-card')" style="margin-bottom:15px;width:100%;" data-i18n="collapseBtn">Collapse ▲</button>
+                    <a href="china-stability.html" class="country-stability-btn">🇨🇳 China Stability Index<span class="btn-subtitle">PLA posture, South China Sea & Taiwan strait dynamics</span></a>
+                    <div class="card-scan-controls">
+                        <div class="card-time-window">
+                            <label><input type="radio" name="china-timeWindow" value="1"> <span data-i18n="hours24">24h</span></label>
+                            <label><input type="radio" name="china-timeWindow" value="2"> <span data-i18n="hours48">48h</span></label>
+                            <label><input type="radio" name="china-timeWindow" value="7" checked> <span data-i18n="days7">7 Days</span></label>
+                            <label><input type="radio" name="china-timeWindow" value="30"> <span data-i18n="days30">30 Days</span></label>
+                        </div>
+                        <button class="card-scan-button" onclick="scanSingleTarget('china')"><span data-i18n="scanButton">Scan OSINT — Update Forecast</span></button>
+                        <div class="loading" id="china-loading"><div class="loading-spinner"></div><span data-i18n="loadingText">Scanning open sources...</span></div>
+                    </div>
+                    <div class="probability-display">
+                        <div class="probability-label" data-i18n="conflictProbability">Pressure Index</div>
+                        <div class="gauge-container">
+                            <svg class="gauge-svg" width="200" height="200" viewBox="0 0 200 200">
+                                <circle class="gauge-background" cx="100" cy="100" r="85"></circle>
+                                <circle class="gauge-progress medium" id="china-gauge" cx="100" cy="100" r="85" stroke-dasharray="0 534"></circle>
+                            </svg>
+                            <div class="gauge-text medium" id="china-prob">--</div>
+                        </div>
+                    </div>
+                    <div class="intel-sources" id="china-intel-sources">
+                        <span class="intel-sources-label">Signals:</span>
+                        <span class="intel-pill inactive">🌐 GDELT</span>
+                        <span class="intel-pill inactive">📰 RSS</span>
+                        <span class="intel-pill inactive">🦋 Bluesky</span>
+                        <span class="intel-pill inactive">✈️ Telegram</span>
+                        <span class="intel-pill inactive">💬 Reddit</span>
+                    </div>
+                    <div class="weather-section" id="china-weather">
+                        <div class="weather-title">🌤️ 7-Day Forecast — Beijing</div>
+                        <div class="weather-forecast" id="china-weather-forecast"><div class="weather-loading">Loading weather data...</div></div>
+                    </div>
+                    <div class="timeline-display">
+                        <div class="timeline-label" data-i18n="projectedTimeline">Projected Timeline</div>
+                        <div class="timeline-value" id="china-timeline" data-i18n="awaitingScan">Awaiting scan...</div>
+                        <div class="timeline-bar" id="china-bar">
+                            <div class="timeline-segment">0-30d</div><div class="timeline-segment">31-90d</div>
+                            <div class="timeline-segment">91-180d</div><div class="timeline-segment">180+d</div>
+                        </div>
+                    </div>
+                    <div class="travel-advisory-container" id="china-travel-advisory"><div class="ta-loading">🏛️ Loading State Dept travel advisory...</div></div>
+                    <div class="mil-posture-awaiting" id="china-mil-posture">
+                        🎖️ <span>Military Posture — <em>Scan OSINT to load</em></span>
+                        <a href="military.html" class="mil-page-btn" style="margin-left:auto;">MIL TRACKER →</a>
+                    </div>
+                    <div class="headlines-section" id="china-headlines">
+                        <h4 data-i18n="recentHeadlines">Recent Headlines:</h4>
+                        <p style="color:#7f8c8d; font-style:italic;" data-i18n="clickToScan">Click scan to load latest intelligence</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- INDIA -->
+            <div class="target-card collapsed" id="india-card" data-target="india">
+                <div class="card-collapsed-view">
+                    <div class="collapsed-header">
+                        <div class="collapsed-title">🇮🇳 <span data-i18n="targetIndia">INDIA</span></div>
+                        <button class="collapse-toggle-btn" onclick="event.stopPropagation(); toggleCard('india-card');" data-i18n="expandBtn">Expand ▼</button>
+                    </div>
+                    <a class="collapsed-travel-advisory hidden" id="indiaCollapsedTA" href="#" target="_blank" onclick="event.stopPropagation();"></a>
+                    <div class="collapsed-metric">
+                        <div class="collapsed-metric-label" data-i18n="conflictProbability">Pressure Index</div>
+                        <div class="collapsed-metric-value">
+                            <div class="collapsed-percentage" id="indiaCollapsedScore">--</div>
+                            <div class="collapsed-bar"><div class="collapsed-bar-fill" id="indiaCollapsedBar" style="width:0%"></div></div>
+                        </div>
+                    </div>
+                    <div class="collapsed-timestamp" id="indiaCollapsedTimestamp">Loading...</div>
+                    <div class="expand-instructions" data-i18n="expandInstructions">Click "Expand" to update data and view full analysis</div>
+                </div>
+                <div class="card-expanded-view">
+                    <h3>🇮🇳 <span data-i18n="targetIndia">INDIA</span></h3>
+                    <button class="collapse-toggle-btn" onclick="toggleCard('india-card')" style="margin-bottom:15px;width:100%;" data-i18n="collapseBtn">Collapse ▲</button>
+                    <a href="india-stability.html" class="country-stability-btn">🇮🇳 India Stability Index<span class="btn-subtitle">LAC tensions, Pakistan border & strategic competition</span></a>
+                    <div class="card-scan-controls">
+                        <div class="card-time-window">
+                            <label><input type="radio" name="india-timeWindow" value="1"> <span data-i18n="hours24">24h</span></label>
+                            <label><input type="radio" name="india-timeWindow" value="2"> <span data-i18n="hours48">48h</span></label>
+                            <label><input type="radio" name="india-timeWindow" value="7" checked> <span data-i18n="days7">7 Days</span></label>
+                            <label><input type="radio" name="india-timeWindow" value="30"> <span data-i18n="days30">30 Days</span></label>
+                        </div>
+                        <button class="card-scan-button" onclick="scanSingleTarget('india')"><span data-i18n="scanButton">Scan OSINT — Update Forecast</span></button>
+                        <div class="loading" id="india-loading"><div class="loading-spinner"></div><span data-i18n="loadingText">Scanning open sources...</span></div>
+                    </div>
+                    <div class="probability-display">
+                        <div class="probability-label" data-i18n="conflictProbability">Pressure Index</div>
+                        <div class="gauge-container">
+                            <svg class="gauge-svg" width="200" height="200" viewBox="0 0 200 200">
+                                <circle class="gauge-background" cx="100" cy="100" r="85"></circle>
+                                <circle class="gauge-progress medium" id="india-gauge" cx="100" cy="100" r="85" stroke-dasharray="0 534"></circle>
+                            </svg>
+                            <div class="gauge-text medium" id="india-prob">--</div>
+                        </div>
+                    </div>
+                    <div class="intel-sources" id="india-intel-sources">
+                        <span class="intel-sources-label">Signals:</span>
+                        <span class="intel-pill inactive">🌐 GDELT</span>
+                        <span class="intel-pill inactive">📰 RSS</span>
+                        <span class="intel-pill inactive">🦋 Bluesky</span>
+                        <span class="intel-pill inactive">✈️ Telegram</span>
+                        <span class="intel-pill inactive">💬 Reddit</span>
+                    </div>
+                    <div class="weather-section" id="india-weather">
+                        <div class="weather-title">🌤️ 7-Day Forecast — New Delhi</div>
+                        <div class="weather-forecast" id="india-weather-forecast"><div class="weather-loading">Loading weather data...</div></div>
+                    </div>
+                    <div class="timeline-display">
+                        <div class="timeline-label" data-i18n="projectedTimeline">Projected Timeline</div>
+                        <div class="timeline-value" id="india-timeline" data-i18n="awaitingScan">Awaiting scan...</div>
+                        <div class="timeline-bar" id="india-bar">
+                            <div class="timeline-segment">0-30d</div><div class="timeline-segment">31-90d</div>
+                            <div class="timeline-segment">91-180d</div><div class="timeline-segment">180+d</div>
+                        </div>
+                    </div>
+                    <div class="travel-advisory-container" id="india-travel-advisory"><div class="ta-loading">🏛️ Loading State Dept travel advisory...</div></div>
+                    <div class="mil-posture-awaiting" id="india-mil-posture">
+                        🎖️ <span>Military Posture — <em>Scan OSINT to load</em></span>
+                        <a href="military.html" class="mil-page-btn" style="margin-left:auto;">MIL TRACKER →</a>
+                    </div>
+                    <div class="headlines-section" id="india-headlines">
+                        <h4 data-i18n="recentHeadlines">Recent Headlines:</h4>
+                        <p style="color:#7f8c8d; font-style:italic;" data-i18n="clickToScan">Click scan to load latest intelligence</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- JAPAN -->
+            <div class="target-card collapsed" id="japan-card" data-target="japan">
+                <div class="card-collapsed-view">
+                    <div class="collapsed-header">
+                        <div class="collapsed-title">🇯🇵 <span data-i18n="targetJapan">JAPAN</span></div>
+                        <button class="collapse-toggle-btn" onclick="event.stopPropagation(); toggleCard('japan-card');" data-i18n="expandBtn">Expand ▼</button>
+                    </div>
+                    <a class="collapsed-travel-advisory hidden" id="japanCollapsedTA" href="#" target="_blank" onclick="event.stopPropagation();"></a>
+                    <div class="collapsed-metric">
+                        <div class="collapsed-metric-label" data-i18n="conflictProbability">Pressure Index</div>
+                        <div class="collapsed-metric-value">
+                            <div class="collapsed-percentage" id="japanCollapsedScore">--</div>
+                            <div class="collapsed-bar"><div class="collapsed-bar-fill" id="japanCollapsedBar" style="width:0%"></div></div>
+                        </div>
+                    </div>
+                    <div class="collapsed-timestamp" id="japanCollapsedTimestamp">Loading...</div>
+                    <div class="expand-instructions" data-i18n="expandInstructions">Click "Expand" to update data and view full analysis</div>
+                </div>
+                <div class="card-expanded-view">
+                    <h3>🇯🇵 <span data-i18n="targetJapan">JAPAN</span></h3>
+                    <button class="collapse-toggle-btn" onclick="toggleCard('japan-card')" style="margin-bottom:15px;width:100%;" data-i18n="collapseBtn">Collapse ▲</button>
+                    <a href="japan-stability.html" class="country-stability-btn">🇯🇵 Japan Stability Index<span class="btn-subtitle">JSDF posture, Senkaku & North Korea missile threat</span></a>
+                    <div class="card-scan-controls">
+                        <div class="card-time-window">
+                            <label><input type="radio" name="japan-timeWindow" value="1"> <span data-i18n="hours24">24h</span></label>
+                            <label><input type="radio" name="japan-timeWindow" value="2"> <span data-i18n="hours48">48h</span></label>
+                            <label><input type="radio" name="japan-timeWindow" value="7" checked> <span data-i18n="days7">7 Days</span></label>
+                            <label><input type="radio" name="japan-timeWindow" value="30"> <span data-i18n="days30">30 Days</span></label>
+                        </div>
+                        <button class="card-scan-button" onclick="scanSingleTarget('japan')"><span data-i18n="scanButton">Scan OSINT — Update Forecast</span></button>
+                        <div class="loading" id="japan-loading"><div class="loading-spinner"></div><span data-i18n="loadingText">Scanning open sources...</span></div>
+                    </div>
+                    <div class="probability-display">
+                        <div class="probability-label" data-i18n="conflictProbability">Pressure Index</div>
+                        <div class="gauge-container">
+                            <svg class="gauge-svg" width="200" height="200" viewBox="0 0 200 200">
+                                <circle class="gauge-background" cx="100" cy="100" r="85"></circle>
+                                <circle class="gauge-progress medium" id="japan-gauge" cx="100" cy="100" r="85" stroke-dasharray="0 534"></circle>
+                            </svg>
+                            <div class="gauge-text medium" id="japan-prob">--</div>
+                        </div>
+                    </div>
+                    <div class="intel-sources" id="japan-intel-sources">
+                        <span class="intel-sources-label">Signals:</span>
+                        <span class="intel-pill inactive">🌐 GDELT</span>
+                        <span class="intel-pill inactive">📰 RSS</span>
+                        <span class="intel-pill inactive">🦋 Bluesky</span>
+                        <span class="intel-pill inactive">✈️ Telegram</span>
+                        <span class="intel-pill inactive">💬 Reddit</span>
+                    </div>
+                    <div class="weather-section" id="japan-weather">
+                        <div class="weather-title">🌤️ 7-Day Forecast — Tokyo</div>
+                        <div class="weather-forecast" id="japan-weather-forecast"><div class="weather-loading">Loading weather data...</div></div>
+                    </div>
+                    <div class="timeline-display">
+                        <div class="timeline-label" data-i18n="projectedTimeline">Projected Timeline</div>
+                        <div class="timeline-value" id="japan-timeline" data-i18n="awaitingScan">Awaiting scan...</div>
+                        <div class="timeline-bar" id="japan-bar">
+                            <div class="timeline-segment">0-30d</div><div class="timeline-segment">31-90d</div>
+                            <div class="timeline-segment">91-180d</div><div class="timeline-segment">180+d</div>
+                        </div>
+                    </div>
+                    <div class="travel-advisory-container" id="japan-travel-advisory"><div class="ta-loading">🏛️ Loading State Dept travel advisory...</div></div>
+                    <div class="mil-posture-awaiting" id="japan-mil-posture">
+                        🎖️ <span>Military Posture — <em>Scan OSINT to load</em></span>
+                        <a href="military.html" class="mil-page-btn" style="margin-left:auto;">MIL TRACKER →</a>
+                    </div>
+                    <div class="headlines-section" id="japan-headlines">
+                        <h4 data-i18n="recentHeadlines">Recent Headlines:</h4>
+                        <p style="color:#7f8c8d; font-style:italic;" data-i18n="clickToScan">Click scan to load latest intelligence</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- NORTH KOREA -->
+            <div class="target-card collapsed" id="north_korea-card" data-target="north_korea">
+                <div class="card-collapsed-view">
+                    <div class="collapsed-header">
+                        <div class="collapsed-title">🇰🇵 <span data-i18n="targetNorthKorea">NORTH KOREA</span></div>
+                        <button class="collapse-toggle-btn" onclick="event.stopPropagation(); toggleCard('north_korea-card');" data-i18n="expandBtn">Expand ▼</button>
+                    </div>
+                    <a class="collapsed-travel-advisory hidden" id="north_koreaCollapsedTA" href="#" target="_blank" onclick="event.stopPropagation();"></a>
+                    <div class="collapsed-metric">
+                        <div class="collapsed-metric-label" data-i18n="conflictProbability">Pressure Index</div>
+                        <div class="collapsed-metric-value">
+                            <div class="collapsed-percentage" id="north_koreaCollapsedScore">--</div>
+                            <div class="collapsed-bar"><div class="collapsed-bar-fill" id="north_koreaCollapsedBar" style="width:0%"></div></div>
+                        </div>
+                    </div>
+                    <div class="collapsed-timestamp" id="north_koreaCollapsedTimestamp">Loading...</div>
+                    <div class="expand-instructions" data-i18n="expandInstructions">Click "Expand" to update data and view full analysis</div>
+                </div>
+                <div class="card-expanded-view">
+                    <h3>🇰🇵 <span data-i18n="targetNorthKorea">NORTH KOREA</span></h3>
+                    <button class="collapse-toggle-btn" onclick="toggleCard('north_korea-card')" style="margin-bottom:15px;width:100%;" data-i18n="collapseBtn">Collapse ▲</button>
+                    <a href="north-korea-stability.html" class="country-stability-btn">🇰🇵 North Korea Stability Index<span class="btn-subtitle">DPRK missile program, sanctions & inter-Korean dynamics</span></a>
+                    <div class="card-scan-controls">
+                        <div class="card-time-window">
+                            <label><input type="radio" name="north_korea-timeWindow" value="1"> <span data-i18n="hours24">24h</span></label>
+                            <label><input type="radio" name="north_korea-timeWindow" value="2"> <span data-i18n="hours48">48h</span></label>
+                            <label><input type="radio" name="north_korea-timeWindow" value="7" checked> <span data-i18n="days7">7 Days</span></label>
+                            <label><input type="radio" name="north_korea-timeWindow" value="30"> <span data-i18n="days30">30 Days</span></label>
+                        </div>
+                        <button class="card-scan-button" onclick="scanSingleTarget('north_korea')"><span data-i18n="scanButton">Scan OSINT — Update Forecast</span></button>
+                        <div class="loading" id="north_korea-loading"><div class="loading-spinner"></div><span data-i18n="loadingText">Scanning open sources...</span></div>
+                    </div>
+                    <div class="probability-display">
+                        <div class="probability-label" data-i18n="conflictProbability">Pressure Index</div>
+                        <div class="gauge-container">
+                            <svg class="gauge-svg" width="200" height="200" viewBox="0 0 200 200">
+                                <circle class="gauge-background" cx="100" cy="100" r="85"></circle>
+                                <circle class="gauge-progress medium" id="north_korea-gauge" cx="100" cy="100" r="85" stroke-dasharray="0 534"></circle>
+                            </svg>
+                            <div class="gauge-text medium" id="north_korea-prob">--</div>
+                        </div>
+                    </div>
+                    <div class="intel-sources" id="north_korea-intel-sources">
+                        <span class="intel-sources-label">Signals:</span>
+                        <span class="intel-pill inactive">🌐 GDELT</span>
+                        <span class="intel-pill inactive">📰 RSS</span>
+                        <span class="intel-pill inactive">🦋 Bluesky</span>
+                        <span class="intel-pill inactive">✈️ Telegram</span>
+                        <span class="intel-pill inactive">💬 Reddit</span>
+                    </div>
+                    <div class="weather-section" id="north_korea-weather">
+                        <div class="weather-title">🌤️ 7-Day Forecast — Pyongyang</div>
+                        <div class="weather-forecast" id="north_korea-weather-forecast"><div class="weather-loading">Loading weather data...</div></div>
+                    </div>
+                    <div class="timeline-display">
+                        <div class="timeline-label" data-i18n="projectedTimeline">Projected Timeline</div>
+                        <div class="timeline-value" id="north_korea-timeline" data-i18n="awaitingScan">Awaiting scan...</div>
+                        <div class="timeline-bar" id="north_korea-bar">
+                            <div class="timeline-segment">0-30d</div><div class="timeline-segment">31-90d</div>
+                            <div class="timeline-segment">91-180d</div><div class="timeline-segment">180+d</div>
+                        </div>
+                    </div>
+                    <div class="travel-advisory-container" id="north_korea-travel-advisory"><div class="ta-loading">🏛️ Loading State Dept travel advisory...</div></div>
+                    <div class="mil-posture-awaiting" id="north_korea-mil-posture">
+                        🎖️ <span>Military Posture — <em>Scan OSINT to load</em></span>
+                        <a href="military.html" class="mil-page-btn" style="margin-left:auto;">MIL TRACKER →</a>
+                    </div>
+                    <div class="headlines-section" id="north_korea-headlines">
+                        <h4 data-i18n="recentHeadlines">Recent Headlines:</h4>
+                        <p style="color:#7f8c8d; font-style:italic;" data-i18n="clickToScan">Click scan to load latest intelligence</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAKISTAN -->
+            <div class="target-card collapsed" id="pakistan-card" data-target="pakistan">
+                <div class="card-collapsed-view">
+                    <div class="collapsed-header">
+                        <div class="collapsed-title">🇵🇰 <span data-i18n="targetPakistan">PAKISTAN</span></div>
+                        <button class="collapse-toggle-btn" onclick="event.stopPropagation(); toggleCard('pakistan-card');" data-i18n="expandBtn">Expand ▼</button>
+                    </div>
+                    <a class="collapsed-travel-advisory hidden" id="pakistanCollapsedTA" href="#" target="_blank" onclick="event.stopPropagation();"></a>
+                    <div class="collapsed-metric">
+                        <div class="collapsed-metric-label" data-i18n="conflictProbability">Pressure Index</div>
+                        <div class="collapsed-metric-value">
+                            <div class="collapsed-percentage" id="pakistanCollapsedScore">--</div>
+                            <div class="collapsed-bar"><div class="collapsed-bar-fill" id="pakistanCollapsedBar" style="width:0%"></div></div>
+                        </div>
+                    </div>
+                    <div class="collapsed-timestamp" id="pakistanCollapsedTimestamp">Loading...</div>
+                    <div class="expand-instructions" data-i18n="expandInstructions">Click "Expand" to update data and view full analysis</div>
+                </div>
+                <div class="card-expanded-view">
+                    <h3>🇵🇰 <span data-i18n="targetPakistan">PAKISTAN</span></h3>
+                    <button class="collapse-toggle-btn" onclick="toggleCard('pakistan-card')" style="margin-bottom:15px;width:100%;" data-i18n="collapseBtn">Collapse ▲</button>
+                    <a href="pakistan-stability.html" class="country-stability-btn">🇵🇰 Pakistan Stability Index<span class="btn-subtitle">Kashmir, TTP activity & nuclear posture</span></a>
+                    <div class="card-scan-controls">
+                        <div class="card-time-window">
+                            <label><input type="radio" name="pakistan-timeWindow" value="1"> <span data-i18n="hours24">24h</span></label>
+                            <label><input type="radio" name="pakistan-timeWindow" value="2"> <span data-i18n="hours48">48h</span></label>
+                            <label><input type="radio" name="pakistan-timeWindow" value="7" checked> <span data-i18n="days7">7 Days</span></label>
+                            <label><input type="radio" name="pakistan-timeWindow" value="30"> <span data-i18n="days30">30 Days</span></label>
+                        </div>
+                        <button class="card-scan-button" onclick="scanSingleTarget('pakistan')"><span data-i18n="scanButton">Scan OSINT — Update Forecast</span></button>
+                        <div class="loading" id="pakistan-loading"><div class="loading-spinner"></div><span data-i18n="loadingText">Scanning open sources...</span></div>
+                    </div>
+                    <div class="probability-display">
+                        <div class="probability-label" data-i18n="conflictProbability">Pressure Index</div>
+                        <div class="gauge-container">
+                            <svg class="gauge-svg" width="200" height="200" viewBox="0 0 200 200">
+                                <circle class="gauge-background" cx="100" cy="100" r="85"></circle>
+                                <circle class="gauge-progress medium" id="pakistan-gauge" cx="100" cy="100" r="85" stroke-dasharray="0 534"></circle>
+                            </svg>
+                            <div class="gauge-text medium" id="pakistan-prob">--</div>
+                        </div>
+                    </div>
+                    <div class="intel-sources" id="pakistan-intel-sources">
+                        <span class="intel-sources-label">Signals:</span>
+                        <span class="intel-pill inactive">🌐 GDELT</span>
+                        <span class="intel-pill inactive">📰 RSS</span>
+                        <span class="intel-pill inactive">🦋 Bluesky</span>
+                        <span class="intel-pill inactive">✈️ Telegram</span>
+                        <span class="intel-pill inactive">💬 Reddit</span>
+                    </div>
+                    <div class="weather-section" id="pakistan-weather">
+                        <div class="weather-title">🌤️ 7-Day Forecast — Islamabad</div>
+                        <div class="weather-forecast" id="pakistan-weather-forecast"><div class="weather-loading">Loading weather data...</div></div>
+                    </div>
+                    <div class="timeline-display">
+                        <div class="timeline-label" data-i18n="projectedTimeline">Projected Timeline</div>
+                        <div class="timeline-value" id="pakistan-timeline" data-i18n="awaitingScan">Awaiting scan...</div>
+                        <div class="timeline-bar" id="pakistan-bar">
+                            <div class="timeline-segment">0-30d</div><div class="timeline-segment">31-90d</div>
+                            <div class="timeline-segment">91-180d</div><div class="timeline-segment">180+d</div>
+                        </div>
+                    </div>
+                    <div class="travel-advisory-container" id="pakistan-travel-advisory"><div class="ta-loading">🏛️ Loading State Dept travel advisory...</div></div>
+                    <div class="mil-posture-awaiting" id="pakistan-mil-posture">
+                        🎖️ <span>Military Posture — <em>Scan OSINT to load</em></span>
+                        <a href="military.html" class="mil-page-btn" style="margin-left:auto;">MIL TRACKER →</a>
+                    </div>
+                    <div class="headlines-section" id="pakistan-headlines">
+                        <h4 data-i18n="recentHeadlines">Recent Headlines:</h4>
+                        <p style="color:#7f8c8d; font-style:italic;" data-i18n="clickToScan">Click scan to load latest intelligence</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SOUTH KOREA -->
+            <div class="target-card collapsed" id="philippines-card" data-target="philippines" data-no-stability="1">
+                <div class="card-collapsed-view">
+                    <div class="collapsed-header">
+                        <div class="collapsed-title">🇵🇭 <span data-i18n="targetPhilippines">PHILIPPINES</span></div>
+                        <button class="collapse-toggle-btn" onclick="event.stopPropagation(); toggleCard('philippines-card');" data-i18n="expandBtn">Expand ▼</button>
+                    </div>
+                    <a class="collapsed-travel-advisory hidden" id="philippinesCollapsedTA" href="#" target="_blank" onclick="event.stopPropagation();"></a>
+                    <div class="collapsed-metric">
+                        <div class="collapsed-metric-label" data-i18n="conflictProbability">Pressure Index</div>
+                        <div class="collapsed-metric-value">
+                            <div class="collapsed-percentage" id="philippinesCollapsedScore">--</div>
+                            <div class="collapsed-bar"><div class="collapsed-bar-fill" id="philippinesCollapsedBar" style="width:0%"></div></div>
+                        </div>
+                    </div>
+                    <div class="collapsed-timestamp" id="philippinesCollapsedTimestamp">Loading...</div>
+                    <div class="expand-instructions" data-i18n="expandInstructions">Click "Expand" to update data and view full analysis</div>
+                </div>
+                <div class="card-expanded-view">
+                    <h3>🇵🇭 <span data-i18n="targetPhilippines">PHILIPPINES</span></h3>
+                    <button class="collapse-toggle-btn" onclick="toggleCard('philippines-card')" style="margin-bottom:15px;width:100%;" data-i18n="collapseBtn">Collapse ▲</button>
+                    <a href="philippines-stability.html" class="country-stability-btn">🇵🇭 Philippines Stability Index<span class="btn-subtitle">West Philippine Sea coercion, the US treaty trip-wire & the Marcos-Duterte rupture</span></a>
+                    <div class="card-scan-controls">
+                        <div class="card-time-window">
+                            <label><input type="radio" name="philippines-timeWindow" value="1"> <span data-i18n="hours24">24h</span></label>
+                            <label><input type="radio" name="philippines-timeWindow" value="2"> <span data-i18n="hours48">48h</span></label>
+                            <label><input type="radio" name="philippines-timeWindow" value="7" checked> <span data-i18n="days7">7 Days</span></label>
+                            <label><input type="radio" name="philippines-timeWindow" value="30"> <span data-i18n="days30">30 Days</span></label>
+                        </div>
+                        <button class="card-scan-button" onclick="scanSingleTarget('philippines')"><span data-i18n="scanButton">Scan OSINT — Update Forecast</span></button>
+                        <div class="loading" id="philippines-loading"><div class="loading-spinner"></div><span data-i18n="loadingText">Scanning open sources...</span></div>
+                    </div>
+                    <div class="probability-display">
+                        <div class="probability-label" data-i18n="conflictProbability">Pressure Index</div>
+                        <div class="gauge-container">
+                            <svg class="gauge-svg" width="200" height="200" viewBox="0 0 200 200">
+                                <circle class="gauge-background" cx="100" cy="100" r="85"></circle>
+                                <circle class="gauge-progress medium" id="philippines-gauge" cx="100" cy="100" r="85" stroke-dasharray="0 534"></circle>
+                            </svg>
+                            <div class="gauge-text medium" id="philippines-prob">--</div>
+                        </div>
+                    </div>
+                    <div class="intel-sources" id="philippines-intel-sources">
+                        <span class="intel-sources-label">Signals:</span>
+                        <span class="intel-pill inactive">🌐 GDELT</span>
+                        <span class="intel-pill inactive">📰 RSS</span>
+                        <span class="intel-pill inactive">🦋 Bluesky</span>
+                        <span class="intel-pill inactive">✈️ Telegram</span>
+                        <span class="intel-pill inactive">💬 Reddit</span>
+                    </div>
+                    <div class="weather-section" id="philippines-weather">
+                        <div class="weather-title">🌤️ 7-Day Forecast — Manila</div>
+                        <div class="weather-forecast" id="philippines-weather-forecast"><div class="weather-loading">Loading weather data...</div></div>
+                    </div>
+                    <div class="timeline-display">
+                        <div class="timeline-label" data-i18n="projectedTimeline">Projected Timeline</div>
+                        <div class="timeline-value" id="philippines-timeline" data-i18n="awaitingScan">Awaiting scan...</div>
+                        <div class="timeline-bar" id="philippines-bar">
+                            <div class="timeline-segment">0-30d</div><div class="timeline-segment">31-90d</div>
+                            <div class="timeline-segment">91-180d</div><div class="timeline-segment">180+d</div>
+                        </div>
+                    </div>
+                    <div class="travel-advisory-container" id="philippines-travel-advisory"><div class="ta-loading">🏛️ Loading State Dept travel advisory...</div></div>
+                    <div class="mil-posture-awaiting" id="philippines-mil-posture">
+                        🎖️ <span>Military Posture — <em>Scan OSINT to load</em></span>
+                        <a href="military.html" class="mil-page-btn" style="margin-left:auto;">MIL TRACKER →</a>
+                    </div>
+                    <div class="headlines-section" id="philippines-headlines">
+                        <h4 data-i18n="recentHeadlines">Recent Headlines:</h4>
+                        <p style="color:#7f8c8d; font-style:italic;" data-i18n="clickToScan">Click scan to load latest intelligence</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="target-card collapsed" id="south_korea-card" data-target="south_korea">
+                <div class="card-collapsed-view">
+                    <div class="collapsed-header">
+                        <div class="collapsed-title">🇰🇷 <span data-i18n="targetSouthKorea">SOUTH KOREA</span></div>
+                        <button class="collapse-toggle-btn" onclick="event.stopPropagation(); toggleCard('south_korea-card');" data-i18n="expandBtn">Expand ▼</button>
+                    </div>
+                    <a class="collapsed-travel-advisory hidden" id="south_koreaCollapsedTA" href="#" target="_blank" onclick="event.stopPropagation();"></a>
+                    <div class="collapsed-metric">
+                        <div class="collapsed-metric-label" data-i18n="conflictProbability">Pressure Index</div>
+                        <div class="collapsed-metric-value">
+                            <div class="collapsed-percentage" id="south_koreaCollapsedScore">--</div>
+                            <div class="collapsed-bar"><div class="collapsed-bar-fill" id="south_koreaCollapsedBar" style="width:0%"></div></div>
+                        </div>
+                    </div>
+                    <div class="collapsed-timestamp" id="south_koreaCollapsedTimestamp">Loading...</div>
+                    <div class="expand-instructions" data-i18n="expandInstructions">Click "Expand" to update data and view full analysis</div>
+                </div>
+                <div class="card-expanded-view">
+                    <h3>🇰🇷 <span data-i18n="targetSouthKorea">SOUTH KOREA</span></h3>
+                    <button class="collapse-toggle-btn" onclick="toggleCard('south_korea-card')" style="margin-bottom:15px;width:100%;" data-i18n="collapseBtn">Collapse ▲</button>
+                    <a href="south-korea-stability.html" class="country-stability-btn">🇰🇷 South Korea Stability Index<span class="btn-subtitle">ROK-US alliance, DPRK threat & inter-Korean relations</span></a>
+                    <div class="card-scan-controls">
+                        <div class="card-time-window">
+                            <label><input type="radio" name="south_korea-timeWindow" value="1"> <span data-i18n="hours24">24h</span></label>
+                            <label><input type="radio" name="south_korea-timeWindow" value="2"> <span data-i18n="hours48">48h</span></label>
+                            <label><input type="radio" name="south_korea-timeWindow" value="7" checked> <span data-i18n="days7">7 Days</span></label>
+                            <label><input type="radio" name="south_korea-timeWindow" value="30"> <span data-i18n="days30">30 Days</span></label>
+                        </div>
+                        <button class="card-scan-button" onclick="scanSingleTarget('south_korea')"><span data-i18n="scanButton">Scan OSINT — Update Forecast</span></button>
+                        <div class="loading" id="south_korea-loading"><div class="loading-spinner"></div><span data-i18n="loadingText">Scanning open sources...</span></div>
+                    </div>
+                    <div class="probability-display">
+                        <div class="probability-label" data-i18n="conflictProbability">Pressure Index</div>
+                        <div class="gauge-container">
+                            <svg class="gauge-svg" width="200" height="200" viewBox="0 0 200 200">
+                                <circle class="gauge-background" cx="100" cy="100" r="85"></circle>
+                                <circle class="gauge-progress medium" id="south_korea-gauge" cx="100" cy="100" r="85" stroke-dasharray="0 534"></circle>
+                            </svg>
+                            <div class="gauge-text medium" id="south_korea-prob">--</div>
+                        </div>
+                    </div>
+                    <div class="intel-sources" id="south_korea-intel-sources">
+                        <span class="intel-sources-label">Signals:</span>
+                        <span class="intel-pill inactive">🌐 GDELT</span>
+                        <span class="intel-pill inactive">📰 RSS</span>
+                        <span class="intel-pill inactive">🦋 Bluesky</span>
+                        <span class="intel-pill inactive">✈️ Telegram</span>
+                        <span class="intel-pill inactive">💬 Reddit</span>
+                    </div>
+                    <div class="weather-section" id="south_korea-weather">
+                        <div class="weather-title">🌤️ 7-Day Forecast — Seoul</div>
+                        <div class="weather-forecast" id="south_korea-weather-forecast"><div class="weather-loading">Loading weather data...</div></div>
+                    </div>
+                    <div class="timeline-display">
+                        <div class="timeline-label" data-i18n="projectedTimeline">Projected Timeline</div>
+                        <div class="timeline-value" id="south_korea-timeline" data-i18n="awaitingScan">Awaiting scan...</div>
+                        <div class="timeline-bar" id="south_korea-bar">
+                            <div class="timeline-segment">0-30d</div><div class="timeline-segment">31-90d</div>
+                            <div class="timeline-segment">91-180d</div><div class="timeline-segment">180+d</div>
+                        </div>
+                    </div>
+                    <div class="travel-advisory-container" id="south_korea-travel-advisory"><div class="ta-loading">🏛️ Loading State Dept travel advisory...</div></div>
+                    <div class="mil-posture-awaiting" id="south_korea-mil-posture">
+                        🎖️ <span>Military Posture — <em>Scan OSINT to load</em></span>
+                        <a href="military.html" class="mil-page-btn" style="margin-left:auto;">MIL TRACKER →</a>
+                    </div>
+                    <div class="headlines-section" id="south_korea-headlines">
+                        <h4 data-i18n="recentHeadlines">Recent Headlines:</h4>
+                        <p style="color:#7f8c8d; font-style:italic;" data-i18n="clickToScan">Click scan to load latest intelligence</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAIWAN -->
+            <div class="target-card collapsed" id="taiwan-card" data-target="taiwan">
+                <div class="card-collapsed-view">
+                    <div class="collapsed-header">
+                        <div class="collapsed-title">🇹🇼 <span data-i18n="targetTaiwan">TAIWAN</span></div>
+                        <button class="collapse-toggle-btn" onclick="event.stopPropagation(); toggleCard('taiwan-card');" data-i18n="expandBtn">Expand ▼</button>
+                    </div>
+                    <a class="collapsed-travel-advisory hidden" id="taiwanCollapsedTA" href="#" target="_blank" onclick="event.stopPropagation();"></a>
+                    <div class="collapsed-metric">
+                        <div class="collapsed-metric-label" data-i18n="conflictProbability">Pressure Index</div>
+                        <div class="collapsed-metric-value">
+                            <div class="collapsed-percentage" id="taiwanCollapsedScore">--</div>
+                            <div class="collapsed-bar"><div class="collapsed-bar-fill" id="taiwanCollapsedBar" style="width:0%"></div></div>
+                        </div>
+                    </div>
+                    <div class="collapsed-timestamp" id="taiwanCollapsedTimestamp">Loading...</div>
+                    <div class="expand-instructions" data-i18n="expandInstructions">Click "Expand" to update data and view full analysis</div>
+                </div>
+                <div class="card-expanded-view">
+                    <h3>🇹🇼 <span data-i18n="targetTaiwan">TAIWAN</span></h3>
+                    <button class="collapse-toggle-btn" onclick="toggleCard('taiwan-card')" style="margin-bottom:15px;width:100%;" data-i18n="collapseBtn">Collapse ▲</button>
+                    <a href="taiwan-stability.html" class="country-stability-btn">🇹🇼 Taiwan Stability Index<span class="btn-subtitle">PLA incursions, strait dynamics & US defense commitments</span></a>
+                    <div class="card-scan-controls">
+                        <div class="card-time-window">
+                            <label><input type="radio" name="taiwan-timeWindow" value="1"> <span data-i18n="hours24">24h</span></label>
+                            <label><input type="radio" name="taiwan-timeWindow" value="2"> <span data-i18n="hours48">48h</span></label>
+                            <label><input type="radio" name="taiwan-timeWindow" value="7" checked> <span data-i18n="days7">7 Days</span></label>
+                            <label><input type="radio" name="taiwan-timeWindow" value="30"> <span data-i18n="days30">30 Days</span></label>
+                        </div>
+                        <button class="card-scan-button" onclick="scanSingleTarget('taiwan')"><span data-i18n="scanButton">Scan OSINT — Update Forecast</span></button>
+                        <div class="loading" id="taiwan-loading"><div class="loading-spinner"></div><span data-i18n="loadingText">Scanning open sources...</span></div>
+                    </div>
+                    <div class="probability-display">
+                        <div class="probability-label" data-i18n="conflictProbability">Pressure Index</div>
+                        <div class="gauge-container">
+                            <svg class="gauge-svg" width="200" height="200" viewBox="0 0 200 200">
+                                <circle class="gauge-background" cx="100" cy="100" r="85"></circle>
+                                <circle class="gauge-progress medium" id="taiwan-gauge" cx="100" cy="100" r="85" stroke-dasharray="0 534"></circle>
+                            </svg>
+                            <div class="gauge-text medium" id="taiwan-prob">--</div>
+                        </div>
+                    </div>
+                    <div class="intel-sources" id="taiwan-intel-sources">
+                        <span class="intel-sources-label">Signals:</span>
+                        <span class="intel-pill inactive">🌐 GDELT</span>
+                        <span class="intel-pill inactive">📰 RSS</span>
+                        <span class="intel-pill inactive">🦋 Bluesky</span>
+                        <span class="intel-pill inactive">✈️ Telegram</span>
+                        <span class="intel-pill inactive">💬 Reddit</span>
+                    </div>
+                    <div class="weather-section" id="taiwan-weather">
+                        <div class="weather-title">🌤️ 7-Day Forecast — Taipei</div>
+                        <div class="weather-forecast" id="taiwan-weather-forecast"><div class="weather-loading">Loading weather data...</div></div>
+                    </div>
+                    <div class="timeline-display">
+                        <div class="timeline-label" data-i18n="projectedTimeline">Projected Timeline</div>
+                        <div class="timeline-value" id="taiwan-timeline" data-i18n="awaitingScan">Awaiting scan...</div>
+                        <div class="timeline-bar" id="taiwan-bar">
+                            <div class="timeline-segment">0-30d</div><div class="timeline-segment">31-90d</div>
+                            <div class="timeline-segment">91-180d</div><div class="timeline-segment">180+d</div>
+                        </div>
+                    </div>
+                    <div class="travel-advisory-container" id="taiwan-travel-advisory"><div class="ta-loading">🏛️ Loading State Dept travel advisory...</div></div>
+                    <div class="mil-posture-awaiting" id="taiwan-mil-posture">
+                        🎖️ <span>Military Posture — <em>Scan OSINT to load</em></span>
+                        <a href="military.html" class="mil-page-btn" style="margin-left:auto;">MIL TRACKER →</a>
+                    </div>
+                    <div class="headlines-section" id="taiwan-headlines">
+                        <h4 data-i18n="recentHeadlines">Recent Headlines:</h4>
+                        <p style="color:#7f8c8d; font-style:italic;" data-i18n="clickToScan">Click scan to load latest intelligence</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="target-card collapsed" id="vietnam-card" data-target="vietnam">
+                <div class="card-collapsed-view">
+                    <div class="collapsed-header">
+                        <div class="collapsed-title">🇻🇳 <span data-i18n="targetVietnam">VIETNAM</span></div>
+                        <button class="collapse-toggle-btn" onclick="event.stopPropagation(); toggleCard('vietnam-card');" data-i18n="expandBtn">Expand ▼</button>
+                    </div>
+                    <a class="collapsed-travel-advisory hidden" id="vietnamCollapsedTA" href="#" target="_blank" onclick="event.stopPropagation();"></a>
+                    <div class="collapsed-metric">
+                        <div class="collapsed-metric-label" data-i18n="conflictProbability">Pressure Index</div>
+                        <div class="collapsed-metric-value">
+                            <div class="collapsed-percentage" id="vietnamCollapsedScore">--</div>
+                            <div class="collapsed-bar"><div class="collapsed-bar-fill" id="vietnamCollapsedBar" style="width:0%"></div></div>
+                        </div>
+                    </div>
+                    <div class="collapsed-timestamp" id="vietnamCollapsedTimestamp">Loading...</div>
+                    <div class="expand-instructions" data-i18n="expandInstructions">Click "Expand" to update data and view full analysis</div>
+                </div>
+                <div class="card-expanded-view">
+                    <h3>🇻🇳 <span data-i18n="targetVietnam">VIETNAM</span></h3>
+                    <button class="collapse-toggle-btn" onclick="toggleCard('vietnam-card')" style="margin-bottom:15px;width:100%;" data-i18n="collapseBtn">Collapse ▲</button>
+                    <a href="vietnam-stability.html" class="country-stability-btn">🇻🇳 Vietnam Stability Index<span class="btn-subtitle">South China Sea disputes, Vanguard Bank & maritime sovereignty</span></a>
+                    <div class="card-scan-controls">
+                        <div class="card-time-window">
+                            <label><input type="radio" name="vietnam-timeWindow" value="1"> <span data-i18n="hours24">24h</span></label>
+                            <label><input type="radio" name="vietnam-timeWindow" value="2"> <span data-i18n="hours48">48h</span></label>
+                            <label><input type="radio" name="vietnam-timeWindow" value="7" checked> <span data-i18n="days7">7 Days</span></label>
+                            <label><input type="radio" name="vietnam-timeWindow" value="30"> <span data-i18n="days30">30 Days</span></label>
+                        </div>
+                        <button class="card-scan-button" onclick="scanSingleTarget('vietnam')"><span data-i18n="scanButton">Scan OSINT — Update Forecast</span></button>
+                        <div class="loading" id="vietnam-loading"><div class="loading-spinner"></div><span data-i18n="loadingText">Scanning open sources...</span></div>
+                    </div>
+                    <div class="probability-display">
+                        <div class="probability-label" data-i18n="conflictProbability">Pressure Index</div>
+                        <div class="gauge-container">
+                            <svg class="gauge-svg" width="200" height="200" viewBox="0 0 200 200">
+                                <circle class="gauge-background" cx="100" cy="100" r="85"></circle>
+                                <circle class="gauge-progress medium" id="vietnam-gauge" cx="100" cy="100" r="85" stroke-dasharray="0 534"></circle>
+                            </svg>
+                            <div class="gauge-text medium" id="vietnam-prob">--</div>
+                        </div>
+                    </div>
+                    <div class="intel-sources" id="vietnam-intel-sources">
+                        <span class="intel-sources-label">Signals:</span>
+                        <span class="intel-pill inactive">🌐 GDELT</span>
+                        <span class="intel-pill inactive">📰 RSS</span>
+                        <span class="intel-pill inactive">🦋 Bluesky</span>
+                        <span class="intel-pill inactive">✈️ Telegram</span>
+                        <span class="intel-pill inactive">💬 Reddit</span>
+                    </div>
+                    <div class="weather-section" id="vietnam-weather">
+                        <div class="weather-title">🌤️ 7-Day Forecast — Hanoi</div>
+                        <div class="weather-forecast" id="vietnam-weather-forecast"><div class="weather-loading">Loading weather data...</div></div>
+                    </div>
+                    <div class="timeline-display">
+                        <div class="timeline-label" data-i18n="projectedTimeline">Projected Timeline</div>
+                        <div class="timeline-value" id="vietnam-timeline" data-i18n="awaitingScan">Awaiting scan...</div>
+                        <div class="timeline-bar" id="vietnam-bar">
+                            <div class="timeline-segment">0-30d</div><div class="timeline-segment">31-90d</div>
+                            <div class="timeline-segment">91-180d</div><div class="timeline-segment">180+d</div>
+                        </div>
+                    </div>
+                    <div class="travel-advisory-container" id="vietnam-travel-advisory"><div class="ta-loading">🏛️ Loading State Dept travel advisory...</div></div>
+                    <div class="mil-posture-awaiting" id="vietnam-mil-posture">
+                        🎖️ <span>Military Posture — <em>Scan OSINT to load</em></span>
+                        <a href="military.html" class="mil-page-btn" style="margin-left:auto;">MIL TRACKER →</a>
+                    </div>
+                    <div class="headlines-section" id="vietnam-headlines">
+                        <h4 data-i18n="recentHeadlines">Recent Headlines:</h4>
+                        <p style="color:#7f8c8d; font-style:italic;" data-i18n="clickToScan">Click scan to load latest intelligence</p>
+                    </div>
+                </div>
+            </div>
+
+        </div><!-- end targets-grid -->
+        </div><!-- end page-with-sidebar -->
+
+        <!-- NOTAM WIDGET -->
+        <div class="notam-widget" id="notamWidget">
+            <div class="notam-widget-header">
+                <div class="notam-widget-title" data-i18n="notamTitle">Airspace Watch — Asia-Pacific</div>
+                <div class="notam-status-badge" id="notamStatusBadge">SCANNING...</div>
+            </div>
+            <div id="airspaceLines" style="font-size:12.5px;line-height:1.5;margin:-8px 0 10px;"></div>
+            <div class="notam-scroll-container">
+                <div class="notam-cards-wrapper" id="notamCardsWrapper">
+                    <div style="padding:30px; text-align:center; color:#7f8c8d; font-style:italic; width:100%;">Loading NOTAMs...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FLIGHT WIDGET -->
+        <div class="flight-widget" id="flightWidget">
+            <div class="flight-widget-header">
+                <div class="flight-widget-title" data-i18n="flightTitle">Flight Watch — Asia-Pacific</div>
+                <div class="flight-status-badge normal" id="flightStatusBadge">SCANNING...</div>
+            </div>
+            <div id="flightLines" style="font-size:12.5px;line-height:1.5;margin:0 0 12px;"></div>
+            <div class="flight-cancellations-grid" id="flightCancellationsGrid">
+                <div style="padding:30px; text-align:center; color:#7f8c8d; font-style:italic; grid-column:1/-1;">Loading flight data...</div>
+            </div>
+        </div>
+
+        <!-- Nov 2 2026: requests-used box retired (old news, per Rachel) -->
+
+        <!-- Page-specific sources & method: the shared shell moves this block into its footer -->
+        <section class="footer-info" data-asifah-footer-extra>
+            <p><strong>ASIFAH ANALYTICS · ASIA & PACIFIC DASHBOARD</strong></p>
+            <p>Updates every 12 hours · Scan OSINT refreshes on demand (rate-limited)</p>
+            <p><strong>Sources:</strong> OSINT aggregation from GDELT (en/zh/ja/ko/ur), NewsAPI, Brave Search, RSS, Reddit · Open-Meteo weather · Airspace Watch: EASA conflict-zone bulletins, the FAA's published flight-restriction list, and open ADS-B traffic counts · Flight Watch: airline announcements via Google News · U.S. State Department travel advisories (public data).</p>
+            <p><strong>Method:</strong> Country cards are convergence reads, not predictions: source-weighted aggregation with time decay, de-escalation detection and momentum. The Actor Matrix reads the country rhetoric trackers and scans nothing itself. A source not read this cycle is shown as unread &mdash; unread is not the same as quiet.</p>
+            <p style="margin-top:12px;font-size:10px;opacity:.75;">FOR RESEARCH PURPOSES ONLY · Independent analysis · Not intelligence assessments, military advice or policy recommendations · © 2025-2026 Asifah Analytics</p>
+        </section>
+    </div>
+
+    <script>
+    /* ================================================
+       ASIFAH ANALYTICS — ASIA-PACIFIC DASHBOARD v1.0.0
+       ================================================ */
+
+    const API_BASE = 'https://asifah-asia-backend.onrender.com';
+    const TARGETS = ['afghanistan', 'china', 'india', 'japan', 'north_korea', 'pakistan', 'philippines', 'south_korea', 'taiwan', 'vietnam'];
+    const CIRCUMFERENCE = 2 * Math.PI * 85;
+
+    // ===== LOADING OVERLAY =====
+    let loadingInterval, loadingTimeout, loadingInfoTimeout;
+    const loadingSteps = ['loadStep1','loadStep2','loadStep3','loadStep4','loadStep5','loadStep6'];
+    let currentLoadingStep = 0;
+
+    function advanceLoadingStep() {
+        if (currentLoadingStep < loadingSteps.length) {
+            const step = document.getElementById(loadingSteps[currentLoadingStep]);
+            if (step) { step.classList.remove('active'); step.classList.add('complete'); step.querySelector('.step-icon').textContent = '✓'; }
+        }
+        currentLoadingStep++;
+        if (currentLoadingStep < loadingSteps.length) {
+            const next = document.getElementById(loadingSteps[currentLoadingStep]);
+            if (next) next.classList.add('active');
+        }
+    }
+
+    function hideLoadingOverlay() {
+        if (loadingInterval) clearInterval(loadingInterval);
+        if (loadingTimeout) clearTimeout(loadingTimeout);
+        if (loadingInfoTimeout) clearTimeout(loadingInfoTimeout);
+        loadingSteps.forEach(id => {
+            const step = document.getElementById(id);
+            if (step) { step.classList.remove('active'); step.classList.add('complete'); step.querySelector('.step-icon').textContent = '✓'; }
+        });
+        setTimeout(() => {
+            const overlay = document.getElementById('loadingOverlay');
+            if (overlay) overlay.classList.add('hidden');
+        }, 600);
+    }
+
+    function startLoadingProgress() {
+        const stepTimings = [4000, 10000, 18000, 28000, 38000];
+        stepTimings.forEach((ms, i) => {
+            setTimeout(() => { if (currentLoadingStep <= i) advanceLoadingStep(); }, ms);
+        });
+        loadingInfoTimeout = setTimeout(() => {
+            const info = document.getElementById('loadingInfo');
+            if (info) info.style.display = 'block';
+        }, 15000);
+        loadingTimeout = setTimeout(() => {
+            document.getElementById('loadingError').style.display = 'block';
+        }, 75000);
+    }
+
+    // ===== TRANSLATIONS =====
+    const translations = {
+        en: {
+            header: "ASIFAH ANALYTICS", subtitle: "Regional Pressure Index: Asia & The Pacific",
+            homeButton: "HOME", themeToggle: "LIGHT / DARK",
+            conflictProbability: "Pressure Index", projectedTimeline: "Pressure Timeline",
+            awaitingScan: "Awaiting scan...", recentHeadlines: "Recent Headlines:",
+            clickToScan: "Click scan to load latest intelligence",
+            scanButton: "Scan OSINT — Update Forecast", loadingText: "Scanning open sources...",
+            expandBtn: "Expand ▼", collapseBtn: "Collapse ▲",
+            expandInstructions: 'Click "Expand" to update data and view full analysis',
+            hours24: "24h", hours48: "48h", days7: "7 Days", days30: "30 Days",
+            targetAfghanistan: "AFGHANISTAN", targetChina: "CHINA", targetIndia: "INDIA",
+            targetJapan: "JAPAN", targetNorthKorea: "NORTH KOREA", targetPakistan: "PAKISTAN",
+            targetSouthKorea: "SOUTH KOREA", targetTaiwan: "TAIWAN", targetVietnam: "VIETNAM", targetPhilippines: "PHILIPPINES",
+            notamTitle: "Airspace Watch — Asia-Pacific", flightTitle: "Flight Watch — Asia-Pacific"
+        },
+        zh: {
+            header: "阿西法分析", subtitle: "地区压力指数：亚洲和太平洋",
+            homeButton: "主页", themeToggle: "明亮 / 黑暗",
+            conflictProbability: "压力指数", projectedTimeline: "压力时间线",
+            awaitingScan: "等待扫描...", recentHeadlines: "最新头条：",
+            clickToScan: "点击扫描加载最新情报",
+            scanButton: "扫描OSINT — 更新预测", loadingText: "正在扫描开源情报...",
+            expandBtn: "展开 ▼", collapseBtn: "收起 ▲",
+            expandInstructions: '点击"展开"更新数据并查看完整分析',
+            hours24: "24小时", hours48: "48小时", days7: "7天", days30: "30天",
+            targetAfghanistan: "阿富汗", targetChina: "中国", targetIndia: "印度",
+            targetJapan: "日本", targetNorthKorea: "朝鲜", targetPakistan: "巴基斯坦",
+            targetSouthKorea: "韩国", targetTaiwan: "台湾", targetVietnam: "越南", targetPhilippines: "菲律宾",
+            notamTitle: "空域观察 — 亚太地区", flightTitle: "航班观察 — 亚太地区"
+        },
+        ja: {
+            header: "アシファ・アナリティクス", subtitle: "地域圧力指数：アジア・太平洋",
+            homeButton: "ホーム", themeToggle: "ライト / ダーク",
+            conflictProbability: "圧力指数", projectedTimeline: "圧力タイムライン",
+            awaitingScan: "スキャン待機中...", recentHeadlines: "最新ヘッドライン：",
+            clickToScan: "スキャンをクリックして最新情報を読み込む",
+            scanButton: "OSINTスキャン — 予測更新", loadingText: "オープンソースをスキャン中...",
+            expandBtn: "展開 ▼", collapseBtn: "折りたたむ ▲",
+            expandInstructions: '「展開」をクリックしてデータを更新',
+            hours24: "24時間", hours48: "48時間", days7: "7日間", days30: "30日間",
+            targetAfghanistan: "アフガニスタン", targetChina: "中国", targetIndia: "インド",
+            targetJapan: "日本", targetNorthKorea: "北朝鮮", targetPakistan: "パキスタン",
+            targetSouthKorea: "韓国", targetTaiwan: "台湾", targetVietnam: "ベトナム", targetPhilippines: "フィリピン",
+            notamTitle: "空域ウォッチ — アジア太平洋", flightTitle: "フライトウォッチ — アジア太平洋"
+        },
+        ko: {
+            header: "아시파 애널리틱스", subtitle: "지역 압력 지수: 아시아 및 태평양",
+            homeButton: "홈", themeToggle: "라이트 / 다크",
+            conflictProbability: "압력 지수", projectedTimeline: "압력 타임라인",
+            awaitingScan: "스캔 대기 중...", recentHeadlines: "최신 헤드라인:",
+            clickToScan: "스캔을 클릭하여 최신 정보 로드",
+            scanButton: "OSINT 스캔 — 예측 업데이트", loadingText: "오픈소스 스캔 중...",
+            expandBtn: "펼치기 ▼", collapseBtn: "접기 ▲",
+            expandInstructions: '"펼치기"를 클릭하여 데이터 업데이트',
+            hours24: "24시간", hours48: "48시간", days7: "7일", days30: "30일",
+            targetAfghanistan: "아프가니스탄", targetChina: "중국", targetIndia: "인도",
+            targetJapan: "일본", targetNorthKorea: "북한", targetPakistan: "파키스탄",
+            targetSouthKorea: "한국", targetTaiwan: "대만", targetVietnam: "베트남", targetPhilippines: "필리핀",
+            notamTitle: "공역 감시 — 아시아태평양", flightTitle: "항공편 감시 — 아시아태평양"
+        }
+    };
+
+    let currentLang = 'en';
+    function switchLanguage(lang, btn) {
+        currentLang = lang;
+        document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            if (translations[lang] && translations[lang][key]) el.textContent = translations[lang][key];
+        });
+    }
+
+    // ===== THEME =====
+    function toggleTheme() {
+        const html = document.documentElement;
+        const current = html.getAttribute('data-theme');
+        html.setAttribute('data-theme', current === 'dark' ? '' : 'dark');
+        localStorage.setItem('asiaTheme', current === 'dark' ? 'light' : 'dark');
+    }
+    (function() {
+        const saved = localStorage.getItem('asiaTheme');
+        if (saved === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+    })();
+
+    // ===== CARD TOGGLE =====
+    function toggleCard(cardId) {
+        const card = document.getElementById(cardId);
+        if (card.classList.contains('collapsed')) {
+            card.classList.remove('collapsed'); card.classList.add('expanded');
+            const target = card.getAttribute('data-target');
+            loadWeather(target);
+        } else {
+            card.classList.remove('expanded'); card.classList.add('collapsed');
+        }
+    }
+
+    // ===== CACHE LOAD =====
+    async function loadCachedScores() {
+        try {
+            const response = await fetch(`${API_BASE}/api/asia/dashboard`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const bundle = await response.json();
+            const countries = bundle.countries || {};
+
+            // Show warming banner if cache is cold
+            if (bundle.cache_cold) {
+                const coldCount = bundle.cold_count || 0;
+                showError(`⏳ Backend cache warming up — ${coldCount} country scan(s) pending. Scores will appear within a few minutes. Individual SCAN buttons work now.`);
+            }
+
+            for (const target of TARGETS) {
+                const data = countries[target];
+                if (!data) continue;
+                try {
+                    const prob = data.probability;
+                    const isWarming = data.warming || prob === null || prob === undefined;
+                    const probRounded = isWarming ? null : Math.round(prob);
+                    const level = isWarming ? 'low' : (prob >= 60 ? 'high' : prob >= 35 ? 'medium' : 'low');
+                    const collapsedScore = document.getElementById(`${target}CollapsedScore`);
+                    const collapsedBar = document.getElementById(`${target}CollapsedBar`);
+                    const collapsedTimestamp = document.getElementById(`${target}CollapsedTimestamp`);
+                    const card = document.getElementById(`${target}-card`);
+                    if (collapsedScore) collapsedScore.textContent = isWarming ? '—' : `${probRounded}%`;
+                    if (collapsedBar) { collapsedBar.style.width = isWarming ? '0%' : `${probRounded}%`; collapsedBar.style.background = level === 'high' ? '#ef4444' : level === 'medium' ? '#f59e0b' : '#10b981'; }
+                    if (collapsedTimestamp) {
+                        if (isWarming) { collapsedTimestamp.textContent = 'Awaiting first scan...'; }
+                        else { const ts = data.cached_at || data.timestamp || null; collapsedTimestamp.textContent = ts ? `As of ${new Date(ts).toLocaleString()}` : new Date().toLocaleString(); }
+                    }
+                    if (card && !isWarming) { card.classList.remove('low-threat','medium-threat','high-threat'); card.classList.add(`${level}-threat`); }
+                } catch(err) { console.warn(`[Cache] Could not render ${target}:`, err.message); }
+            }
+        } catch(err) {
+            console.warn('[Cache] Dashboard fetch failed:', err.message);
+            // Show error but do NOT fall back to 8 individual fetches — that causes the slow load
+            showError('⚠️ Could not reach backend. Use individual SCAN buttons to load country data.');
+        }
+    }
+
+// ===== SCAN =====
+async function scanSingleTarget(target) {
+    const loading = document.getElementById(`${target}-loading`);
+    const scanBtns = document.querySelectorAll(`#${target}-card .card-scan-button`);
+    const timeWindowRadio = document.querySelector(`input[name="${target}-timeWindow"]:checked`);
+    const days = timeWindowRadio ? timeWindowRadio.value : '7';
+    loading.classList.add('active');
+    scanBtns.forEach(b => { b.disabled = true; b.classList.add('scanning'); });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 300000); // 5 min timeout
+    try {
+        const response = await fetch(`${API_BASE}/api/asia/threat/${target}?days=${days}&force=true`, { signal: controller.signal });
+        clearTimeout(timeout);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        // v1.2.0 (April 2026) — Don't suppress cached data just because a
+        // fresh scan is running in background. The backend returns
+        // scan_in_progress=true ALONGSIDE valid cached probability when a
+        // timeout occurs. We should render the cached data and surface a
+        // gentle notice — not blank the card. Only treat as warming when
+        // probability is genuinely missing.
+        const hasValidProbability = (data.probability !== null && data.probability !== undefined);
+        if (!hasValidProbability && (data.scan_in_progress || data.warming)) {
+            showError(`⏳ Scan running in background for ${target} — refresh in 60 seconds for updated data.`);
+            // Render a visible "scanning" placeholder instead of 0%
+            const gaugeText = document.getElementById(`${target}-prob`);
+            const collapsedScore = document.getElementById(`${target}CollapsedScore`);
+            const collapsedTimestamp = document.getElementById(`${target}CollapsedTimestamp`);
+            if (gaugeText) gaugeText.textContent = '…';
+            if (collapsedScore) collapsedScore.textContent = 'Scanning';
+            if (collapsedTimestamp) collapsedTimestamp.textContent = 'First scan in progress — refresh in 60s';
+            return;  // Exit early; don't render 0% and don't hideError()
+        }
+        // If we have valid probability AND scan_in_progress, render the cached
+        // data and just show a gentle notice that fresh data is coming
+        if (hasValidProbability && data.scan_in_progress) {
+            console.log(`[${target}] Rendering cached data; fresh scan in progress`);
+        }
+        displayTargetData(target, data);
+        hideError();
+    } catch(err) {
+        clearTimeout(timeout);
+        const msg = err.name === 'AbortError'
+            ? `Scan timed out after 3 minutes. Backend is processing — check back in a moment.`
+            : `Failed to scan ${target}: ${err.message}. Backend may be warming up — try again in 30 seconds.`;
+        console.error(`Error scanning ${target}:`, err);
+        showError(msg);
+    } finally {
+        loading.classList.remove('active');
+        scanBtns.forEach(b => { b.disabled = false; b.classList.remove('scanning'); });
+    }
+}
+    // ===== DISPLAY =====
+    function displayTargetData(target, data) {
+        // v1.1.0 (April 2026) — Guard against null probability. Previously
+        // `data.probability || 0` would render 0% when the scan was still
+        // warming. Now we bail early and log a warning instead.
+        if (data.probability === null || data.probability === undefined) {
+            console.warn(`[${target}] probability is null — skipping render (likely warming)`);
+            return;
+        }
+        const prob = data.probability;
+        const probRounded = Math.round(prob);
+        const level = prob >= 60 ? 'high' : prob >= 35 ? 'medium' : 'low';
+        const gauge = document.getElementById(`${target}-gauge`);
+        const gaugeText = document.getElementById(`${target}-prob`);
+        const dashLen = (prob / 100) * CIRCUMFERENCE;
+        gauge.setAttribute('stroke-dasharray', `${dashLen} ${CIRCUMFERENCE}`);
+        gauge.className = `gauge-progress ${level}`;
+        gaugeText.textContent = `${probRounded}%`;
+        gaugeText.className = `gauge-text ${level}`;
+        const collapsedScore = document.getElementById(`${target}CollapsedScore`);
+        const collapsedBar = document.getElementById(`${target}CollapsedBar`);
+        const collapsedTimestamp = document.getElementById(`${target}CollapsedTimestamp`);
+        if (collapsedScore) collapsedScore.textContent = `${probRounded}%`;
+        if (collapsedBar) { collapsedBar.style.width = `${probRounded}%`; collapsedBar.style.background = level === 'high' ? '#ef4444' : level === 'medium' ? '#f59e0b' : '#10b981'; }
+        if (collapsedTimestamp) collapsedTimestamp.textContent = new Date().toLocaleString();
+        const card = document.getElementById(`${target}-card`);
+        card.classList.remove('low-threat','medium-threat','high-threat');
+        card.classList.add(`${level}-threat`);
+        const timelineEl = document.getElementById(`${target}-timeline`);
+        const timelineBar = document.getElementById(`${target}-bar`);
+        const timeline = data.timeline || 'Unknown';
+        if (timelineEl) timelineEl.textContent = timeline;
+        if (timelineBar) {
+            const segments = timelineBar.querySelectorAll('.timeline-segment');
+            segments.forEach(s => s.classList.remove('active'));
+            if (timeline.includes('0-30') || timeline.includes('Imminent')) segments[0]?.classList.add('active');
+            else if (timeline.includes('31-90')) segments[1]?.classList.add('active');
+            else if (timeline.includes('91-180')) segments[2]?.classList.add('active');
+            else segments[3]?.classList.add('active');
+        }
+        const headlinesEl = document.getElementById(`${target}-headlines`);
+        const articlesList = data.articles || data.top_scoring_articles || [];
+
+        // --- INTELLIGENCE SOURCES STRIP ---
+        // Backend returns dedicated arrays per source type. Count directly.
+        // GDELT = sum of language arrays (articles_en, _zh, _ja, _ko, _fa, _ur)
+        // RSS = remainder from total_articles (what's left after other sources)
+        const getCount = (arr) => Array.isArray(arr) ? arr.length : 0;
+        const gdeltCount =
+            getCount(data.articles_en) + getCount(data.articles_zh) +
+            getCount(data.articles_ja) + getCount(data.articles_ko) +
+            getCount(data.articles_fa) + getCount(data.articles_ur);
+        const blueskyCount = getCount(data.articles_bluesky);
+        const telegramCount = getCount(data.articles_telegram);
+        const redditCount = getCount(data.articles_reddit);
+        const totalArticles = data.total_articles || 0;
+        // RSS = whatever's left after we account for GDELT, Bluesky, Telegram, Reddit
+        const rssCount = Math.max(0, totalArticles - gdeltCount - blueskyCount - telegramCount - redditCount);
+
+        const intelEl = document.getElementById(`${target}-intel-sources`);
+        if (intelEl) {
+            const pills = [
+                { label: '🌐 GDELT',    count: gdeltCount,    name: 'GDELT' },
+                { label: '📰 RSS',      count: rssCount,      name: 'RSS' },
+                { label: '🦋 Bluesky',  count: blueskyCount,  name: 'Bluesky' },
+                { label: '✈️ Telegram', count: telegramCount, name: 'Telegram' },
+                { label: '💬 Reddit',   count: redditCount,   name: 'Reddit' }
+            ];
+            intelEl.innerHTML =
+                `<span class="intel-sources-label">Signals:</span>` +
+                pills.map(p => {
+                    const active = p.count > 0;
+                    const title = active
+                        ? `${p.count} signal${p.count !== 1 ? 's' : ''} from ${p.name}`
+                        : `No ${p.name} signals this scan`;
+                    return `<span class="intel-pill ${active ? 'active' : 'inactive'}" title="${title}">${p.label}${active ? ` <strong>${p.count}</strong>` : ''}</span>`;
+                }).join('');
+        }
+
+        if (headlinesEl && articlesList.length > 0) {
+            let html = `<h4>${translations[currentLang]?.recentHeadlines || 'Recent Headlines:'}</h4>`;
+            const maxContrib = Math.max(...articlesList.map(a => Math.abs(a.contribution || 0)), 1);
+            articlesList.slice(0, 15).forEach(article => {
+                const weight = parseFloat(article.source_weight || article.weight || 0.5).toFixed(2);
+                const contribution = parseFloat(article.contribution || 0);
+                const barWidth = Math.min((Math.abs(contribution) / maxContrib) * 100, 100);
+                const isDeesc = contribution < 0 || article.deescalation;
+                let impactClass = 'low-impact', impactLabel = 'LOW';
+                if (Math.abs(contribution) > 3) { impactClass = 'high-impact'; impactLabel = 'HIGH'; }
+                else if (Math.abs(contribution) > 1) { impactClass = 'medium-impact'; impactLabel = 'MED'; }
+                const published = article.publishedAt ? new Date(article.publishedAt).toLocaleDateString() : '';
+                const src = typeof article.source === 'object' ? (article.source?.name || 'Unknown') : (article.source || 'Unknown');
+                html += `
+                <div class="headline-item">
+                    <a href="${article.url || '#'}" target="_blank">${article.title || 'Untitled'}</a>
+                    <span class="article-weight-badge ${impactClass}">${impactLabel}</span>
+                    <div class="article-contribution-bar"><div class="article-contribution-fill ${isDeesc ? 'deescalation' : ''}" style="width:${barWidth}%"></div></div>
+                    <div class="article-scoring-details">
+                        <span>Weight: ${weight}</span>
+                        <span>Contribution: ${contribution > 0 ? '+' : ''}${contribution.toFixed(2)}</span>
+                    </div>
+                    <div class="source">${src}${published ? ' • ' + published : ''}</div>
+                </div>`;
+            });
+            headlinesEl.innerHTML = html;
+        } else if (headlinesEl) {
+            headlinesEl.innerHTML = `<h4>Recent Headlines:</h4><p style="color:#7f8c8d;font-style:italic;">No articles returned — backend may be using cached data or API limits reached.</p>`;
+        }
+
+        // Military posture refresh — loaded separately from threat scan
+        // (reads from backend's military proxy endpoint, not from threat response)
+        loadMilitaryPosture(target);
+
+        fetchRateLimits();
+    }
+
+    // ===== AIRSPACE WATCH (shared module airspace_watch.py, Nov 2026) =====
+    async function loadNotams() {
+        try {
+            const response = await fetch(`${API_BASE}/api/asia/notams`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            displayNotams(await response.json());
+        } catch(err) {
+            displayNotams({state: 'unread'});
+        }
+    }
+
+    function _esc(t) { return String(t == null ? '' : t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+    function displayNotams(data) {
+        data = data || {};
+        const wrapper = document.getElementById('notamCardsWrapper');
+        const badge = document.getElementById('notamStatusBadge');
+        const notams = data.notams || [];
+        const linesEl = document.getElementById('airspaceLines');
+        if (linesEl) {
+            const word = st => st === 'read' ? 'read' : st === 'stale' ? 'last good read' : st === 'partial' ? 'partly read' : 'unread';
+            const src = data.sources || {};
+            const parts = ['EASA ' + word((src.easa||{}).state), 'FAA ' + word((src.faa||{}).state)];
+            if (src.opensky) parts.push((src.opensky.provider === 'al' ? 'adsb.lol' : 'OpenSky') + ' traffic ' + word(src.opensky.state));
+            linesEl.innerHTML = (data.lines || []).slice(0, 4).map(l => `<div>• ${_esc(l)}</div>`).join('') +
+                `<div style="opacity:.7;font-size:11px;margin-top:4px;">Sources: ${parts.join(' · ')}${data.timestamp ? ' · ' + new Date(data.timestamp).toLocaleString() : ''}</div>`;
+        }
+        if (notams.length === 0) {
+            const unread = !data.state || data.state === 'unread';
+            wrapper.innerHTML = unread
+                ? '<div class="no-notams"><div>? Airspace sources unread</div><div>Not read this cycle — this is not the same as quiet airspace.</div></div>'
+                : '<div class="no-notams"><div>No active warnings or traffic anomalies</div><div>Sources read; nothing flagged this cycle.</div></div>';
+            badge.textContent = unread ? 'UNREAD' : '0 ACTIVE';
+            badge.style.background = unread ? '#e5e7eb' : '#d1fae5'; badge.style.color = unread ? '#374151' : '#065f46';
+            return;
+        }
+        badge.textContent = `${notams.length} ACTIVE`; badge.style.background = '#fef3c7'; badge.style.color = '#92400e';
+        let html = '';
+        [...notams, ...notams].forEach(notam => {
+            const typeColor = notam.type_color || notam.color || getNotamTypeColor(notam.classification || notam.type || '');
+            const displayCountry = notam.country || (notam.region ? notam.region.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) : 'Unknown');
+            const fir = notam.icao_location || notam.fir || '';
+            html += `<div class="notam-card type-${typeColor}">
+                <div class="notam-header">
+                    <div class="notam-country">${_esc(notam.flag||'')} ${_esc(displayCountry)}${fir?' ('+_esc(fir)+')':''}</div>
+                    <span class="notam-type-badge type-${typeColor}">${_esc(notam.classification||notam.type||'NOTICE')}</span>
+                </div>
+                <div class="notam-summary">${_esc(notam.summary||notam.description||'No details available')}</div>
+                <div class="notam-details">
+                    ${fir?`<div><strong>FIR:</strong> ${_esc(fir)}</div>`:''}
+                    <div><strong>Effective:</strong> ${_esc(notam.effective||notam.valid_range||notam.valid_from||'See source')}</div>
+                    ${notam.source_url?`<a class="notam-link" href="${_esc(notam.source_url)}" target="_blank" rel="noopener">View Source →</a>`:''}
+                </div>
+            </div>`;
+        });
+        wrapper.innerHTML = html;
+    }
+
+    function getNotamTypeColor(type) {
+        const t = (type||'').toLowerCase();
+        if (t.includes('conflict')||t.includes('closure')||t.includes('no-fly')) return 'red';
+        if (t.includes('military')||t.includes('drone')||t.includes('exercise')) return 'orange';
+        if (t.includes('gps')||t.includes('restricted')||t.includes('interference')) return 'yellow';
+        return 'blue';
+    }
+
+    // ===== FLIGHTS =====
+    async function loadFlights() {
+        try {
+            const response = await fetch(`${API_BASE}/api/asia/flights`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            displayFlights(await response.json());
+        } catch(err) {
+            displayFlights({state: 'unread'});
+        }
+    }
+
+    let flightDisruptionsData = [], flightVisibleCount = 4;
+    const FLIGHT_PAGE_SIZE = 4, FLIGHT_MAX_VISIBLE = 20;
+
+    function displayFlights(data) {
+        const grid = document.getElementById('flightCancellationsGrid');
+        const badge = document.getElementById('flightStatusBadge');
+        data = data || {};
+        const disruptions = data.disruptions || data.cancellations || [];
+        flightDisruptionsData = disruptions; flightVisibleCount = FLIGHT_PAGE_SIZE;
+        // Nov 2 2026 -- Flight Watch (shared flight_watch.py): So-What lines + which source was read
+        const st = data.state || 'unread';
+        const word = {read: 'read', partial: 'partly read', stale: 'last good read', unread: 'unread'}[st] || 'unread';
+        const fl = document.getElementById('flightLines');
+        if (fl) fl.innerHTML = (data.lines || []).slice(0, 4).map(l => `<div>• ${_esc(l)}</div>`).join('') +
+            `<div style="opacity:.7;font-size:11px;margin-top:4px;">Source: airline announcements via Google News (${word})${data.scanned_at ? ' · scanned ' + new Date(data.scanned_at).toLocaleString() : ''}</div>`;
+        if (disruptions.length === 0) {
+            grid.innerHTML = st === 'unread'
+                ? '<div class="no-cancellations" style="grid-column:1/-1;"><div style="font-size:16px;font-weight:bold;margin-bottom:8px;">Unread</div><div>Airline sources not read yet — this is not the same as no disruptions.</div></div>'
+                : '<div class="no-cancellations" style="grid-column:1/-1;"><div style="font-size:16px;font-weight:bold;margin-bottom:8px;">No carrier suspensions reported</div><div>Nothing in the last 30 days for watched Asia-Pacific destinations.</div></div>';
+            badge.textContent = st === 'unread' ? 'UNREAD' : 'NONE REPORTED'; badge.className = 'flight-status-badge normal'; return;
+        }
+        badge.textContent = `${disruptions.length} DISRUPTION${disruptions.length>1?'S':''}`; badge.className = 'flight-status-badge active';
+        renderFlightCards();
+    }
+
+    function renderFlightCards() {
+        const grid = document.getElementById('flightCancellationsGrid');
+        const visible = flightDisruptionsData.slice(0, flightVisibleCount);
+        let html = '';
+        visible.forEach(d => {
+            const icon = d.status === 'Resumed' ? '✅' : '🚫';
+            html += `<div class="cancellation-card">
+                <div class="cancellation-airline">${icon} ${_esc(d.airline||'Not named')}${d.status?` · ${_esc(d.status)}`:''}${d.deadline_state==='passed'?' · end date passed':''}</div>
+                <div class="cancellation-details">
+                    ${d.route||d.destination?`<div><strong>Route:</strong> ${_esc(d.flag||'')} ${_esc(d.route||d.destination)}</div>`:''}
+                    ${d.duration&&d.duration!=='Unknown'?`<div><strong>Declared:</strong> ${_esc(d.duration)}</div>`:''}
+                    ${d.date?`<div><strong>Reported:</strong> ${_esc(new Date(d.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}))}</div>`:''}
+                    ${d.headline||d.title?`<div><strong>Headline:</strong> ${_esc(d.headline||d.title)}</div>`:''}
+                    ${d.source_url?`<div><a href="${_esc(d.source_url)}" target="_blank" rel="noopener" style="color:#2563eb;font-weight:600;">${_esc(d.source||'Source')} →</a></div>`:''}
+                </div>
+            </div>`;
+        });
+        const remaining = flightDisruptionsData.length - flightVisibleCount;
+        if (remaining > 0 && flightVisibleCount < FLIGHT_MAX_VISIBLE) {
+            const nextBatch = Math.min(remaining, FLIGHT_PAGE_SIZE);
+            html += `<div style="grid-column:1/-1;text-align:center;padding:15px;">
+                <button onclick="loadMoreFlights()" style="background:linear-gradient(180deg,#34495e 0%,#2c3e50 100%);color:white;border:none;padding:10px 25px;font-family:'Times New Roman',serif;font-size:13px;font-weight:bold;border-radius:6px;cursor:pointer;">
+                    Show ${nextBatch} More (${remaining} remaining)
+                </button></div>`;
+        }
+        grid.innerHTML = html;
+    }
+
+    function loadMoreFlights() {
+        flightVisibleCount = Math.min(flightVisibleCount + FLIGHT_PAGE_SIZE, FLIGHT_MAX_VISIBLE);
+        renderFlightCards();
+    }
+
+    // ===== RATE LIMITS =====
+    async function fetchRateLimits() {
+        if (!document.getElementById('rlUsed')) return;   // Nov 2 2026: box retired
+        try {
+            const response = await fetch(`${API_BASE}/rate-limit`);
+            if (!response.ok) return;
+            const data = await response.json();
+            const used = data.requests_today || 0;
+            const limit = data.daily_limit || 100;
+            const remaining = data.remaining || (limit - used);
+            document.getElementById('rlUsed').textContent = used;
+            document.getElementById('rlRemaining').textContent = remaining;
+            document.getElementById('rlLimit').textContent = limit;
+            document.getElementById('rlReset').textContent = data.reset_time || 'Midnight UTC';
+            const pct = used / limit;
+            document.getElementById('rlRemaining').className = 'rate-limit-value ' + (pct > 0.9 ? 'danger' : pct > 0.7 ? 'warning' : 'success');
+        } catch(err) {}
+    }
+
+    // ===== ERROR =====
+    function showError(msg) { const el = document.getElementById('errorMessage'); el.textContent = msg; el.classList.add('show'); setTimeout(() => el.classList.remove('show'), 15000); }
+    function hideError() { document.getElementById('errorMessage').classList.remove('show'); }
+
+    // ===== WEATHER =====
+    const WEATHER_CAPITALS = {
+        'afghanistan': { name: 'Kabul',     lat: 34.53, lon: 69.17 },
+        'china':       { name: 'Beijing',   lat: 39.91, lon: 116.39 },
+        'india':       { name: 'New Delhi', lat: 28.61, lon: 77.21 },
+        'japan':       { name: 'Tokyo',     lat: 35.69, lon: 139.69 },
+        'north_korea': { name: 'Pyongyang', lat: 39.02, lon: 125.75 },
+        'pakistan':    { name: 'Islamabad', lat: 33.72, lon: 73.04 },
+        'philippines': { name: 'Manila',    lat: 14.60, lon: 120.98 },
+        'south_korea': { name: 'Seoul',     lat: 37.57, lon: 126.98 },
+        'taiwan':      { name: 'Taipei',    lat: 25.04, lon: 121.56 },
+        'vietnam':     { name: 'Hanoi',     lat: 21.03, lon: 105.85 }
+    };
+
+    function getWeatherEmoji(code) {
+        if (code===0) return '☀️'; if (code<=3) return '⛅'; if (code<=48) return '🌫️';
+        if (code<=57) return '🌧️'; if (code<=67) return '🌧️'; if (code<=77) return '🌨️';
+        if (code<=82) return '🌧️'; if (code<=86) return '🌨️'; if (code<=99) return '⛈️'; return '🌤️';
+    }
+    function getWeatherLabel(code) {
+        if (code===0) return 'Clear'; if (code<=3) return 'Partly Cloudy'; if (code<=48) return 'Fog';
+        if (code<=57) return 'Drizzle'; if (code<=67) return 'Rain'; if (code<=77) return 'Snow';
+        if (code<=82) return 'Showers'; if (code<=86) return 'Snow Showers'; if (code<=99) return 'Thunderstorm'; return 'Cloudy';
+    }
+    function isClearDay(code) { return code <= 3; }
+
+    async function loadWeather(target) {
+        const config = WEATHER_CAPITALS[target];
+        if (!config) return;
+        const container = document.getElementById(`${target}-weather-forecast`);
+        if (!container) return;
+        try {
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${config.lat}&longitude=${config.lon}&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=7`;
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const data = await response.json();
+            const days = data.daily.time, codes = data.daily.weather_code;
+            const highs = data.daily.temperature_2m_max, lows = data.daily.temperature_2m_min;
+            let html = '', clearNights = 0;
+            for (let i = 0; i < days.length; i++) {
+                const date = new Date(days[i] + 'T12:00:00');
+                const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+                if (isClearDay(codes[i])) clearNights++;
+                html += `<div class="weather-day" style="${isClearDay(codes[i]) ? 'border-color:rgba(239,68,68,0.3);background:rgba(239,68,68,0.05);' : ''}">
+                    <div class="weather-day-name">${dayName}</div>
+                    <div class="weather-icon">${getWeatherEmoji(codes[i])}</div>
+                    <div class="weather-temps"><span class="weather-high">${Math.round(highs[i])}°</span><span class="weather-low">${Math.round(lows[i])}°</span></div>
+                    <div class="weather-conditions">${getWeatherLabel(codes[i])}</div>
+                </div>`;
+            }
+            if (clearNights >= 4) html += `</div><div class="weather-strike-note">⚠️ ${clearNights}/7 clear days — favorable conditions for aerial operations</div>`;
+            else if (clearNights >= 2) html += `</div><div class="weather-strike-note">🌤️ ${clearNights}/7 clear days — mixed conditions window</div>`;
+            else html += `</div><div class="weather-strike-note">☁️ ${clearNights}/7 clear days — poor conditions for aerial operations</div>`;
+            container.innerHTML = html;
+        } catch(error) {
+            container.innerHTML = '<div class="weather-loading">Weather data unavailable</div>';
+        }
+    }
+
+    // ===== TRAVEL ADVISORIES =====
+    async function loadTravelAdvisories() {
+        try {
+            const response = await fetch(`${API_BASE}/api/asia/travel-advisories`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const data = await response.json();
+            if (!data.success || !data.advisories) throw new Error('No advisory data');
+            for (const [target, advisory] of Object.entries(data.advisories)) {
+                renderTravelAdvisory(target, advisory);
+            }
+            // Update collapsed TA widgets
+            TARGETS.forEach(target => {
+                const ta = data.advisories[target];
+                const el = document.getElementById(`${target}CollapsedTA`);
+                if (!el || !ta || !ta.level) return;
+                const level = ta.level;
+                el.href = ta.link || '#';
+                el.className = `collapsed-travel-advisory level-${level}`;
+                el.innerHTML = `
+                    <div class="ta-level-badge level-${level}"><div class="ta-level-num">${level}</div><div class="ta-level-label">LEVEL</div></div>
+                    <div class="ta-content"><div class="ta-title">U.S. State Dept: ${ta.level_short||''}</div><div class="ta-summary">${ta.short_summary||''}</div></div>
+                    <div class="ta-arrow">→</div>`;
+            });
+        } catch(err) {
+            console.warn('[Travel Advisories] Load error:', err);
+            TARGETS.forEach(t => {
+                const container = document.getElementById(`${t}-travel-advisory`);
+                if (container) container.innerHTML = '<div class="ta-loading">🏛️ Travel advisory unavailable</div>';
+            });
+        }
+    }
+
+    function renderTravelAdvisory(target, advisory) {
+        const container = document.getElementById(`${target}-travel-advisory`);
+        if (!container) return;
+        const level = advisory.level || 0;
+        const color = advisory.level_color || '#6b7280';
+        const recentBadge = advisory.recently_changed ? '<span class="ta-recently-changed">⬆ Recently Updated</span>' : '';
+        container.innerHTML = `
+            <a href="${advisory.link}" target="_blank" rel="noopener" class="travel-advisory-widget level-${level}">
+                <div class="ta-level-badge" style="background:${color};">
+                    <div class="ta-level-num">${level}</div><div class="ta-level-word">Level</div>
+                </div>
+                <div class="ta-body">
+                    <div class="ta-title-row"><div class="ta-title">🏛️ U.S. State Dept: ${advisory.level_short}</div>${recentBadge}</div>
+                    <div class="ta-summary">${advisory.short_summary || advisory.title}</div>
+                </div>
+                <div class="ta-link-icon">→</div>
+            </a>`;
+    }
+
+    // ===== MILITARY POSTURE LOADER =====
+    // Fetches military posture (alert_level, top_signals) for a target from Asia backend.
+    // Asia backend proxies to ME backend, which is the single source of truth.
+    // URL path uses /api/military/posture/<target> (slash — Asia's convention).
+    // On first call (no arg), loads for ALL TARGETS in parallel.
+    // Can also be called for a single target after a fresh scan.
+    async function loadMilitaryPosture(target) {
+        if (target) {
+            return await _loadSingleMilPosture(target);
+        }
+        await Promise.allSettled(TARGETS.map(t => _loadSingleMilPosture(t)));
+    }
+
+    async function _loadSingleMilPosture(target) {
+        const container = document.getElementById(`${target}-mil-posture`);
+        if (!container) return;
+        try {
+            const response = await fetch(`${API_BASE}/api/military/posture/${target}`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const data = await response.json();
+            renderMilitaryPosture(target, data);
+        } catch (err) {
+            console.warn(`[Mil Posture] ${target} load failed:`, err.message);
+            renderMilitaryPosture(target, null);
+        }
+    }
+
+    function renderMilitaryPosture(target, posture) {
+        const container = document.getElementById(`${target}-mil-posture`);
+        if (!container) return;
+
+        if (!posture || posture._proxy_error) {
+            container.className = 'mil-posture-awaiting';
+            container.innerHTML = `
+                🎖️ <span>Military Posture — <em>Temporarily unavailable</em></span>
+                <a href="military.html" class="mil-page-btn" style="margin-left:auto;">MIL TRACKER →</a>
+            `;
+            return;
+        }
+
+        const level   = posture.alert_level || 'normal';
+        const label   = posture.alert_label || 'Normal';
+        const color   = posture.alert_color || 'green';
+        const banner  = posture.banner_text || '';
+        const signals = posture.top_signals || [];
+
+        const colorMap = {
+            green:  { bg: 'rgba(16,185,129,0.10)',  border: '#10b981', text: '#065f46' },
+            yellow: { bg: 'rgba(245,158,11,0.12)',  border: '#f59e0b', text: '#92400e' },
+            orange: { bg: 'rgba(249,115,22,0.12)',  border: '#f97316', text: '#9a3412' },
+            red:    { bg: 'rgba(239,68,68,0.12)',   border: '#ef4444', text: '#7f1d1d' },
+        };
+        const style = colorMap[color] || colorMap.green;
+
+        let signalLine = '';
+        if (signals.length > 0) {
+            const sig = signals[0];
+            const title = (sig.article_title || sig.title || sig.query || '').substring(0, 80);
+            signalLine = title
+                ? `<div style="font-size:11px; opacity:0.85; margin-top:4px; font-style:italic;">↳ ${title}${title.length >= 80 ? '…' : ''}</div>`
+                : '';
+        }
+
+        const bannerLine = banner
+            ? `<div style="font-size:11px; margin-top:4px; font-weight:600;">${banner}</div>`
+            : '';
+
+        container.className = `mil-posture-loaded level-${level}`;
+        container.style.cssText = `
+            display: flex;
+            flex-direction: column;
+            padding: 10px 14px;
+            background: ${style.bg};
+            border: 1px solid ${style.border};
+            border-radius: 8px;
+            margin: 20px 0 5px 0;
+            color: ${style.text};
+        `;
+        container.innerHTML = `
+            <div style="display:flex; align-items:center; gap:8px;">
+                🎖️ <span style="font-weight:600;">Military Posture: ${label}</span>
+                <span style="font-size:10px; background:${style.border}; color:white; padding:2px 8px; border-radius:10px; text-transform:uppercase; letter-spacing:0.5px;">${level}</span>
+                <a href="military.html" class="mil-page-btn" style="margin-left:auto;">MIL TRACKER →</a>
+            </div>
+            ${bannerLine}
+            ${signalLine}
+        `;
+    }
+
+    // ===== INIT =====
+    document.addEventListener('DOMContentLoaded', async function() {
+        startLoadingProgress();
+        const cachePromise = loadCachedScores();
+        const notamPromise = loadNotams();
+        const flightPromise = loadFlights();
+        const ratePromise = fetchRateLimits();
+        const taPromise = loadTravelAdvisories();
+        const milPromise = loadMilitaryPosture();  // all targets, parallel
+        try {
+            await Promise.allSettled([cachePromise, notamPromise, flightPromise, taPromise, milPromise]);
+        } catch(e) { console.warn('Some init loads failed:', e); }
+        hideLoadingOverlay();
+    });
+
+    // MOBILE DRAWER TOGGLE (Gold Standard v1.2 -- May 18, 2026)
+    function toggleMobileDrawer() {
+        const sidebar = document.getElementById('navSidebar');
+        const backdrop = document.getElementById('mobileDrawerBackdrop');
+        if (!sidebar || !backdrop) return;
+        const isOpen = sidebar.classList.contains('open');
+        if (isOpen) {
+            closeMobileDrawer();
+        } else {
+            sidebar.classList.add('open');
+            backdrop.classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+    }
+    function closeMobileDrawer() {
+        const sidebar = document.getElementById('navSidebar');
+        const backdrop = document.getElementById('mobileDrawerBackdrop');
+        if (sidebar) sidebar.classList.remove('open');
+        if (backdrop) backdrop.classList.remove('open');
+        document.body.style.overflow = '';
+    }
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeMobileDrawer();
+    });
+
+    </script>
+<script>
+// Nov 1 2026 -- standard card link row: Stability · Rhetoric · Military.
+// Rhetoric appears only when rhetoric-<id>.html exists, so a new tracker page
+// lights up its card the day it ships -- no edit here needed.
+(function(){
+  var css='.card-link-row{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:0 0 6px}'+
+    '.card-link-row a{font-size:12px;font-weight:700;text-decoration:none;padding:6px 12px;border-radius:16px;border:1.5px solid;white-space:nowrap}'+
+    '.card-link-row a.stab{color:#0369a1;border-color:rgba(3,105,161,.45)}'+
+    '.card-link-row a.rhet{color:#15803d;border-color:rgba(21,128,61,.45)}'+
+    '.card-link-row a.mil{color:#b45309;border-color:rgba(180,83,9,.45)}'+
+    '[data-theme="dark"] .card-link-row a.stab{color:#38bdf8}[data-theme="dark"] .card-link-row a.rhet{color:#4ade80}[data-theme="dark"] .card-link-row a.mil{color:#fbbf24}'+
+    '.card-link-sub{text-align:center;font-size:11px;font-style:italic;opacity:.7;margin:0 0 18px}';
+  var st=document.createElement('style');st.textContent=css;document.head.appendChild(st);
+  var RHET={north_korea:'dprk'};
+  var seen={};
+  function exists(url){
+    if(seen[url]===undefined)seen[url]=fetch(url,{method:'HEAD'}).then(function(r){return r.ok;}).catch(function(){return false;});
+    return seen[url];
+  }
+  function build(){
+    Array.prototype.forEach.call(document.querySelectorAll('.target-card[id$="-card"]'),function(card){
+      var id=card.id.replace(/-card$/,'');
+      var btn=card.querySelector('a.country-stability-btn');
+      if(!btn)return;
+      var sub=btn.querySelector('.btn-subtitle');
+      var wrap=document.createElement('div');
+      var stab=card.hasAttribute('data-no-stability')?'':'<a class="stab" href="'+btn.getAttribute('href')+'">📊 Stability</a>';
+      wrap.innerHTML='<div class="card-link-row">'+stab+'<a class="mil" href="military.html">🎖️ Military</a></div>'+
+        (sub?'<div class="card-link-sub">'+sub.innerHTML+'</div>':'');
+      wrap.addEventListener('click',function(e){e.stopPropagation();});
+      btn.replaceWith(wrap);
+      var rh='rhetoric-'+(RHET[id]||id)+'.html';
+      exists(rh).then(function(ok){
+        if(!ok)return;
+        var a=document.createElement('a');a.className='rhet';a.href=rh;a.textContent='📡 Rhetoric';
+        var row=wrap.querySelector('.card-link-row');row.insertBefore(a,row.querySelector('a.mil'));
+      });
+    });
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',build);else build();
+})();
+</script>
+<script>
+// Nov 2 2026 -- Asia Actor Matrix (asia_actor_matrix.py): is Beijing pressing on several
+// fronts at once? Plus who pushes back, who backs whom, and the region's rivalries. Read from the rhetoric trackers;
+// pairs touching a card also appear inside that card. Gaps are gaps, never L0.
+(function(){
+  var API=(typeof API_BASE!=='undefined'?API_BASE:'https://asifah-asia-backend.onrender.com')+'/api/asia/actor-matrix';
+  var FALLBACK={0:['Monitoring','#64748b'],1:['Rhetoric','#3b82f6'],2:['Warning','#ca8a04'],3:['Confrontation','#f97316'],
+                4:['Coercion','#ef4444'],5:['Active Conflict','#b91c1c'],6:['Red Line Breached','#7f1d1d']};
+  function rung(n){try{if(window.AsifahLadder){var r=window.AsifahLadder.get(n);if(r)return[r.label,r.color];}}catch(e){}return FALLBACK[n]||['L'+n,'#64748b'];}
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  var KORDER=['pressure','response','patron','dyad'];
+  var KLAB={pressure:'⚔️ Who is pressing whom',response:'🛡️ Who is pushing back',patron:'🤝 Who is backing whom',dyad:'⇄ Rivalries (both directions)'};
+  var css='.amx-panel{background:var(--card-bg,#fff);border:2px solid rgba(167,139,250,.45);border-left:5px solid #a78bfa;border-radius:12px;padding:18px 20px;margin:0 0 4px}'+
+    '[data-theme="dark"] .amx-panel{background:#1e293b}'+
+    '.amx-title{font-size:12px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:#7c3aed}[data-theme="dark"] .amx-title{color:#a78bfa}'+
+    '.amx-q{font-size:12.5px;font-style:italic;opacity:.75;margin:2px 0 10px}'+
+    '.amx-lines{margin:6px 0 12px 18px;padding:0}.amx-lines li{font-size:13px;line-height:1.55;margin-bottom:4px}'+
+    '.amx-kind{font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;opacity:.75;margin:12px 0 6px}'+
+    '.amx-kind.patron{color:#b45309;opacity:1}[data-theme="dark"] .amx-kind.patron{color:#fbbf24}'+
+    '.amx-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(270px,100%),1fr));gap:8px}'+
+    '.amx-row{display:flex;align-items:center;gap:8px;border:1px solid rgba(148,163,184,.35);border-radius:8px;padding:8px 10px;min-width:0}'+
+    '.amx-row.patron{border-color:rgba(245,158,11,.5)}'+
+    '.amx-pair{flex:1;min-width:0;font-size:12.5px;line-height:1.35}'+
+    '.amx-src{display:block;font-size:10.5px;opacity:.65;font-family:"Courier New",monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'+
+    '.amx-chip{flex:none;font-size:10.5px;font-weight:800;color:#fff;padding:3px 8px;border-radius:5px;white-space:nowrap}'+
+    '.amx-gap{opacity:.55}.amx-gap .amx-chip{background:#94a3b8 !important}'+
+    '.amx-meta{font-size:10.5px;opacity:.6;font-style:italic;margin-top:10px}'+
+    '.amx-card{margin:4px 0 18px;padding:12px 14px;border:1px dashed rgba(167,139,250,.55);border-radius:10px}'+
+    '.amx-card .amx-title{font-size:11px}';
+  var st=document.createElement('style');st.textContent=css;document.head.appendChild(st);
+
+  function rowHtml(c){
+    var gap=c.state!=='read';var r=gap?[c.word,'#94a3b8']:rung(c.level);
+    var s=c.source||{},src;
+    if(c.state==='read')src='read from '+s.tracker.replace('_',' ')+' tracker · '+s.kind+' '+s.id+(s.basis&&s.basis!=='tracker'?' · '+s.basis+' read':'')+(s.capped?' (capped at tracker level)':'')+(s.freshness!=='live'?' · last good read':'');
+    else if(c.state==='not_sensed')src='tracker read; this actor/vector absent';
+    else src='tracker not read this cycle';
+    var delta=(c.delta&&c.delta!==0)?(c.delta>0?' ▲':' ▼'):'';
+    return '<div class="amx-row '+esc(c.kind)+(gap?' amx-gap':'')+'"'+(c.note?' title="'+esc(c.note)+'"':'')+'>'+
+      '<div class="amx-pair">'+esc(c.actor_flag)+' '+esc(c.actor)+' → '+esc(c.target_flag)+' '+esc(c.target)+
+      '<span class="amx-src" title="'+esc(src)+'">'+esc(src)+'</span></div>'+
+      '<span class="amx-chip" style="background:'+r[1]+';">'+(gap?esc(c.word):'L'+c.level+' '+esc(r[0]))+delta+'</span></div>';
+  }
+  function grouped(pairs){
+    return KORDER.map(function(k){
+      var ps=pairs.filter(function(c){return c.kind===k;}).sort(function(a,b){return (b.state==='read')-(a.state==='read')||(b.level||0)-(a.level||0);});
+      return ps.length?'<div class="amx-kind '+k+'">'+KLAB[k]+'</div><div class="amx-grid">'+ps.map(rowHtml).join('')+'</div>':'';
+    }).join('');
+  }
+  function linesHtml(ls,n){ls=(ls||[]).slice(0,n);return ls.length?'<ul class="amx-lines">'+ls.map(function(l){return '<li>'+esc(l)+'</li>';}).join('')+'</ul>':'';}
+  function meta(d){
+    return '<div class="amx-meta">Built '+(d.built_at?esc(new Date(d.built_at).toLocaleString()):'--')+
+      ' · read from the '+esc((d.trackers_read||[]).join(', ').replace(/_/g,' ')||'--')+' trackers, each capped at its own corroborated level'+
+      ' · article-count reads cap at L3 · '+esc(((d.coverage||{}).gaps||[]).join(' '))+' · gaps are gaps, not L0.</div>';
+  }
+  // Pairs whose ids match the backend keys (same rule as ?actor=)
+  function forCard(d,id){return (d.pairs||[]).filter(function(c){return (c.keys||[]).indexOf(id)>=0;});}
+
+  function cards(d){
+    Array.prototype.forEach.call(document.querySelectorAll('.target-card[id$="-card"]'),function(card){
+      var id=card.id.replace(/-card$/,'');var ps=forCard(d,id);
+      var old=card.querySelector('.amx-card');if(old)old.remove();
+      if(!ps.length)return;                    // no tracker touches this country yet: no panel
+      var box=document.createElement('div');box.className='amx-card';
+      var read=ps.filter(function(c){return c.state==='read';});
+      var top=read.sort(function(a,b){return b.level-a.level;})[0];
+      box.innerHTML='<div class="amx-title">🧭 Actor pairs touching this country</div>'+
+        '<div class="amx-q">'+(top?'Highest: '+esc(top.actor)+' → '+esc(top.target)+' · L'+top.level+' '+esc(rung(top.level)[0]):'No pair read this cycle')+'</div>'+
+        grouped(ps);
+      box.addEventListener('click',function(e){e.stopPropagation();});
+      var anchor=card.querySelector('.card-link-sub')||card.querySelector('.card-link-row');
+      if(anchor&&anchor.parentNode)anchor.parentNode.insertBefore(box,anchor.nextSibling);
+      else (card.querySelector('.card-expanded, .expanded-content')||card).appendChild(box);
+    });
+  }
+  function load(){
+    var host=document.getElementById('actorMatrixPanel');if(!host)return;
+    var head='<div class="amx-title">🧭 Asia Actor Matrix — is Beijing pressing on several fronts at once?</div>';
+    host.innerHTML=head+'<div class="amx-meta">Loading…</div>';
+    fetch(API).then(function(r){return r.json();}).then(function(d){
+      if(!d||!d.pairs){throw new Error('no pairs');}
+      var h=d.headline;
+      host.innerHTML=head+'<div class="amx-q">'+(h?'Highest: '+esc(h.pair)+' · L'+h.level+' '+esc(rung(h.level)[0]):'No pair read this cycle')+'</div>'+
+        linesHtml(d.lines,5)+grouped(d.pairs)+meta(d);
+      // card link rows are built on DOMContentLoaded; wait a tick so the anchor exists
+      setTimeout(function(){cards(d);},0);
+    }).catch(function(){
+      host.innerHTML=head+'<div class="amx-meta">Could not reach the matrix just now -- unread, not quiet.</div>';
+    });
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',load);else load();
+})();
+</script>
+<script src="resources/asifah-standard-shell.js"></script>
+</body>
+</html>
