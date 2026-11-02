@@ -78,7 +78,7 @@ except ImportError:
     print("[Asia RSS] feed_health not available -- feed deaths will stay silent")
 
 # v1.2.0 — the ONE place the backend version lives. Bump this, nothing else.
-ASIA_BACKEND_VERSION = '1.4.0'
+ASIA_BACKEND_VERSION = '1.5.0'   # Nov 1 2026: Flight Watch
 
 try:
     from telegram_signals_asia import fetch_asia_telegram_signals
@@ -332,7 +332,7 @@ NOTAM_CACHE_TTL = 2 * 60 * 60
 UPSTASH_REDIS_URL = os.environ.get('UPSTASH_REDIS_URL')
 UPSTASH_REDIS_TOKEN = os.environ.get('UPSTASH_REDIS_TOKEN')
 NOTAM_REDIS_KEY = 'asia_notam_cache'
-FLIGHT_REDIS_KEY = 'asia_flight_cache'
+# FLIGHT_REDIS_KEY retired Nov 1 2026 -- flight_watch.py uses flights:asia:latest
 FLIGHT_CACHE_TTL = 12 * 60 * 60  # 12 hours
 THREAT_REDIS_PREFIX = 'asia_threat_'  # e.g. asia_threat_taiwan_7d
 THREAT_CACHE_TTL = 12 * 60 * 60  # 12 hours
@@ -524,34 +524,8 @@ def is_threat_cache_fresh_redis(target, days=7):
 
 
 
-def is_flight_cache_fresh():
-    """Check if Redis flight cache is fresh."""
-    result = _redis_request('GET', f"/get/{FLIGHT_REDIS_KEY}")
-    if result and result.get('result'):
-        try:
-            data = json.loads(result['result'])
-            cached_at = data.get('timestamp', '')
-            if cached_at:
-                age = (datetime.now(timezone.utc) - datetime.fromisoformat(
-                    cached_at.replace('Z', '+00:00'))).total_seconds()
-                if age < FLIGHT_CACHE_TTL:
-                    return True, data
-        except Exception:
-            pass
-    return False, None
 
 
-def save_flight_cache_redis(data):
-    """Save flight disruption cache to Redis."""
-    try:
-        payload = json.dumps(data)
-        _redis_request('POST', f"/set/{FLIGHT_REDIS_KEY}",
-                       data=payload,
-                       params={'EX': FLIGHT_CACHE_TTL},
-                       headers={"Authorization": f"Bearer {UPSTASH_REDIS_TOKEN}",
-                                "Content-Type": "application/json"})
-    except Exception as e:
-        print(f"[Redis] Flight save error: {str(e)[:100]}")
 
 
 # ========================================
@@ -616,13 +590,7 @@ def _refresh_all_caches():
 
         time.sleep(5)
 
-        try:
-            print("[Background Refresh] Refreshing flights...")
-            flight_data = _run_flight_scan()
-            cache_set('flights', flight_data)
-            print(f"[Background Refresh] ✓ Flights cached ({flight_data.get('total_disruptions', 0)} disruptions)")
-        except Exception as e:
-            print(f"[Background Refresh] ✗ Flights failed: {e}")
+        # (Nov 1 2026) Flight refresh removed -- flight_watch.py runs its own loop.
 
         time.sleep(5)
 
@@ -2788,61 +2756,6 @@ def _run_threat_scan(target, days=7):
 
 
 
-def _run_flight_scan():
-    """Run a full flight disruption scan."""
-    is_fresh, cached = is_flight_cache_fresh()
-    if is_fresh and cached:
-        cached['cached'] = True
-        cached['cache_source'] = 'redis'
-        return cached
-
-    print("[Flight Scan] Running fresh Asia flight disruption scan...")
-
-    flight_queries = [
-        'Asia flight cancelled OR suspended OR grounded Taiwan Strait',
-        'airline cancel flights Korea OR Japan OR Taiwan OR China',
-        'airspace closed Asia OR Taiwan OR Korea OR Japan',
-        'Cathay Pacific OR Japan Airlines OR Korean Air cancel suspend flights',
-        'NOTAM airspace restriction Asia Pacific',
-        'flight disruption war zone Asia',
-        'Taiwan Strait aviation warning OR closed',
-        'North Korea missile flight warning Japan Korea',
-    ]
-
-    all_articles = []
-    for fq in flight_queries:
-        try:
-            all_articles.extend(fetch_newsapi_articles(fq, days=3))
-        except Exception as e:
-            print(f"[Asia] Flight query error: {e}")
-        try:
-            all_articles.extend(fetch_gdelt_articles(fq, days=3, language='eng'))
-        except Exception as e:
-            print(f"[Asia] Flight GDELT query error: {e}")
-
-    seen_urls = set()
-    unique_articles = []
-    for a in all_articles:
-        url = a.get('url', '')
-        if url and url not in seen_urls:
-            seen_urls.add(url)
-            unique_articles.append(a)
-
-    disruptions = scan_asian_flight_disruptions(unique_articles)
-
-    result = {
-        'success': True,
-        'timestamp': datetime.now(timezone.utc).isoformat(),
-        'total_disruptions': len(disruptions),
-        'disruptions': disruptions,
-        'cancellations': disruptions,
-        'version': f'{ASIA_BACKEND_VERSION}-asia',
-        'cached': False,
-    }
-
-    save_flight_cache_redis(result)
-    cache_set('flights', result)
-    return result
 
 
 # ========================================
@@ -3071,37 +2984,6 @@ def api_asia_dashboard():
 
 
 
-@app.route('/api/asia/flights', methods=['GET'])
-def api_asia_flights():
-    """Asia-Pacific flight disruptions endpoint. Redis-cached with ?force=true override."""
-    try:
-        force = (request.args.get('force', 'false').lower() == 'true' and _public_force_allowed(request.path))
-
-        if not force:
-            cached = cache_get('flights')
-            if cached:
-                cached['cached'] = True
-                cached['cache_source'] = 'memory'
-                return jsonify(cached)
-
-            is_fresh, redis_cached = is_flight_cache_fresh()
-            if is_fresh and redis_cached:
-                redis_cached['cached'] = True
-                redis_cached['cache_source'] = 'redis'
-                cache_set('flights', redis_cached)
-                return jsonify(redis_cached)
-
-        if not check_rate_limit():
-            return jsonify({'error': 'Rate limit exceeded'}), 429
-
-        data = _run_flight_scan()
-        return jsonify(data)
-
-    except Exception as e:
-        return jsonify({
-            'success': False, 'error': str(e),
-            'disruptions': [], 'total_disruptions': 0
-        }), 500
 
 
 @app.route('/api/asia/travel-advisories', methods=['GET'])
@@ -3400,6 +3282,17 @@ try:
     register_airspace_endpoints(app, 'asia', legacy_route='/api/asia/notams')
 except Exception as _e:
     print(f"[Asia] ⚠️ Airspace Watch unavailable: {_e}")
+
+
+# ── Flight Watch (shared module, Nov 1 2026) ───────────────────────────
+# Live airline suspensions / cancellations / declared end dates / resumptions from
+# Google News, leader-only every 6 h. Same file on all five backends; this backend
+# sees only its own destinations. Requests only ever read the Redis cache.
+try:
+    from flight_watch import register_flight_endpoints
+    register_flight_endpoints(app, 'asia', legacy_routes=['/api/asia/flights'])
+except Exception as _e:
+    print(f"[Asia] ⚠️ Flight Watch unavailable: {_e}")
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
