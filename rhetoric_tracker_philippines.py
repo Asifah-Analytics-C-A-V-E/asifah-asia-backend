@@ -49,6 +49,20 @@ SENSOR DESIGN (lessons from the Nov 2 2026 Africa + Asia debug)
   * Background scan is leader-gated across gunicorn workers (Redis NX lock),
     so two workers do not both spend the GDELT budget.
 
+v1.2 (Nov 2 2026, Rachel's scoping):
+  * THE UNASKED QUESTION is not "will China and the Philippines fight?" but
+    "does Manila's alignment survive 2028?" Three readings answer it: China's
+    push, the US anchor, and the domestic hinge -- the Duterte camp, labelled
+    plainly as THE PULL TOWARD BEIJING (Rachel's call: documented record --
+    the 2016 "separation" from the US, the Beijing pivot and loans).
+  * SPOKES: writes spoke:china:philippines (China wheel, node 'adversary') and
+    spoke:us:philippines (US wheel, 'guarantor_ally'). When both are lit the
+    GPI's existing contested-spoke narrative names the Philippines contested
+    ground -- no GPI code needed for that half.
+  * NEW ACTOR bangsamoro_security: the Bangsamoro PEACE PROCESS plus the
+    IS-linked militancy that feeds on its failures. Religion is never a
+    trigger word -- the risk is the process, not the faith.
+
 DISCIPLINE: convergence framing, not prediction. The tracker reports which
 signals are present and what they would mean together; it never says whether
 kinetic action is coming.
@@ -108,7 +122,7 @@ try:
 except ImportError:
     TELEGRAM_AVAILABLE = False
 
-TRACKER_VERSION = '1.1.0-philippines'
+TRACKER_VERSION = '1.2.0-philippines'
 
 # ============================================
 # CONFIG
@@ -237,14 +251,33 @@ ACTORS = {
     ),
     # -- INTERNAL --------------------------------------------------
     'duterte_faction': _actor(
-        'Marcos-Duterte Rupture', '🇵🇭', '⚖️', '#a16207', 'internal',
-        'Domestic Cohesion / The Pro-Beijing Pull',
-        'The home front: Vice President Sara Duterte\'s impeachment fight, Rodrigo Duterte\'s ICC case, '
-        'and the faction that has historically argued for accommodation with Beijing. A divided Manila '
-        'answers the sea more slowly.',
+        'Duterte Camp — the Pull Toward Beijing', '🇵🇭', '🧲', '#a16207', 'internal',
+        'Domestic Hinge of the US-China Push-Pull',
+        'The camp that took the Philippines toward Beijing once already: Rodrigo Duterte announced a '
+        '"separation" from the United States in Beijing in 2016 and courted Chinese loans while '
+        'downplaying the 2016 arbitral award. Now: Vice President Sara Duterte\'s impeachment trial, '
+        'Rodrigo Duterte\'s ICC case, and the road to the 2028 election. This actor measures how loud '
+        'and how strong the pull is -- the reading that decides whether the current alignment outlasts '
+        'the current president.',
         ['duterte', 'sara duterte', 'rodrigo duterte', 'impeachment', 'icc duterte', 'vice president duterte',
-         'duterte supporters', 'duterte rally', 'davao'],
+         'duterte supporters', 'duterte rally', 'davao', 'pro-china', 'pro-beijing'],
         ['duterte destabilization plot', 'coup philippines'],
+    ),
+
+    # -- INTERNAL (v1.2): Bangsamoro peace process + militancy ----------
+    'bangsamoro_security': _actor(
+        'Bangsamoro Peace Process & Militancy', '🇵🇭', '🕊️', '#0f766e', 'internal',
+        'Peace Process / IS-Linked Militancy',
+        'The 2014 Bangsamoro peace deal is one of Asia\'s genuine successes and still unfinished: the first '
+        'Bangsamoro parliament (Sept 2026) came out hung, and decommissioning of former MILF fighters is '
+        'incomplete. IS-linked groups -- Dawlah Islamiyah, BIFF factions, Abu Sayyaf remnants, the network '
+        'behind the 2017 Marawi siege -- exploit every stall. The risk tracked is the PROCESS and the armed '
+        'groups that prey on it; religion is never a trigger.',
+        ['bangsamoro', 'barmm', 'milf', 'moro islamic liberation front', 'decommissioning',
+         'dawlah islamiyah', 'maute', 'biff', 'bangsamoro islamic freedom fighters', 'abu sayyaf',
+         'isis philippines', 'islamic state philippines', 'isis-linked', 'is-linked', 'marawi',
+         'lanao del sur', 'maguindanao', 'basilan', 'sulu', 'cotabato'],
+        ['marawi siege', 'isis seizes', 'bombing kills'],
     ),
 }
 
@@ -256,6 +289,8 @@ ACTOR_LEVEL_CAP = {
     'china_scs_pressure': 5, 'afp_pcg': 5,
     'beijing_coercion': 4, 'economic_pressure': 4, 'marcos_state': 4,
     'us_alliance': 4, 'regional_partners': 4, 'duterte_faction': 4,
+    # A bombing or ambush is an attack, not open hostilities across the theatre.
+    'bangsamoro_security': 4,
 }
 
 # Plain-language names for the one-line top indicator on cards and the BLUF.
@@ -267,12 +302,15 @@ PLAIN_ACTOR = {
     'afp_pcg':            "Philippine military and coast guard activity",
     'us_alliance':        "US-Philippine alliance activity",
     'regional_partners':  "Japan, Australia and other partners' activity with the Philippines",
-    'duterte_faction':    "The Marcos-Duterte political split",
+    'duterte_faction':    "The Duterte camp's pull toward Beijing",
+    'bangsamoro_security': "Bangsamoro peace-process strain and IS-linked militancy in Mindanao",
 }
 
 OUTBOUND_ACTOR_KEYS = ['marcos_state', 'afp_pcg', 'us_alliance', 'regional_partners']
+ACTIVITY_ACTORS = set(OUTBOUND_ACTOR_KEYS) | {'duterte_faction'}
+ACTIVITY_WORDS = {0: 'quiet', 1: 'routine', 2: 'active', 3: 'heightened', 4: 'surging', 5: 'surging'}
 INBOUND_ACTOR_KEYS  = ['china_scs_pressure', 'beijing_coercion', 'economic_pressure']
-INTERNAL_ACTOR_KEYS = ['duterte_faction']
+INTERNAL_ACTOR_KEYS = ['duterte_faction', 'bangsamoro_security']
 REPORTING_ACTORS    = set(INBOUND_ACTOR_KEYS)
 
 # Every actor needs the article to be ABOUT the Philippines first -- otherwise
@@ -280,7 +318,10 @@ REPORTING_ACTORS    = set(INBOUND_ACTOR_KEYS)
 PH_GATE = ['philippine', 'philippines', 'filipino', 'manila', 'marcos', 'duterte', 'pilipinas',
            'west philippine sea', 'scarborough', 'bajo de masinloc', 'second thomas', 'ayungin',
            'sierra madre', 'sabina', 'escoda', 'pag-asa', 'thitu', 'reed bank', 'recto bank',
-           'malacanang', 'malacañang', '菲律宾', '菲律賓', 'tsina']
+           'malacanang', 'malacañang', '菲律宾', '菲律賓', 'tsina',
+           # v1.2 -- Mindanao stories often never say "Philippines"
+           'mindanao', 'bangsamoro', 'barmm', 'marawi', 'sulu', 'maguindanao', 'basilan', 'cotabato',
+           'lanao del sur', 'zamboanga']
 WEATHER_TERMS = ['typhoon', 'storm', 'flood', 'landslide', 'earthquake', 'bagyo', 'capsiz', 'tsunami']
 REPORTING_LANGUAGE  = ['according to', 'reports that', 'said in a statement', 'monitors', 'tracks',
                        'detected', 'observed', 'expresses concern', 'deeply concerned', '谴责', '关切']
@@ -339,12 +380,23 @@ TRIGGERS = {
         2: ['china trade philippines', 'china investment philippines'],
         1: ['chinese tourists philippines'],
     },
+    # v1.2: re-laddered. A Senate trial is politics, not "High Alert". L4 is
+    # reserved for threats to constitutional order; the Beijing-pull phrases
+    # sit at L3 because they are the analytically loaded ones.
     'duterte_faction': {
-        5: ['coup philippines'],
-        4: ['duterte arrested', 'sara duterte impeached', 'impeachment trial'],
-        3: ['impeachment', 'icc duterte', 'duterte rally'],
-        2: ['sara duterte', 'rodrigo duterte'],
+        4: ['coup philippines', 'destabilization plot', 'withdraw support from marcos'],
+        3: ['impeachment trial', 'sara duterte impeached', 'icc trial', 'duterte rally',
+            'duterte china', 'duterte beijing', 'pro-china', 'pro-beijing'],
+        2: ['impeachment', 'icc duterte', 'sara duterte', 'rodrigo duterte'],
         1: ['duterte'],
+    },
+    'bangsamoro_security': {
+        4: ['bombing kills', 'bomb kills', 'ambush kills', 'soldiers killed', 'beheaded', 'marawi siege',
+            'kidnapped'],
+        3: ['dawlah islamiyah', 'abu sayyaf', 'maute', 'biff', 'isis-linked', 'is-linked',
+            'islamic state', 'decommissioning stalled', 'clash with soldiers'],
+        2: ['barmm', 'bangsamoro parliament', 'milf', 'decommissioning', 'chief minister'],
+        1: ['bangsamoro', 'mindanao'],
     },
 }
 
@@ -478,6 +530,9 @@ def _write_philippines_fingerprint(result):
         'us_alliance_level':      a['us_alliance']['level'],
         'regional_level':         a['regional_partners']['level'],
         'duterte_level':          a['duterte_faction']['level'],
+        'duterte_pull_level':     a['duterte_faction']['level'],
+        'bangsamoro_level':       a['bangsamoro_security']['level'],
+        'push_pull_state':        (result.get('push_pull') or {}).get('state'),
         'coercion_gap':           result['coercion_gap'],
         'mdt_watch':              result['so_what'].get('mdt_watch', False),
         'corpus_health':          result['corpus_health']['status'],
@@ -784,6 +839,11 @@ RED_LINES = [
     ('mdt_invoked', 'Mutual Defense Treaty consultations or invocation', '🛡️', '#dc2626',
      (['mutual defense treaty', 'mutual defence treaty', 'article iv', 'mdt'],
       ['invoke', 'invoked', 'invoking', 'consultations', 'triggered']), False),
+    ('mindanao_attack', 'Deadly IS-linked attack in Mindanao / Sulu', '💥', '#dc2626',
+     (['bomb', 'ambush', 'attack', 'killed', 'beheaded', 'kidnap'],
+      ['dawlah islamiyah', 'abu sayyaf', 'maute', 'biff', 'isis', 'islamic state', 'is-linked',
+       'isis-linked', 'militants'],
+      ['mindanao', 'marawi', 'sulu', 'basilan', 'maguindanao', 'lanao', 'cotabato', 'zamboanga']), False),
     ('coalition_sail', 'Multinational joint sail / partner forces in the WPS', '🟢', '#22c55e',
      (['joint sail', 'maritime cooperative activit', 'multilateral maritime'], ['philippine', 'philippines']), True),
 ]
@@ -796,6 +856,10 @@ def _check_red_lines(articles):
         if rid == 'filipino_death':   # typhoon season is not a red line
             hits = [a for a in hits if not any(w in f"{a.get('title', '')} {a.get('description', '')}".lower()
                                                 for w in WEATHER_TERMS)]
+        if rid == 'mindanao_attack':   # anniversaries and rehabilitation stories are history
+            hits = [a for a in hits if not any(w in f"{a.get('title', '')} {a.get('description', '')}".lower()
+                                                for w in ('anniversary', 'years after', 'years since', 'memorial',
+                                                          'rehabilitation', 'documentary'))]
         outlets = _outlets(hits)
         if not hits:
             continue
@@ -843,8 +907,16 @@ def _build_so_what(actor_results, red_lines, corpus_ok):
     if mdt_watch:
         parts.append('This is the band where the Mutual Defense Treaty stops being background: watch Washington\'s wording, '
                      'not just Manila\'s.')
-    if L('duterte_faction') >= 3:
-        parts.append('The Marcos-Duterte rupture is loud enough to slow Manila\'s answer at sea.')
+    if L('duterte_faction') >= 3 and inbound >= 3:
+        parts.append('Beijing\'s pressure is landing while the Duterte camp -- the pull toward Beijing -- is loud at '
+                     'home: the combination that decides whether today\'s alignment outlasts 2028.')
+    elif L('duterte_faction') >= 3:
+        parts.append('The Duterte camp, the domestic pull toward Beijing, is loud this cycle.')
+    if L('bangsamoro_security') >= 4:
+        parts.append('A deadly militant attack in Mindanao is on the record: the peace process is being tested '
+                     'by the groups that gain most if it fails.')
+    elif L('bangsamoro_security') >= 3:
+        parts.append('IS-linked or Bangsamoro peace-process strain is corroborated in Mindanao.')
     if not parts:
         parts.append('No corroborated escalation in the West Philippine Sea this cycle.')
     return {'scenario': name, 'scenario_icon': icon, 'scenario_color': color,
@@ -868,7 +940,11 @@ def _actor_sentence(k, rec):
     """One plain-language sentence about an actor, with its best evidence."""
     lv = rec.get('level', 0)
     outlets = {x.get('source') for x in rec.get('top_articles') or [] if x.get('source')}
-    s = f"{PLAIN_ACTOR.get(k, rec.get('name', k))} is at L{lv} ({ESCALATION_LEVELS[lv]['label']})"
+    # v1.2: threat words ("Confrontation") only for actors that ARE a threat.
+    # An ally's activity or a domestic camp's volume gets an intensity word.
+    word = (ESCALATION_LEVELS[lv]['label'] if k not in ACTIVITY_ACTORS
+            else ACTIVITY_WORDS.get(lv, 'active'))
+    s = f"{PLAIN_ACTOR.get(k, rec.get('name', k))} is at L{lv} ({word})"
     if outlets:
         s += f", reported by {len(outlets)} outlet{'s' if len(outlets) != 1 else ''}"
     tops = rec.get('top_articles') or []
@@ -924,7 +1000,7 @@ def _build_top_signals(result):
         if a[k]['level'] >= 3:
             sigs.append({'priority': 4 + a[k]['level'], 'category': 'actor_elevated', 'theatre': 'philippines',
                          'level': a[k]['level'], 'icon': a[k]['icon'], 'color': a[k]['level_color'],
-                         'short_text': f"{FLAG} PHILIPPINES: {a[k]['name']} at L{a[k]['level']} ({a[k]['level_label']})",
+                         'short_text': f"{FLAG} PHILIPPINES: {a[k]['name']} at L{a[k]['level']} ({ACTIVITY_WORDS.get(a[k]['level'], 'active') if k in ACTIVITY_ACTORS else a[k]['level_label']})",
                          'long_text': _actor_sentence(k, a[k])})
     if not result['corpus_health']['ok']:
         sigs.append({'priority': 3, 'category': 'sensor_degraded', 'theatre': 'philippines', 'level': 0,
@@ -952,11 +1028,96 @@ def _build_watch(result):
     if a['beijing_coercion']['level'] >= 3:
         items.append('any new Chinese administrative claim at Scarborough')
     if a['duterte_faction']['level'] >= 3:
-        items.append('whether the domestic fight spills into foreign policy votes')
+        items.append('Duterte-camp statements on China and the West Philippine Sea ahead of 2028')
+    if a['bangsamoro_security']['level'] >= 3:
+        items.append('Bangsamoro coalition-building and any IS-linked attack in Mindanao or Sulu')
     if not items:
         items = ['water cannon or ramming at Second Thomas, Scarborough or Sabina',
                  'Typhon/NMESIS moves and Beijing\'s answer']
     return 'Watch: ' + '; '.join(items) + '.'
+
+
+# ============================================
+# PUSH-PULL + SPOKES (v1.2)
+# ============================================
+SPOKE_TTL = 30 * 3600
+
+
+def _redis_setex(key, value, ttl):
+    return _redis_cmd(["SET", key, json.dumps(value, default=str), "EX", int(ttl)]) is not None
+
+
+def _trajectory(history, field, current, hub):
+    """Direction of THIS hub's reading against the last three scans.
+    expanding / contracting / holding -- the spoke_wheel_reader vocabulary.
+    With fewer than two prior points there is no direction to claim."""
+    prior = [h.get(field) for h in (history or [])[:3] if isinstance(h.get(field), (int, float))]
+    if len(prior) < 2:
+        return {'hub': hub, 'direction': 'holding', 'level': 0, 'confidence': 'no_evidence'}
+    base = sum(prior) / len(prior)
+    delta = current - base
+    direction = 'expanding' if delta >= 1 else 'contracting' if delta <= -1 else 'holding'
+    return {'hub': hub, 'direction': direction, 'level': int(current) if direction != 'holding' else 0,
+            'confidence': 'moderate' if len(prior) >= 3 else 'low'}
+
+
+def _build_push_pull(result, history):
+    a = result['actors']
+    china = result['inbound_max_level']
+    us = a['us_alliance']['level']
+    pull = a['duterte_faction']['level']
+    manila = max(a['marcos_state']['level'], a['afp_pcg']['level'])
+    if china >= 2 and us >= 2:
+        state, read = 'contested', ('Both wheels are lit: China is pressing and the US anchor is active at the '
+                                    'same time. The Philippines is contested ground this cycle.')
+    elif china >= 2:
+        state, read = 'china_push', 'China is pressing while the US anchor reads quiet this cycle.'
+    elif us >= 2:
+        state, read = 'us_anchor', 'The US anchor is active while Chinese pressure reads low this cycle.'
+    else:
+        state, read = 'quiet', 'Neither wheel is lit this cycle.'
+    if pull >= 3:
+        read += (' At home, the Duterte camp -- the pull toward Beijing -- is loud (L%d): pressure abroad and a '
+                 'rising pull at home is the combination that tests whether the alignment survives 2028.' % pull)
+    elif manila >= 3 and china >= 2:
+        read += ' Manila is answering on the record (L%d).' % manila
+    return {
+        'state': state, 'read': read,
+        'china_push': china, 'us_anchor': us, 'duterte_pull': pull, 'manila_posture': manila,
+        'trajectories': {
+            'china': _trajectory(history, 'china_push', china, 'china'),
+            'us': _trajectory(history, 'us_anchor', us, 'us'),
+        },
+    }
+
+
+def _write_spokes(result):
+    """spoke:china:philippines + spoke:us:philippines (spoke_wheel_reader convention 1).
+    Each carries the hinge, so either wheel's reader sees the domestic pull."""
+    pp = result['push_pull']
+    ts = result['scanned_at']
+    hinge = {'duterte_pull_level': pp['duterte_pull'], 'manila_posture_level': pp['manila_posture'],
+             'note': 'Duterte camp = the domestic pull toward Beijing (2016 "separation", Beijing pivot).'}
+    a = result['actors']
+    china_top = max(INBOUND_ACTOR_KEYS, key=lambda k: a[k]['level'])
+    _redis_setex('spoke:china:philippines', {
+        'ts': ts, 'spoke': 'philippines', 'hub': 'china', 'node_class': 'adversary',
+        'level': pp['china_push'],
+        'relationship': 'First-island-chain claimant under coast guard / militia pressure; US treaty ally.',
+        'top_signal': _actor_sentence(china_top, a[china_top]) if pp['china_push'] >= 2 else '',
+        'trajectory': pp['trajectories']['china'],
+        'domestic_hinge': hinge, 'push_pull_state': pp['state'],
+        'source': 'rhetoric_tracker_philippines', 'version': TRACKER_VERSION,
+    }, SPOKE_TTL)
+    _redis_setex('spoke:us:philippines', {
+        'ts': ts, 'spoke': 'philippines', 'hub': 'us', 'node_class': 'guarantor_ally',
+        'level': pp['us_anchor'],
+        'relationship': '1951 Mutual Defense Treaty; EDCA sites; Typhon / NMESIS on Luzon.',
+        'top_signal': _actor_sentence('us_alliance', a['us_alliance']) if pp['us_anchor'] >= 2 else '',
+        'trajectory': pp['trajectories']['us'],
+        'domestic_hinge': hinge, 'push_pull_state': pp['state'],
+        'source': 'rhetoric_tracker_philippines', 'version': TRACKER_VERSION,
+    }, SPOKE_TTL)
 
 
 # ============================================
@@ -1000,9 +1161,13 @@ def run_philippines_rhetoric_scan():
         'marcos_state': 2.0, 'afp_pcg': 2.5, 'us_alliance': 2.5, 'regional_partners': 1.5})
     inbound_score, inbound_max = _composite(actor_results, {
         'china_scs_pressure': 3.0, 'beijing_coercion': 2.0, 'economic_pressure': 1.0})
-    internal_max = actor_results['duterte_faction']['level']
-    # Domestic politics colours the theatre but cannot by itself make it a sea crisis.
-    overall_level = max(outbound_max, inbound_max, min(3, internal_max))
+    internal_max = max(actor_results[k]['level'] for k in INTERNAL_ACTOR_KEYS)
+    # Domestic politics colours the theatre but cannot by itself make it a sea
+    # crisis (capped at 3). A Mindanao attack is security, not politics: it can
+    # carry the theatre to its own cap (4).
+    overall_level = max(outbound_max, inbound_max,
+                        min(3, actor_results['duterte_faction']['level']),
+                        actor_results['bangsamoro_security']['level'])
 
     red_lines = _check_red_lines(articles)
     so_what = _build_so_what(actor_results, red_lines, corpus_ok)
@@ -1047,6 +1212,11 @@ def run_philippines_rhetoric_scan():
         'escalation_levels':  ESCALATION_LEVELS,
         'version':            TRACKER_VERSION,
     }
+    try:
+        _hist = _redis_lrange(HISTORY_KEY, 3)
+    except Exception:
+        _hist = []
+    result['push_pull'] = _build_push_pull(result, _hist)
     result['top_indicator'] = _build_top_indicator(result)
     result['top_signals'] = _build_top_signals(result)
     result['bluf'] = _build_bluf(result)
@@ -1065,12 +1235,19 @@ def run_philippines_rhetoric_scan():
             result['external_convergences'] = []
 
     _write_philippines_fingerprint(result)
+    try:
+        _write_spokes(result)
+    except Exception as e:
+        print(f"[Philippines Rhetoric] spoke write error: {str(e)[:100]}")
     _redis_set(RHETORIC_CACHE_KEY, result)
     _redis_lpush_trim(HISTORY_KEY, {
         'ts': result['scanned_at'], 'level': overall_level, 'label': result['overall_label'],
         'outbound_score': outbound_score, 'inbound_score': inbound_score,
         'coercion_gap': so_what['coercion_gap'], 'china_scs_level': result['china_scs_level'],
-        'us_alliance_level': result['us_alliance_level'], 'corpus': corpus_health['status']})
+        'us_alliance_level': result['us_alliance_level'], 'corpus': corpus_health['status'],
+        'china_push': result['push_pull']['china_push'], 'us_anchor': result['push_pull']['us_anchor'],
+        'duterte_pull': result['push_pull']['duterte_pull'],
+        'bangsamoro_level': actor_results['bangsamoro_security']['level']})
     print(f"[Philippines Rhetoric] done in {result['scan_time_seconds']}s | L{overall_level} | "
           f"in L{inbound_max} out L{outbound_max} gap L{so_what['coercion_gap']}")
     return result
@@ -1142,6 +1319,9 @@ def register_philippines_rhetoric_endpoints(app):
             'scenario_color': sw.get('scenario_color', '#6b7280'), 'so_what': sw.get('text', ''),
             'bluf': c.get('bluf', ''), 'watch_indicators': c.get('watch_indicators', ''),
             'top_indicator': c.get('top_indicator', ''),
+            'push_pull': c.get('push_pull') or {},
+            'duterte_pull_level': ((c.get('actors') or {}).get('duterte_faction') or {}).get('level', 0),
+            'bangsamoro_level': ((c.get('actors') or {}).get('bangsamoro_security') or {}).get('level', 0),
             'top_signals': (c.get('top_signals') or [])[:3],
             'red_lines_count': len(c.get('red_lines') or []),
             'total_articles': c.get('total_articles', 0),

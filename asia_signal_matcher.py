@@ -40,7 +40,7 @@ import re
 import unicodedata
 from urllib.parse import urlparse
 
-MATCHER_VERSION = '1.0.1'
+MATCHER_VERSION = '1.0.2'
 
 
 # ----------------------------------------------------------------------------
@@ -345,6 +345,13 @@ PH_MIL = ['philippine navy', 'philippine coast guard', 'pcg', 'armed forces of t
 PH_GOV = ['marcos', 'malacanang', 'malacañang', 'dfa', 'department of foreign affairs', 'manalo', 'lazaro',
           'national security council', 'nsc', 'national maritime council', 'palace']
 
+MINDANAO = ['mindanao', 'marawi', 'sulu', 'basilan', 'maguindanao', 'lanao', 'cotabato', 'zamboanga', 'tawi-tawi',
+            'bangsamoro', 'barmm']
+MINDANAO_ARMED = ['dawlah islamiyah', 'abu sayyaf', 'maute', 'biff', 'bangsamoro islamic freedom fighters',
+                  'isis', 'islamic state', 'is-linked', 'isis-linked', 'militants', 'militant']
+MINDANAO_PAST = ['anniversary', 'years after', 'years since', 'memorial', 'rehabilitation', 'rebuild*',
+                 'film', 'movie', 'documentary', 'remembers', 'compensation']
+
 PROFILES['philippines'] = {
     'china_scs_pressure': [
         _R('lethal', 5, [CN_ACT, ['killed', 'sank', 'sunk', 'dead', 'drown*'], PH + WPS], exclude=WEATHER),
@@ -391,9 +398,28 @@ PROFILES['philippines'] = {
                                    ['defense', 'defence', 'security', 'maritime', 'coast guard']]),
     ],
     'duterte_faction': [
+        # v1.2.0: the pull toward Beijing -- the Duterte name WITH China WITH a pivot word.
+        _R('beijing_pull', 3, [['duterte'], CN, ['pivot*', 'closer ties', 'pro-china', 'pro-beijing', 'loan*',
+                                                 'visit*', 'separation', 'friendship', 'set aside', 'joint development',
+                                                 'accommodat*', 'warmer']], exclude=['anniversary']),
         _R('fracture', 3, [['duterte'], ['impeach*', 'icc', 'arrest*', 'extradit*', 'destabiliz*', 'coup',
                                          'rally', 'protest*', 'the hague']]),
         _R('faction', 2, [['duterte'], ['china', 'pro-china', 'election*', 'senate', 'marcos']]),
+    ],
+    # v1.2.0: the peace PROCESS and the armed groups that prey on it. Religion is
+    # never a trigger word. Anniversaries, rehabilitation and films are history.
+    'bangsamoro_security': [
+        _R('militant_attack', 4, [MINDANAO_ARMED, ['bomb*', 'ambush*', 'killed', 'beheaded', 'kidnap*', 'attack*',
+                                                  'clash*', 'firefight'], MINDANAO],
+           exclude=MINDANAO_PAST),
+        _R('militant_activity', 3, [MINDANAO_ARMED, MINDANAO + PH], exclude=MINDANAO_PAST),
+        _R('process_strain', 3, [['bangsamoro', 'barmm', 'milf', 'moro islamic liberation front'],
+                                 ['decommissioning', 'stall*', 'walk out', 'walkout', 'collapse*', 'deadlock*',
+                                  'postpone*', 'suspend*', 'violation*', 'hung parliament', 'no majority']],
+           exclude=MINDANAO_PAST),
+        _R('process', 2, [['bangsamoro', 'barmm', 'milf'], ['parliament', 'chief minister', 'transition',
+                                                          'normalization', 'normalisation', 'peace', 'election*']],
+           exclude=MINDANAO_PAST),
     ],
 }
 

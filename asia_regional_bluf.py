@@ -809,8 +809,10 @@ def _country_line(theatre, data):
         1 for r in _safe_list(data.get('red_lines'))
         if _safe_dict(r).get('status') == 'BREACHED'
     )
-    # The theatre's own plain-language line, if it publishes one
-    own = _safe_str(raw.get('bluf')).strip()
+    # The theatre's own plain-language line, if it publishes one. v2.6 (Nov
+    # 2026): a tracker's plain-language top_indicator outranks its bluf (the
+    # bluf is a level readout; the top indicator is the sentence a reader needs).
+    own = _safe_str(raw.get('top_indicator')).strip() or _safe_str(raw.get('bluf')).strip()
     if not own and sigs:
         own = _safe_str(_safe_dict(sigs[0]).get('long_text')).strip()
     role = THEATRE_ROLE.get(theatre, '')
