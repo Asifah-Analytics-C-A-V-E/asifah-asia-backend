@@ -108,7 +108,7 @@ try:
 except ImportError:
     TELEGRAM_AVAILABLE = False
 
-TRACKER_VERSION = '1.0.0-philippines'
+TRACKER_VERSION = '1.1.0-philippines'
 
 # ============================================
 # CONFIG
@@ -246,6 +246,28 @@ ACTORS = {
          'duterte supporters', 'duterte rally', 'davao'],
         ['duterte destabilization plot', 'coup philippines'],
     ),
+}
+
+# L5 ASSERTION RULE (Rachel, Oct 6 2026): only a ladder that measures hostilities
+# may assert L5 Active Conflict. China at sea (deaths / sinking) and the AFP/PCG
+# (Philippine forces firing) can; diplomatic, economic, alliance and domestic
+# political ladders top out at L4 however loud they get.
+ACTOR_LEVEL_CAP = {
+    'china_scs_pressure': 5, 'afp_pcg': 5,
+    'beijing_coercion': 4, 'economic_pressure': 4, 'marcos_state': 4,
+    'us_alliance': 4, 'regional_partners': 4, 'duterte_faction': 4,
+}
+
+# Plain-language names for the one-line top indicator on cards and the BLUF.
+PLAIN_ACTOR = {
+    'china_scs_pressure': "Chinese coast guard and militia pressure on Philippine vessels and features",
+    'beijing_coercion':   "Beijing's political and legal pressure on Manila",
+    'economic_pressure':  "Chinese economic pressure on the Philippines",
+    'marcos_state':       "Manila's diplomatic response (Palace / DFA)",
+    'afp_pcg':            "Philippine military and coast guard activity",
+    'us_alliance':        "US-Philippine alliance activity",
+    'regional_partners':  "Japan, Australia and other partners' activity with the Philippines",
+    'duterte_faction':    "The Marcos-Duterte political split",
 }
 
 OUTBOUND_ACTOR_KEYS = ['marcos_state', 'afp_pcg', 'us_alliance', 'regional_partners']
@@ -688,6 +710,12 @@ def _score_actor(actor_key, articles):
                     'source': (a.get('source') or {}).get('name', ''), 'publishedAt': a.get('publishedAt', ''),
                     'level': lvl, 'trigger': trig, 'contribution': round(c, 2), 'is_reporting': is_rep})
     level = 0 if score == 0 else 1 if score < 3 else 2 if score < 8 else 3 if score < 16 else 4 if score < 28 else 5
+    # v1.1 (Nov 2 2026): VOLUME CANNOT CLIMB ABOVE EVIDENCE. 205 articles about
+    # the Duterte impeachment trial summed past 28 and printed the domestic
+    # split at L5 Active Conflict. The score now sets the level only up to the
+    # highest trigger an article actually carried ...
+    if top:
+        level = min(level, max(t['level'] for t in top))
     # Tripwires force L4 -- but only when 2+ outlets carry them (one blog is not a tripwire)
     for tw in actor.get('tripwires', []):
         outlets = {(a.get('source') or {}).get('name', '') for a in articles
@@ -700,6 +728,9 @@ def _score_actor(actor_key, articles):
         hi = {t['source'] for t in top if t['level'] >= 3}
         if len(hi) < 2 and not any(str(m).startswith('TRIPWIRE') for m in matched):
             level = 2
+    # ... and each actor's own ceiling applies (L5 assertion rule, Oct 6 2026:
+    # Active Conflict only where the ladder measures hostilities).
+    level = min(level, ACTOR_LEVEL_CAP.get(actor_key, 5))
     top.sort(key=lambda x: x['contribution'], reverse=True)
     return {
         'actor': actor_key, 'name': actor['name'], 'flag': actor['flag'], 'icon': actor['icon'],
@@ -824,6 +855,46 @@ def _build_so_what(actor_results, red_lines, corpus_ok):
 FLAG = '🇵🇭'
 
 
+def _clean_headline(title):
+    t = str(title or '').strip()
+    if ' - ' in t:
+        head, tail = t.rsplit(' - ', 1)
+        if 0 < len(tail) <= 60:
+            t = head
+    return t[:140]
+
+
+def _actor_sentence(k, rec):
+    """One plain-language sentence about an actor, with its best evidence."""
+    lv = rec.get('level', 0)
+    outlets = {x.get('source') for x in rec.get('top_articles') or [] if x.get('source')}
+    s = f"{PLAIN_ACTOR.get(k, rec.get('name', k))} is at L{lv} ({ESCALATION_LEVELS[lv]['label']})"
+    if outlets:
+        s += f", reported by {len(outlets)} outlet{'s' if len(outlets) != 1 else ''}"
+    tops = rec.get('top_articles') or []
+    if tops and tops[0].get('title'):
+        s += f". Latest: \u201c{_clean_headline(tops[0]['title'])}\u201d"
+    return s + '.'
+
+
+def _build_top_indicator(result):
+    """v1.1 -- THE one plain-language line the stability card and the Asia BLUF lead with.
+    Order: a corroborated red line, else the highest actor (China at sea wins ties),
+    else an honest 'nothing corroborated' / 'thin read' line."""
+    for rl in result.get('red_lines') or []:
+        if rl.get('status') == 'BREACHED' and not rl.get('positive'):
+            return f"{rl['label']} -- reported by {rl['outlets']} outlets."
+    a = result['actors']
+    order = INBOUND_ACTOR_KEYS + ['afp_pcg', 'us_alliance', 'marcos_state', 'regional_partners'] + INTERNAL_ACTOR_KEYS
+    best = max(order, key=lambda k: (a[k]['level'], -order.index(k)))
+    if a[best]['level'] >= 2:
+        return _actor_sentence(best, a[best])
+    if not result['corpus_health']['ok']:
+        return ("Too few articles were collected this cycle to judge the West Philippine Sea; "
+                "low levels mean less evidence, not a calm sea.")
+    return "No corroborated escalation was reported in the West Philippine Sea this cycle."
+
+
 def _build_top_signals(result):
     sigs = []
     lvl = result['overall_level']
@@ -854,7 +925,7 @@ def _build_top_signals(result):
             sigs.append({'priority': 4 + a[k]['level'], 'category': 'actor_elevated', 'theatre': 'philippines',
                          'level': a[k]['level'], 'icon': a[k]['icon'], 'color': a[k]['level_color'],
                          'short_text': f"{FLAG} PHILIPPINES: {a[k]['name']} at L{a[k]['level']} ({a[k]['level_label']})",
-                         'long_text': f"PHILIPPINES {a[k]['name']}: L{a[k]['level']} {a[k]['level_label']} -- {a[k]['role']}."})
+                         'long_text': _actor_sentence(k, a[k])})
     if not result['corpus_health']['ok']:
         sigs.append({'priority': 3, 'category': 'sensor_degraded', 'theatre': 'philippines', 'level': 0,
                      'icon': '📡', 'color': '#6b7280',
@@ -918,6 +989,11 @@ def run_philippines_rhetoric_scan():
         except Exception as e:
             print(f"[Philippines Rhetoric] cooc error: {str(e)[:80]}")
     for k, r in actor_results.items():
+        cap = ACTOR_LEVEL_CAP.get(k, 5)
+        if r['level'] > cap:
+            r['level'] = cap
+            r['level_label'] = ESCALATION_LEVELS[cap]['label']
+            r['level_color'] = ESCALATION_LEVELS[cap]['color']
         print(f"[Philippines Rhetoric] {k}: L{r['level']}")
 
     outbound_score, outbound_max = _composite(actor_results, {
@@ -971,6 +1047,7 @@ def run_philippines_rhetoric_scan():
         'escalation_levels':  ESCALATION_LEVELS,
         'version':            TRACKER_VERSION,
     }
+    result['top_indicator'] = _build_top_indicator(result)
     result['top_signals'] = _build_top_signals(result)
     result['bluf'] = _build_bluf(result)
     result['watch_indicators'] = _build_watch(result)
@@ -1064,6 +1141,7 @@ def register_philippines_rhetoric_endpoints(app):
             'scenario': sw.get('scenario', ''), 'scenario_icon': sw.get('scenario_icon', ''),
             'scenario_color': sw.get('scenario_color', '#6b7280'), 'so_what': sw.get('text', ''),
             'bluf': c.get('bluf', ''), 'watch_indicators': c.get('watch_indicators', ''),
+            'top_indicator': c.get('top_indicator', ''),
             'top_signals': (c.get('top_signals') or [])[:3],
             'red_lines_count': len(c.get('red_lines') or []),
             'total_articles': c.get('total_articles', 0),
