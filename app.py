@@ -78,7 +78,7 @@ except ImportError:
     print("[Asia RSS] feed_health not available -- feed deaths will stay silent")
 
 # v1.2.0 — the ONE place the backend version lives. Bump this, nothing else.
-ASIA_BACKEND_VERSION = '1.5.0'   # Nov 1 2026: Flight Watch
+ASIA_BACKEND_VERSION = '1.6.0'   # Nov 2 2026: Asia Actor Matrix | Nov 1 2026: Flight Watch
 
 try:
     from telegram_signals_asia import fetch_asia_telegram_signals
@@ -3238,6 +3238,13 @@ if DPRK_RHETORIC_AVAILABLE:
 
 if ASIA_BLUF_AVAILABLE:
     register_asia_bluf_routes(app)
+
+# Asia Actor Matrix (Nov 2 2026) -- reads the same trackers as the BLUF; scans nothing.
+try:
+    from asia_actor_matrix import register_asia_actor_matrix
+    register_asia_actor_matrix(app)
+except Exception as _e:
+    print(f"[Asia Backend] ⚠️ Asia Actor Matrix unavailable: {_e}")
 
 if CHINA_STABILITY_AVAILABLE:
     register_china_stability_endpoints(app)
