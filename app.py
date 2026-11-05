@@ -55,6 +55,23 @@ import xml.etree.ElementTree as ET
 import threading
 import json
 
+# ── v1.7.1 (Nov 5 2026, source census): lenient feed parsing ──
+# Ariana News failed with "XML declaration not at start" (a blank line before
+# <?xml). Tolerates that, a BOM, control characters and bare '&'.
+_BAD_XML_CHARS = re.compile(r'[\x00-\x08\x0b\x0c\x0e-\x1f]')
+_BARE_AMP = re.compile(r'&(?!#?[A-Za-z0-9]+;)')
+
+
+def _lenient_root(content):
+    try:
+        return ET.fromstring(content)
+    except ET.ParseError:
+        text = content.decode('utf-8', 'replace') if isinstance(content, bytes) else content
+        text = _BAD_XML_CHARS.sub('', text.lstrip('\ufeff \r\n\t'))
+        text = _BARE_AMP.sub('&amp;', text)
+        return ET.fromstring(text.encode('utf-8'))
+
+
 # ── Shared gateways + feed health (Sep 27 2026) ──────────────────────
 # Optional imports: a missing module changes nothing except the honesty of
 # the /health payload, which says so rather than implying all is well.
@@ -78,7 +95,7 @@ except ImportError:
     print("[Asia RSS] feed_health not available -- feed deaths will stay silent")
 
 # v1.2.0 — the ONE place the backend version lives. Bump this, nothing else.
-ASIA_BACKEND_VERSION = '1.7.0'   # Nov 2 2026 (pm): Philippines tracker + co-occurrence sensors | Nov 2 2026: Asia Actor Matrix | Nov 1 2026: Flight Watch
+ASIA_BACKEND_VERSION = '1.7.1'   # Nov 5 2026: source census -- 12 blocked/dead feeds via Google News site: queries, lenient XML parsing (Ariana) | Nov 2 2026 (pm): Philippines tracker + co-occurrence sensors | Nov 2 2026: Asia Actor Matrix | Nov 1 2026: Flight Watch
 
 try:
     from telegram_signals_asia import fetch_asia_telegram_signals
@@ -1613,7 +1630,7 @@ def fetch_google_news_rss(query, source_name, lang='en', gl='US'):
                              http_status=response.status_code,
                              duration_ms=(time.time() - _t0) * 1000)
         if response.status_code == 200:
-            root = ET.fromstring(response.content)
+            root = _lenient_root(response.content)
             items = root.findall('.//item')
             for item in items[:15]:
                 title_elem = item.find('title')
@@ -1654,7 +1671,7 @@ def fetch_direct_rss(url, source_name, weight=0.85, max_items=15):
                              http_status=response.status_code,
                              duration_ms=(time.time() - _t0) * 1000)
         if response.status_code == 200:
-            root = ET.fromstring(response.content)
+            root = _lenient_root(response.content)
             items = root.findall('.//item')
             for item in items[:max_items]:
                 title_elem = item.find('title')
@@ -1780,7 +1797,7 @@ def fetch_reddit_posts(target, keywords, days=7):
                 continue
 
             try:
-                root = ET.fromstring(response.content)
+                root = _lenient_root(response.content)
             except ET.ParseError:
                 counts['parse_error'] += 1
                 print(f"[Asia Reddit] r/{subreddit} unparseable feed "
@@ -2318,7 +2335,7 @@ def _run_threat_scan(target, days=7):
         # Tuoi Tre News - major daily (EN edition)
         try:
             rss_articles.extend(fetch_direct_rss(
-                'https://tuoitrenews.vn/rss/news.rss',
+                'https://news.google.com/rss/search?q=site:tuoitrenews.vn&hl=en&gl=US&ceid=US:en',   # census Nov 5: own feed 404
                 'Tuoi Tre News', weight=0.8))
         except Exception as e:
             print(f"Tuoi Tre RSS error: {e}")
@@ -2374,7 +2391,7 @@ def _run_threat_scan(target, days=7):
         # Yonhap News (English) — South Korea wire service with DPRK desk
         try:
             rss_articles.extend(fetch_direct_rss(
-                'https://en.yna.co.kr/RSS/northkorea.xml',
+                'https://news.google.com/rss/search?q=site:en.yna.co.kr+north+korea&hl=en&gl=US&ceid=US:en',   # census Nov 5: own feed 404
                 'Yonhap News', weight=1.0))
         except Exception as e:
             print(f"Yonhap RSS error: {e}")
@@ -2404,14 +2421,14 @@ def _run_threat_scan(target, days=7):
         # Dawn — Pakistan's leading English newspaper
         try:
             rss_articles.extend(fetch_direct_rss(
-                'https://www.dawn.com/feeds/home',
+                'https://news.google.com/rss/search?q=site:dawn.com&hl=en&gl=US&ceid=US:en',   # census Nov 5: own feed 403
                 'Dawn', weight=0.95))
         except Exception as e:
             print(f"Dawn RSS error: {e}")
         # Geo News — major Pakistani broadcaster
         try:
             rss_articles.extend(fetch_direct_rss(
-                'https://www.geo.tv/rss/10',
+                'https://news.google.com/rss/search?q=site:geo.tv&hl=en&gl=US&ceid=US:en',   # census Nov 5: own feed malformed XML
                 'Geo News', weight=0.85))
         except Exception as e:
             print(f"Geo News RSS error: {e}")
@@ -2425,14 +2442,14 @@ def _run_threat_scan(target, days=7):
         # RFE/RL Gandhara — Pakistan/Afghan borderlands specialist
         try:
             rss_articles.extend(fetch_direct_rss(
-                'https://gandhara.rferl.org/api/zrqmilty',
+                'https://news.google.com/rss/search?q=site:gandhara.rferl.org&hl=en&gl=US&ceid=US:en',   # census Nov 5: own feed returned an empty body
                 'RFE/RL Gandhara (PK)', weight=0.95))
         except Exception as e:
             print(f"Gandhara PK RSS error: {e}")
         # SATP — South Asia Terrorism Portal incident reports
         try:
             rss_articles.extend(fetch_direct_rss(
-                'https://www.satp.org/rss/conflict-updates.xml',
+                'https://news.google.com/rss/search?q=site:satp.org&hl=en&gl=US&ceid=US:en',   # census Nov 5: own feed 403
                 'SATP Pakistan', weight=0.9))
         except Exception as e:
             print(f"SATP RSS error: {e}")
@@ -2463,21 +2480,21 @@ def _run_threat_scan(target, days=7):
         # Tolo News — Afghan broadcaster
         try:
             rss_articles.extend(fetch_direct_rss(
-                'https://tolonews.com/rss.xml',
+                'https://news.google.com/rss/search?q=site:tolonews.com&hl=en&gl=US&ceid=US:en',   # census Nov 5: own feed 403
                 'Tolo News', weight=0.9))
         except Exception as e:
             print(f"Tolo News RSS error: {e}")
         # Khaama Press — Afghan news agency
         try:
             rss_articles.extend(fetch_direct_rss(
-                'https://www.khaama.com/feed/',
+                'https://news.google.com/rss/search?q=site:khaama.com&hl=en&gl=US&ceid=US:en',   # census Nov 5: own feed bot challenge (202)
                 'Khaama Press', weight=0.9))
         except Exception as e:
             print(f"Khaama Press RSS error: {e}")
         # Pajhwok Afghan News — gold standard ground-level Afghan reporting
         try:
             rss_articles.extend(fetch_direct_rss(
-                'https://pajhwok.com/feed/',
+                'https://news.google.com/rss/search?q=site:pajhwok.com&hl=en&gl=US&ceid=US:en',   # census Nov 5: own feed 410 Gone
                 'Pajhwok Afghan News', weight=0.9))
         except Exception as e:
             print(f"Pajhwok RSS error: {e}")
@@ -2491,21 +2508,21 @@ def _run_threat_scan(target, days=7):
         # RFE/RL Gandhara — Afghan/Pak borderlands specialist
         try:
             rss_articles.extend(fetch_direct_rss(
-                'https://gandhara.rferl.org/api/zrqmilty',
+                'https://news.google.com/rss/search?q=site:gandhara.rferl.org&hl=en&gl=US&ceid=US:en',   # census Nov 5: own feed returned an empty body
                 'RFE/RL Gandhara', weight=0.95))
         except Exception as e:
             print(f"Gandhara RSS error: {e}")
         # ReliefWeb — UN/NGO humanitarian + security incidents
         try:
             rss_articles.extend(fetch_direct_rss(
-                'https://reliefweb.int/country/afg/rss.xml',
+                'https://news.google.com/rss/search?q=site:reliefweb.int+afghanistan&hl=en&gl=US&ceid=US:en',   # census Nov 5: own feed bot challenge (202); ReliefWeb API planned under O8
                 'ReliefWeb Afghanistan', weight=0.85))
         except Exception as e:
             print(f"ReliefWeb RSS error: {e}")
         # Afghanistan Analysts Network — deep analytical reporting
         try:
             rss_articles.extend(fetch_direct_rss(
-                'https://www.afghanistan-analysts.org/feed/',
+                'https://news.google.com/rss/search?q=site:afghanistan-analysts.org&hl=en&gl=US&ceid=US:en',   # census Nov 5: own feed bot challenge (202)
                 'Afghanistan Analysts Network', weight=0.95))
         except Exception as e:
             print(f"AAN RSS error: {e}")
