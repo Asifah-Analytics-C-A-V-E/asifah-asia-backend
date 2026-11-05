@@ -2501,7 +2501,7 @@ def _run_threat_scan(target, days=7):
         # Ariana News — Afghan broadcaster
         try:
             rss_articles.extend(fetch_direct_rss(
-                'https://ariananews.af/feed/',
+                'https://news.google.com/rss/search?q=site:ariananews.af&hl=en&gl=US&ceid=US:en',
                 'Ariana News', weight=0.85))
         except Exception as e:
             print(f"Ariana News RSS error: {e}")

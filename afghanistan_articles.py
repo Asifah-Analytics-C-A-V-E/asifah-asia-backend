@@ -45,8 +45,8 @@ FEEDS = [
     ('GoogleNews-EN', 'https://news.google.com/rss/search?q=Afghanistan%20(Taliban%20OR%20ISKP%20OR%20TTP%20OR%20Kabul)&hl=en-US&gl=US&ceid=US:en', 'rss', 'en'),
     ('GoogleNews-Dari', 'https://news.google.com/rss/search?q=%D8%A7%D9%81%D8%BA%D8%A7%D9%86%D8%B3%D8%AA%D8%A7%D9%86&hl=fa&gl=AF&ceid=AF:fa', 'rss', 'fa'),
     ('GoogleNews-Pashto', 'https://news.google.com/rss/search?q=%D8%A7%D9%81%D8%BA%D8%A7%D9%86%D8%B3%D8%AA%D8%A7%D9%86&hl=ps&gl=AF&ceid=AF:ps', 'rss', 'ps'),
-    ('TOLOnews', 'https://tolonews.com/rss', 'rss', 'en'),
-    ('Pajhwok', 'https://pajhwok.com/feed/', 'rss', 'en'),
+    ('TOLOnews', 'https://news.google.com/rss/search?q=site:tolonews.com&hl=en&gl=US&ceid=US:en', 'rss', 'en'),
+    ('Pajhwok', 'https://news.google.com/rss/search?q=site:pajhwok.com&hl=en&gl=US&ceid=US:en', 'rss', 'en'),
     ('Hasht-e Subh', 'https://8am.media/feed/', 'rss', 'fa'),
     ('BBC Pashto', 'https://feeds.bbci.co.uk/pashto/rss.xml', 'rss', 'ps'),
     ('BBC Persian Afghanistan', 'https://feeds.bbci.co.uk/persian/afghanistan/rss.xml', 'rss', 'fa'),
@@ -223,3 +223,51 @@ def register_afghanistan_articles_endpoints(app):
 
     _start_background_refresh()
     print('[AFG Articles] Endpoints registered: /api/asia/threat/afghanistan (+/health)')
+
+
+# ── Nov 5 2026 (URL sweep): every fetch here now reports to feed_health, so the
+# /api/census link can see these feeds. Before, they could die silently: a dark
+# feed makes a country look quiet when it is only unread. Never raises.
+# Reports each feed at most once every 2h per process (2 Upstash commands per
+# report): enough to tell healthy from dead, without multiplying Redis traffic.
+try:
+    from feed_health import record_fetch as _fh_record
+    _fh_inner__fetch_feed = _fetch_feed
+    _fh_last__fetch_feed = {}
+
+    def _fetch_feed(*a, **k):
+        _t0 = time.time()
+        try:
+            _url, _label = a[1], a[0]
+        except Exception:
+            _url, _label = None, None
+        if _url and time.time() - _fh_last__fetch_feed.get(_url, 0) < 7200:
+            _url = None                                    # reported recently: skip
+        elif _url:
+            _fh_last__fetch_feed[_url] = time.time()
+        try:
+            _out = _fh_inner__fetch_feed(*a, **k)
+        except Exception as _e:
+            try:
+                if _url:
+                    _fh_record('asia', _url, error=_e, label=_label,
+                               duration_ms=(time.time() - _t0) * 1000)
+            except Exception:
+                pass
+            raise
+        try:
+            if _url:
+                _n = len(_out) if isinstance(_out, (list, tuple)) else (
+                    len(_out.get('articles') or []) if isinstance(_out, dict) else (1 if _out else 0))
+                if _n:
+                    _fh_record('asia', _url, items=_n, http_status=200, label=_label,
+                               duration_ms=(time.time() - _t0) * 1000)
+                else:
+                    _fh_record('asia', _url, error='no items (blocked, moved or empty; '
+                               'this tracker does not keep the reason)', label=_label,
+                               duration_ms=(time.time() - _t0) * 1000)
+        except Exception:
+            pass
+        return _out
+except ImportError:
+    pass
