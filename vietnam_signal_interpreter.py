@@ -799,7 +799,7 @@ def build_top_signals(scan_data):
             'icon':       '🔴',
             'color':      '#dc2626' if overall_level >= 5 else '#ef4444',
             'short_text': f'{VIETNAM_FLAG} VIETNAM L{overall_level} -- Composite SCS pressure',
-            'long_text':  f'VIETNAM at L{overall_level} composite pressure (score {overall_score}/100). Multi-vector activity across CCG/militia pressure, sovereignty posture, and coalition signaling.',
+            'long_text':  f'VIETNAM at L{overall_level} composite pressure{(' (score %d/100)' % overall_score) if overall_score else ''}. Multi-vector activity across CCG/militia pressure, sovereignty posture, and coalition signaling.',
         })
 
     # 3. COERCION-RESPONSE GAP (Vietnam-specific KEY signal)

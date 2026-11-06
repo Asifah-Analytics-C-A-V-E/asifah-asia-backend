@@ -434,14 +434,29 @@ def is_cache_fresh(data):
 # ============================================
 # DATA FETCHERS — RSS / GDELT / NewsAPI / Brave
 # ============================================
+RSS_MAX_AGE_DAYS = 10
+
+
 def fetch_rss_articles(feed_id, feed_config, max_articles=30):
     """Fetch + parse a single RSS feed."""
     if not FEEDPARSER_AVAILABLE:
         return []
     articles = []
+    # Nov 6 2026: RSS (incl. Google News) hands back items months old; the TTP
+    # "SURGE" was citing TOLOnews pieces from Aug 26 and Sep 4. Drop anything
+    # dated more than RSS_MAX_AGE_DAYS ago; undated items are kept (GDELT /
+    # NewsAPI are already windowed at the source).
+    _cutoff = datetime.now(timezone.utc) - timedelta(days=RSS_MAX_AGE_DAYS)
     try:
         feed = feedparser.parse(feed_config['url'])
         for entry in feed.entries[:max_articles]:
+            _pp = entry.get('published_parsed') or entry.get('updated_parsed')
+            if _pp:
+                try:
+                    if datetime(*_pp[:6], tzinfo=timezone.utc) < _cutoff:
+                        continue
+                except Exception:
+                    pass
             articles.append({
                 'title':       entry.get('title', ''),
                 'description': entry.get('summary', '') or entry.get('description', ''),

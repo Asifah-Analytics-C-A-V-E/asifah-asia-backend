@@ -865,7 +865,7 @@ def build_top_signals(scan_data):
             'icon':       '🔴',
             'color':      '#dc2626' if overall_level >= 5 else '#ef4444',
             'short_text': f'{CHINA_FLAG} CHINA L{overall_level} — Coercion posture',
-            'long_text':  f'CHINA at L{overall_level} — composite coercion posture (score {overall_score}/100). Multi-vector pressure across kinetic, economic, and political channels.',
+            'long_text':  f'CHINA at L{overall_level} — composite coercion posture{(' (score %d/100)' % overall_score) if overall_score else ''}. Multi-vector pressure across kinetic, economic, and political channels.',
         })
 
     # ============================================

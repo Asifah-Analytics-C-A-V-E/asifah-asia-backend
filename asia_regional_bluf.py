@@ -977,6 +977,9 @@ _REGIONAL_AXIS_SETS = {
     'hormuz_japan_oil_dependency': ['economic'],
     'green_line_active': ['diplomatic'], 'diplomatic_track_active': ['diplomatic'],
     'diplomatic_active': ['diplomatic'], 'coalition_positive': ['diplomatic'],
+    # Nov 6 2026: alignment drift is a diplomatic read; it was defaulting to KINETIC
+    # and Afghanistan's "Drifting" put an L4 on the Asia kinetic axis.
+    'alignment_drift': ['diplomatic'],
     'humanitarian': ['humanitarian'], 'displacement': ['humanitarian'],
     'health_emergency': ['humanitarian'], 'food_price_crisis': ['humanitarian'],
 }

@@ -883,7 +883,7 @@ def build_top_signals(scan_data):
             'icon':       '🔴',
             'color':      '#dc2626' if overall_level >= 5 else '#ef4444',
             'short_text': f'{TAIWAN_FLAG} TAIWAN L{overall_level} — Composite pressure',
-            'long_text':  f'TAIWAN at L{overall_level} composite pressure (score {overall_score}/100). Multi-vector activity across PLA pressure, deterrence, and domestic signaling.',
+            'long_text':  f'TAIWAN at L{overall_level} composite pressure{(' (score %d/100)' % overall_score) if overall_score else ''}. Multi-vector activity across PLA pressure, deterrence, and domestic signaling.',
         })
 
     # ============================================

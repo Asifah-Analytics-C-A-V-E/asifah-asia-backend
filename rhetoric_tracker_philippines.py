@@ -251,7 +251,7 @@ ACTORS = {
     ),
     # -- INTERNAL --------------------------------------------------
     'duterte_faction': _actor(
-        'Duterte Camp — the Pull Toward Beijing', '🇵🇭', '🧲', '#a16207', 'internal',
+        'Duterte Camp (Beijing-leaning opposition)', '🇵🇭', '🧲', '#a16207', 'internal',
         'Domestic Hinge of the US-China Push-Pull',
         'The camp that took the Philippines toward Beijing once already: Rodrigo Duterte announced a '
         '"separation" from the United States in Beijing in 2016 and courted Chinese loans while '
@@ -302,7 +302,9 @@ PLAIN_ACTOR = {
     'afp_pcg':            "Philippine military and coast guard activity",
     'us_alliance':        "US-Philippine alliance activity",
     'regional_partners':  "Japan, Australia and other partners' activity with the Philippines",
-    'duterte_faction':    "The Duterte camp's pull toward Beijing",
+    # Nov 6 2026: the level measures how LOUD the Duterte camp is (ICC trial, politics), not
+    # a measured pull toward Beijing; the old label read an ICC headline as Beijing alignment.
+    'duterte_faction':    "Duterte-camp activity (ICC trial, opposition politics)",
     'bangsamoro_security': "Bangsamoro peace-process strain and IS-linked militancy in Mindanao",
 }
 
