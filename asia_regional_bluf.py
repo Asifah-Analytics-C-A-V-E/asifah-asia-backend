@@ -154,7 +154,8 @@ ESCALATION_COLORS = {
     2: '#f59e0b',
     3: '#f97316',
     4: '#ef4444',
-    5: '#dc2626',
+    5: '#991b1b',   # Nov 6 2026: site ladder palette (crimson; L4/L5 no longer blur)
+    6: '#3b0764',   # red-line breached
 }
 
 # ── PLAIN-LANGUAGE STATE VOCABULARY (Oct 3 2026) ─────────────────────
