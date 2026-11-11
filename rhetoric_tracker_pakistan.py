@@ -1,6 +1,6 @@
 """
 ========================================
-PAKISTAN RHETORIC TRACKER (v1.0.0 — April 2026)
+PAKISTAN RHETORIC TRACKER (v1.0.0 — April 2026; v2.1.0 Nov 11 2026: writes spoke:iran:pakistan)
 ========================================
 
 Multi-actor architecture for Pakistan, the only nuclear-armed Muslim state
@@ -1400,6 +1400,95 @@ def _detect_silence_anomalies(actor_results, theatre_level, scan_window_days=7):
 # THE PRODUCTION SCAN ORCHESTRATOR
 # ============================================
 
+# ============================================
+# IRAN SPOKE (v2.1.0 Nov 11 2026)
+# ============================================
+# Pakistan's seat on the IRAN wheel carries two relationships at once:
+#   * the CHANNEL  -- Pakistan as Iran-US mediator (Islamabad talks, Munir's
+#                     shuttle): proxy_mediation_level
+#   * the FRICTION -- the shared Baloch border: Jaish al-Adl, cross-border
+#                     strikes (the January 2024 exchange is the precedent)
+# Whichever is louder decides the track. A busy channel draws in the GPI's
+# Diplomatic blue; border friction stays on the threat palette and counts.
+IRAN_FRICTION_LADDER = {
+    4: ['iran strikes pakistan', 'pakistan strikes iran', 'iranian strike in pakistan',
+        'pakistani strike in iran', 'iran missile pakistan', 'iran drone strike balochistan'],
+    3: ['jaish al-adl attack', 'jaish ul-adl attack', 'iran pakistan border clash',
+        'iranian border guards killed', 'pakistani soldiers killed iran border',
+        'iran pakistan border firing', 'cross-border attack iran pakistan'],
+    2: ['jaish al-adl', 'jaish ul-adl', 'iran pakistan border incident',
+        'iran summons pakistan', 'pakistan summons iran', 'iran pakistan tensions'],
+    1: ['iran pakistan border', 'sistan-baluchistan', 'taftan border', 'iran pakistan relations'],
+}
+PAKISTAN_SPOKE_TTL = 30 * 60 * 60
+
+
+def _outlet_name(a):
+    src = a.get('source')
+    if isinstance(src, dict):
+        src = src.get('name')
+    return (src or 'unknown').strip().lower()
+
+
+def _iran_friction_level(articles):
+    tiers = {4: set(), 3: set(), 2: set(), 1: set()}
+    for a in articles or []:
+        t = ((a.get('title') or '') + ' ' + (a.get('description') or '')).lower()
+        for lv in (4, 3, 2, 1):
+            if any(k in t for k in IRAN_FRICTION_LADDER[lv]):
+                tiers[lv].add(_outlet_name(a))
+                break
+    for lv in (4, 3):                       # L3+ needs 2+ separate outlets
+        if len(tiers[lv]) >= 2:
+            return lv
+    if tiers[4] or tiers[3] or tiers[2]:
+        return 2
+    return 1 if tiers[1] else 0
+
+
+def _write_iran_spoke(proxy_lvl, proxy_matches, all_articles):
+    try:
+        titles = {m.get('title') for m in (proxy_matches or []) if m.get('title')}
+        channel = int(proxy_lvl or 0)
+        if channel >= 3 and len(titles) < 2:
+            channel = 2                     # one story is not yet a confirmed channel
+        friction = _iran_friction_level(all_articles)
+        lvl = max(channel, friction)
+        track = 'diplomatic' if (channel >= 2 and channel >= friction) else 'pressure'
+        parts = []
+        if channel >= 3:
+            parts.append('Pakistan is carrying the Iran-US channel (L%d)' % channel)
+        elif channel >= 1:
+            parts.append('Pakistan in the Iran mediation file (L%d, not yet confirmed busy)' % channel)
+        if friction >= 2:
+            parts.append('Iran-Pakistan border friction at L%d' % friction)
+        if parts:
+            top = 'Iran-Pakistan: ' + '; '.join(parts) + '.'
+        elif friction:
+            top = 'Iran-Pakistan: routine border coverage, no channel or friction signal.'
+        else:
+            top = 'No Iran-Pakistan reporting reached the scanners this cycle -- unread, not calm.'
+        prev = _redis_get('spoke:iran:pakistan') or {}
+        try:
+            p = int(prev.get('level'))
+            direction = 'expanding' if lvl > p else ('contracting' if lvl < p else 'holding')
+        except (TypeError, ValueError):
+            direction = 'holding'
+        _redis_set('spoke:iran:pakistan', {
+            'ts': datetime.now(timezone.utc).isoformat(), 'hub': 'iran', 'country': 'pakistan',
+            'level': lvl, 'channel_level': channel, 'pressure_level': friction, 'track': track,
+            'relationship': 'mediator_and_border', 'top_signal': top,
+            'why': 'Islamabad has carried Iran-US messages and hosted the talks -- and shares a restive Baloch border with Iran.',
+            'items': len(titles),
+            'trajectory': {'direction': direction, 'level': lvl,
+                           'confidence': 'corroborated' if len(titles) >= 2 or friction >= 3 else 'reported'},
+            'source': 'rhetoric_tracker_pakistan',
+        }, ttl=PAKISTAN_SPOKE_TTL)
+        print(f'[Pakistan Rhetoric] spoke:iran:pakistan written (L{lvl}, channel={channel}, friction={friction}, track={track})')
+    except Exception as e:
+        print(f'[Pakistan Rhetoric] Iran spoke write error: {str(e)[:120]}')
+
+
 def run_pakistan_rhetoric_scan():
     """
     Production-depth Pakistan rhetoric scan.
@@ -1780,6 +1869,7 @@ def run_pakistan_rhetoric_scan():
         'updated_at':                    datetime.now(timezone.utc).isoformat(),
     }
     _redis_set(CROSSTHEATER_KEY, fingerprint, ttl=CROSSTHEATER_TTL)
+    _write_iran_spoke(proxy_lvl, proxy_matches, all_articles)
 
     # ================================================================
     # PHASE 12 — History snapshot (for newsletter / trend tracking)
